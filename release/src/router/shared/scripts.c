@@ -137,3 +137,49 @@ void append_custom_config(char *config, FILE *fp)
 	}
 }
 
+int _shutdown_start(const char *cmd, ...)
+{
+	va_list ap;
+	char args[128] = {0};
+	char *arg = NULL;
+	int maxlength = (sizeof(args) / sizeof(args[0])) - 1;
+
+	va_start(ap, cmd);
+	arg = (char *)cmd;
+	while (arg != NULL && maxlength > 0) {
+		if (args[0] != '\0')
+			strncat(args, " ", maxlength);
+		strncat(args, arg, maxlength);
+		maxlength -= (strlen(arg) + 1);
+		arg = va_arg(ap, char *);
+	}
+	va_end(ap);
+
+	return _shutdown_start_str(args);
+}
+
+// returns zero if custom script allows the system shutdown
+ int _shutdown_start_str(const char *args)
+{
+	int result = 0;
+	int shutdown_started = nvram_get_int("shutdown_started");
+
+	if (shutdown_started == 0) {
+		nvram_set_int("shutdown_started", 1); // custom script is running
+		nvram_unset("shutdown_cancel");
+		run_custom_script_blocking("shutdown-start", args);
+
+		if (nvram_get_int("shutdown_cancel") == 1) {
+			// custom script has canceled the system shutdown
+			nvram_unset("shutdown_started"); // reset the flag
+			result = 1; // shutdown was canceled by custom script
+		}
+		else
+			nvram_set_int("shutdown_started", 2); // custom script finished (or disabled)
+	}
+	else if (shutdown_started == 1)
+		result = 2; // simultaneous shutdown attempts are prohibited
+
+	return result;
+}
+

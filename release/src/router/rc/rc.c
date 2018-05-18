@@ -979,6 +979,14 @@ int main(int argc, char **argv)
 #if !defined(CONFIG_BCMWL5)
     }
 #endif
+
+	if (strcmp(base, "reboot") == 0 || strcmp(base, "halt") == 0) {
+		int result = shutdown_start("rc", "main", base);
+
+		if (result != 0)
+			return result;
+	}
+
 	const applets_t *a;
 	for (a = applets; a->name; ++a) {
 		if (strcmp(base, a->name) == 0) {

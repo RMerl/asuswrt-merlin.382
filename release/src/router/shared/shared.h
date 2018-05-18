@@ -1776,6 +1776,9 @@ extern void run_custom_script_blocking(char *name, char *arg1, char*arg2);
 extern void run_postconf(char *name, char *config);
 extern void use_custom_config(char *config, char *target);
 extern void append_custom_config(char *config, FILE *fp);
+#define shutdown_start(args...) _shutdown_start(args, NULL)
+extern int _shutdown_start(const char *cmd, ...);
+extern int _shutdown_start_str(const char *args);
 
 /* mt7620.c */
 #if defined(RTCONFIG_RALINK_MT7620)

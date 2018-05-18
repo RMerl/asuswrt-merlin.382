@@ -3794,6 +3794,7 @@ static int ej_set_variables(int eid, webs_t wp, int argc, char_t **argv) {
 		}
 	}
 	else if(!strcmp(apiName, "qos")){
+		if (shutdown_start("httpd", __FUNCTION__, apiName, apiAction) == 0) {
 		char *desc, *addr, *port, *prio, *transferred, *proto;
 
 		if(!strcmp(apiAction, "enable")){
@@ -3988,6 +3989,7 @@ static int ej_set_variables(int eid, webs_t wp, int argc, char_t **argv) {
 		else{
 				retStatus = 3;
 		}
+		} // if shutdown_start
 	}
 	else{
 		retStatus = 3;
@@ -10238,10 +10240,12 @@ apply_cgi(webs_t wp, char_t *urlPrefix, char_t *webDir, int arg,
 	}
 	else if (!strcmp(action_mode, " Restart ")||!strcmp(action_mode, "reboot"))
 	{
+		if (shutdown_start("httpd", __FUNCTION__, action_mode) == 0) {
 		websApply(wp, "Restarting.asp");
 		nvram_set("freeze_duck", "15");
 		shutdown(fileno(wp), SHUT_RDWR);
 		sys_reboot();
+		}
 	}
 	else if (!strcmp(action_mode, "Restore")||!strcmp(action_mode, "restore"))
 	{
@@ -10638,6 +10642,7 @@ wps_finish:
 	}
 	else if (!strcmp(action_mode, "start_simdetect"))
 	{
+		if (shutdown_start("httpd", __FUNCTION__, action_mode) == 0) {
 		char *simdetect;
 
 		simdetect = get_cgi_json("simdetect", root);
@@ -10647,6 +10652,7 @@ wps_finish:
 		nvram_set("freeze_duck", "15");
 		shutdown(fileno(wp), SHUT_RDWR);
 		sys_reboot();
+		}
 	}
 	else if(!strcmp(action_mode, "update_lte_fw")){
 		notify_rc("start_gobi_update");
@@ -11384,6 +11390,7 @@ do_upgrade_post(char *url, FILE *stream, int len, char *boundary)
 static void
 do_upgrade_post(char *url, FILE *stream, int len, char *boundary)
 {
+	if (shutdown_start("httpd", __FUNCTION__, url) == 0) {
 	#define MAX_VERSION_LEN 64
 
 	do_html_get(url, len, boundary);
@@ -11595,12 +11602,14 @@ err:
 	while (len-- > 0)
 		if((ch = fgetc(stream)) == EOF)
 			break;
+	}
 }
 #endif
 
 static void
 do_upgrade_cgi(char *url, FILE *stream)
 {
+	if (shutdown_start("httpd", __FUNCTION__, url) == 0) {
 	/* Reboot if successful */
 	char *autoreboot = safe_get_cgi_json("autoreboot",NULL);
 	char *reset = safe_get_cgi_json("reset",NULL);
@@ -11670,6 +11679,7 @@ do_upgrade_cgi(char *url, FILE *stream)
 			start_dpi_engine_service();
 #endif
 		}
+	}
 	}
 }
 
@@ -11945,6 +11955,7 @@ err:
 static void
 do_upload_cgi(char *url, FILE *stream)
 {
+	if (shutdown_start("httpd", __FUNCTION__, url) == 0) {
 	int ret;
 #if defined(RTCONFIG_SAVEJFFS)
 	int r;
@@ -11994,6 +12005,7 @@ do_upload_cgi(char *url, FILE *stream)
 	{
 		websApply(stream, "UploadError.asp");
 	   	//unlink("/tmp/settings_u.prf");
+	}
 	}
 }
 
