@@ -117,7 +117,7 @@ static int create_socket(uint16_t port)
 
 
 static void handle_nested_message(uint8_t *data, size_t len,
-		uint8_t **opts, uint8_t **end, struct iovec iov[5])
+		uint8_t **opts, uint8_t **end, struct iovec iov[6])
 {
 	struct dhcpv6_relay_header *hdr = (struct dhcpv6_relay_header*)data;
 	if (iov[0].iov_base == NULL) {
