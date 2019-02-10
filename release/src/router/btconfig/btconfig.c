@@ -2006,7 +2006,7 @@ static void cmdline(int dev_id, int argc, char **argv){
 	}
 	
 	int i,j;
-	char bda[18];
+	char bda[19];
 	for (i=iRet-1,j=0;i>7;i--,j+=3) {
 		sprintf(&bda[j],"%X",((buf[i]>>4)&0xFF));
 		sprintf(&bda[j+1],"%X",(buf[i]&0x0F));
@@ -2394,7 +2394,7 @@ static void cmd_mb(int dev_id, int argc, char **argv){
 		return;
 	}
 	int i,j;
-	char bda[18];
+	char bda[19];
 	for (i=iRet-1,j=0;i>7;i--,j+=3) {
 		sprintf(&bda[j],"%X",((buf[i]>>4)&0xFF));
 		sprintf(&bda[j+1],"%X",(buf[i]&0x0F));
