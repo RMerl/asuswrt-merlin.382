@@ -1754,7 +1754,7 @@ user_unsetenv(argv)
 	option_error("unexpected = in name: %s", arg);
 	return 0;
     }
-    if (arg == '\0') {
+    if (*arg == '\0') {
 	option_error("missing variable name for unset");
 	return 0;
     }
