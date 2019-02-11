@@ -2813,7 +2813,7 @@ AcceptTCPConnection
 	
 	context = ( TCPContext* ) malloc( sizeof( TCPContext ) );
 	require_action( context, exit, err = mStatus_NoMemoryErr; LogErr( "AcceptTCPConnection", "malloc" ) );
-	mDNSPlatformMemZero( context, sizeof( sizeof( TCPContext ) ) );
+	mDNSPlatformMemZero( context, sizeof( TCPContext ) );
 	context->d		 = self;
 	newSock = accept( sd, ( struct sockaddr* ) &context->cliaddr, &clilen );
 	require_action( newSock != -1, exit, err = mStatus_UnknownErr; LogErr( "AcceptTCPConnection", "accept" ) );
