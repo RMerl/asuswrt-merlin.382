@@ -388,7 +388,7 @@ int SaveFile(char* save_file,PHGlobal *pglobal,PH_parameter *parameter)
 		memset(com,0,sizeof(com));
 		printf("Save to configuration file (%s",save_file);
 		printf(")?(yes/no/other):");
-		fgets(com,100,stdin);
+		fgets(com,10,stdin);
 		if( strlen(trim(com)) == 0 )
 		{
 			continue;
