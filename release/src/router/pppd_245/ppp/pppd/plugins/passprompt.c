@@ -50,7 +50,7 @@ static int promptpass(char *user, char *passwd)
     }
     if (!kid) {
 	/* we are the child, exec the program */
-	char *argv[4], fdstr[32];
+	char *argv[5], fdstr[32];
 	sys_close();
 	closelog();
 	close(p[0]);
