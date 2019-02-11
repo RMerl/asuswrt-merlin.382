@@ -1461,10 +1461,10 @@ struct usb_device* search_devices( int *numFound, int vendor, int product, char*
 	*numFound = 0;
 
 	/* Sanity check */
-	if (!vendor || (!product && productList == '\0') )
+	if (!vendor || (!product && *productList == '\0') )
 		return NULL;
 
-	if (productList != '\0')
+	if (*productList != '\0')
 		listcopy = malloc(strlen(productList)+1);
 
 	for (bus = usb_get_busses(); bus; bus = bus->next) {
