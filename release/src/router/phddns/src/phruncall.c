@@ -277,7 +277,7 @@ void NewFile(PH_parameter *parameter)
 #endif
 
 	memset(parameter->logfile,0,sizeof(parameter->logfile));
-	fgets(parameter->logfile,100,stdin);
+	fgets(parameter->logfile,sizeof(parameter->logfile),stdin);
 	if( strlen(trim(parameter->logfile)) == 0 ) {
 #ifndef WIN32
 		strcpy(parameter->logfile,"/var/log/phddns.log");
@@ -295,7 +295,7 @@ void NewHost(PHGlobal *pglobal)
 	{
 		printf("Enter server address(press ENTER use phddns60.oray.net):");
 		memset(pglobal->szHost,0,sizeof(pglobal->szHost));
-		fgets(pglobal->szHost,100,stdin);
+		fgets(pglobal->szHost,sizeof(pglobal->szHost),stdin);
 		if( strlen(trim(pglobal->szHost)) == 0 )
 		{
 			strcpy(pglobal->szHost,"phddns60.oray.net");
@@ -320,7 +320,7 @@ void NewUserID(PHGlobal *pglobal)
 	{
 		printf("Enter your Oray account:");
 		memset(pglobal->szUserID,0,sizeof(pglobal->szUserID));
-		fgets(pglobal->szUserID,100,stdin);
+		fgets(pglobal->szUserID,sizeof(pglobal->szUserID),stdin);
 		if( strlen(trim(pglobal->szUserID)) == 0 )
 			continue;
 		else 
@@ -372,7 +372,7 @@ void NewnicName(PHGlobal *pglobal,PH_parameter *parameter)
 {
 	ShowNic( pglobal,parameter );
 	printf("Choose one(default eth0):");
-	fgets(parameter->nicName,100,stdin);
+	fgets(parameter->nicName,sizeof(parameter->nicName),stdin);
 	if(strlen(trim(parameter->nicName)) == 0)
 		strcpy(parameter->nicName,"eth0");
 //	SetValue("settings","nicName",parameter->nicName,pglobal);
@@ -388,7 +388,7 @@ int SaveFile(char* save_file,PHGlobal *pglobal,PH_parameter *parameter)
 		memset(com,0,sizeof(com));
 		printf("Save to configuration file (%s",save_file);
 		printf(")?(yes/no/other):");
-		fgets(com,10,stdin);
+		fgets(com,sizeof(com),stdin);
 		if( strlen(trim(com)) == 0 )
 		{
 			continue;
@@ -422,7 +422,7 @@ int SaveFile(char* save_file,PHGlobal *pglobal,PH_parameter *parameter)
 #else
 						printf("Enter configuration filename(d://phlinux.ini):");
 #endif
-						fgets(command,100,stdin);
+						fgets(command,sizeof(command),stdin);
 						if( strlen(trim(command)) == 0 )
 						{
 							if( MyWriteFile(command,pglobal,parameter) != 0 )
