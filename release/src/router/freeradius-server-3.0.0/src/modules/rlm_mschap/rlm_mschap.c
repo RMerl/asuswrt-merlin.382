@@ -452,7 +452,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
-		if ((p == '\0')	 || (outlen <= 32))
+		if ((*p == '\0')	 || (outlen <= 32))
 			return 0;
 
 		while (isspace(*p)) p++;
@@ -481,7 +481,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
-		if ((p == '\0') || (outlen <= 32))
+		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
 		while (isspace(*p)) p++;
