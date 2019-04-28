@@ -2340,8 +2340,8 @@ void handle_dns_req(int sfd, unsigned char *request, int maxlen, struct sockaddr
 #endif
 	unsigned char reply_content[MAXLINE], *ptr, *end;
 	dns_header *d_req, *d_reply;
-	dns_queries queries;
-	dns_answer answer;
+	dns_queries queries = {0};
+	dns_answer answer = {0};
 	uint16_t opcode;
 
 	/* validation */
@@ -2352,10 +2352,11 @@ void handle_dns_req(int sfd, unsigned char *request, int maxlen, struct sockaddr
 		return;
 	opcode = d_req->flag_set.flag_num & htons(0x7800);
 	ptr = request + sizeof(dns_header);
-	end = request + maxlen;
+	/* queries.name is PATHLEN long, one trailing byte for null */
+	end = request + (maxlen > PATHLEN-1 ? PATHLEN-1 : maxlen);
 
 	/* query, only first so far */
-	memset(&queries, 0, sizeof(queries));
+	memset(&queries, 0, sizeof(dns_queries));
 	while (ptr < end) {
 		size_t len = *ptr++;
 		if (len > 63 || end - ptr < (len ? : 4))
@@ -2371,7 +2372,7 @@ void handle_dns_req(int sfd, unsigned char *request, int maxlen, struct sockaddr
 		strncat(queries.name, (char *)ptr, len);
 		ptr += len;
 	}
-	if (queries.type == 0 || queries.ip_class == 0 || strlen(queries.name) > 1025)
+	if (queries.type == 0 || queries.ip_class == 0 || strlen(queries.name) > PATHLEN)
 		return;
 	maxlen = ptr - request;
 
