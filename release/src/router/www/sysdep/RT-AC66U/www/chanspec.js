@@ -136,7 +136,7 @@ function wl_chanspec_list_change(){
 					for(i=0;i<wl_channel_list_5g.length; i++){
 						var _cur_channel = parseInt(wl_channel_list_5g[i]);
 						for(j=0;j<wl1.channel_80m.length;j++){
-							if(wl1.channel_80m[j].indexOf(_cur_channel) != -1){
+							if(wl1.channel_80m[j].indexOf(_cur_channel) == 0){
 								_wl_channel.push(_cur_channel+"/80");
 							}
 						}
