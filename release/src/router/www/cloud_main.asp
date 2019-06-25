@@ -307,10 +307,10 @@ function show_partition(){
 function getStyleSheet(cssName, rule) {
 	for (i = 0; i < document.styleSheets.length; i++) {
 		if (document.styleSheets[i].href.toString().indexOf(cssName) != -1) {
-			for (x = 0; x < document.styleSheets[i].rules.length; x++) {
-				if(document.styleSheets[i].rules[x].type == 1) {
-					if (document.styleSheets[i].rules[x].selectorText.toString() == rule) {
-						return document.styleSheets[i].rules[x];
+			for (x = 0; x < document.styleSheets[i].cssRules.length; x++) {
+				if(document.styleSheets[i].cssRules[x].type == 1) {
+					if (document.styleSheets[i].cssRules[x].selectorText.toString() == rule) {
+						return document.styleSheets[i].cssRules[x];
 					}
 				}
 			}
