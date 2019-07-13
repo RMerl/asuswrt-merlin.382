@@ -1,7 +1,7 @@
 #!/bin/sh
 
 PARAM=$*
-if [ "$PARAM" == "" ]
+if [ "$PARAM" = "" ]
 then
 	# Add paramaters equivalent to those passed for up command
 	PARAM="$dev $tun_mtu $link_mtu $ifconfig_local $ifconfig_remote"
@@ -25,7 +25,7 @@ create_client_list(){
 		then
 			continue
 		fi
-		TARGET_ROUTE=$(echo $ENTRY | cut -d ">" -f 4)
+		TARGET_ROUTE=$(echo "$ENTRY" | cut -d ">" -f 4)
 		if [ "$TARGET_ROUTE" = "WAN" ]
 		then
 			TARGET_LOOKUP="main"
@@ -38,7 +38,7 @@ create_client_list(){
 			RULE_PRIO=$VPN_PRIO
 			TARGET_NAME="VPN client "$VPN_UNIT
 		fi
-		VPN_IP=$(echo $ENTRY | cut -d ">" -f 2)
+		VPN_IP=$(echo "$ENTRY" | cut -d ">" -f 2)
 		if [ "$VPN_IP" != "0.0.0.0" ]
 		then
 			SRCC="from"
@@ -47,7 +47,7 @@ create_client_list(){
 			SRCC=""
 			SRCA=""
 		fi
-		DST_IP=$(echo $ENTRY | cut -d ">" -f 3)
+		DST_IP=$(echo "$ENTRY" | cut -d ">" -f 3)
 		if [ "$DST_IP" != "0.0.0.0" ]
 		then
 			DSTC="to"
@@ -56,9 +56,9 @@ create_client_list(){
 			DSTC=""
 			DSTA=""
 		fi
-		if [ "$SRCC" != "" -o "$DSTC" != "" ]
+		if [ "$SRCC" != "" ] || [ "$DSTC" != "" ]
 		then
-			ip rule add $SRCC $SRCA $DSTC $DSTA table $TARGET_LOOKUP priority $RULE_PRIO
+			ip rule add $SRCC $SRCA $DSTC $DSTA table "$TARGET_LOOKUP" priority $RULE_PRIO
 			my_logger "Adding route for $VPN_IP to $DST_IP through $TARGET_NAME"
 		fi
 	done
@@ -69,9 +69,9 @@ purge_client_list(){
 	IP_LIST=$(ip rule show | cut -d ":" -f 1)
 	for PRIO in $IP_LIST
 	do
-		if [ $PRIO -ge $START_PRIO -a $PRIO -le $END_PRIO ]
+		if [ "$PRIO" -ge "$START_PRIO" ] && [ "$PRIO" -le "$END_PRIO" ]
 		then
-			ip rule del prio $PRIO
+			ip rule del prio "$PRIO"
 			my_logger "Removing rule $PRIO from routing policy"
 		fi
 	done
@@ -81,65 +81,65 @@ run_custom_script(){
 	if [ -f /jffs/scripts/openvpn-event ]
 	then
 		/usr/bin/logger -t "custom_script" "Running /jffs/scripts/openvpn-event (args: $PARAM)"
-		/bin/sh /jffs/scripts/openvpn-event $PARAM
+		/bin/sh /jffs/scripts/openvpn-event "$PARAM"
 	fi
 }
 
 init_table(){
 	my_logger "Creating VPN routing table (mode $VPN_REDIR)"
-	ip route flush table $VPN_TBL
+	ip route flush table "$VPN_TBL"
 
 # Fill it with copy of existing main table
-	if [ "$VPN_REDIR" == "3" ]
+	if [ "$VPN_REDIR" = "3" ]
 	then
 		LANIFNAME=$(nvram get lan_ifname)
-		ip route show table main dev $LANIFNAME | while read ROUTE
+		ip route show table main dev "$LANIFNAME" | while read -r ROUTE
 		do
-			ip route add table $VPN_TBL $ROUTE dev $LANIFNAME
+			ip route add table "$VPN_TBL" "$ROUTE" dev "$LANIFNAME"
 		done
-		ip route show table main dev $dev | while read ROUTE
+		ip route show table main dev "$dev" | while read -r ROUTE
 		do
-			ip route add table $VPN_TBL $ROUTE dev $dev
+			ip route add table "$VPN_TBL" "$ROUTE" dev "$dev"
 		done
-	elif [ "$VPN_REDIR" == "2" ]
+	elif [ "$VPN_REDIR" = "2" ]
 	then
-		ip route show table main | while read ROUTE
+		ip route show table main | while read -r ROUTE
 		do
-			ip route add table $VPN_TBL $ROUTE
+			ip route add table "$VPN_TBL" "$ROUTE"
 		done
 	fi
 }
 
 # Begin
-if [ "$dev" == "tun11" ]
+if [ "$dev" = "tun11" ]
 then
 	VPN_IP_LIST=$(nvram get vpn_client1_clientlist)$(nvram get vpn_client1_clientlist1)$(nvram get vpn_client1_clientlist2)$(nvram get vpn_client1_clientlist3)$(nvram get vpn_client1_clientlist4)$(nvram get vpn_client1_clientlist5)
 	VPN_REDIR=$(nvram get vpn_client1_rgw)
 	VPN_FORCE=$(nvram get vpn_client1_enforce)
 	VPN_UNIT=1
 	VPN_LOGGING=$(nvram get vpn_client1_verb)
-elif [ "$dev" == "tun12" ]
+elif [ "$dev" = "tun12" ]
 then
 	VPN_IP_LIST=$(nvram get vpn_client2_clientlist)$(nvram get vpn_client2_clientlist1)$(nvram get vpn_client2_clientlist2)$(nvram get vpn_client2_clientlist3)$(nvram get vpn_client2_clientlist4)$(nvram get vpn_client2_clientlist5)
 	VPN_REDIR=$(nvram get vpn_client2_rgw)
 	VPN_FORCE=$(nvram get vpn_client2_enforce)
 	VPN_UNIT=2
 	VPN_LOGGING=$(nvram get vpn_client2_verb)
-elif [ "$dev" == "tun13" ]
+elif [ "$dev" = "tun13" ]
 then
 	VPN_IP_LIST=$(nvram get vpn_client3_clientlist)$(nvram get vpn_client3_clientlist1)$(nvram get vpn_client3_clientlist2)$(nvram get vpn_client3_clientlist3)$(nvram get vpn_client3_clientlist4)$(nvram get vpn_client3_clientlist5)
 	VPN_REDIR=$(nvram get vpn_client3_rgw)
 	VPN_FORCE=$(nvram get vpn_client3_enforce)
 	VPN_UNIT=3
 	VPN_LOGGING=$(nvram get vpn_client3_verb)
-elif [ "$dev" == "tun14" ]
+elif [ "$dev" = "tun14" ]
 then
 	VPN_IP_LIST=$(nvram get vpn_client4_clientlist)$(nvram get vpn_client4_clientlist1)$(nvram get vpn_client4_clientlist2)$(nvram get vpn_client4_clientlist3)$(nvram get vpn_client4_clientlist4)$(nvram get vpn_client4_clientlist5)
 	VPN_REDIR=$(nvram get vpn_client4_rgw)
 	VPN_FORCE=$(nvram get vpn_client4_enforce)
 	VPN_UNIT=4
 	VPN_LOGGING=$(nvram get vpn_client4_verb)
-elif [ "$dev" == "tun15" ]
+elif [ "$dev" = "tun15" ]
 then
 	VPN_IP_LIST=$(nvram get vpn_client5_clientlist)$(nvram get vpn_client5_clientlist1)$(nvram get vpn_client5_clientlist2)$(nvram get vpn_client5_clientlist3)$(nvram get vpn_client5_clientlist4)$(nvram get vpn_client5_clientlist5)
 	VPN_REDIR=$(nvram get vpn_client5_rgw)
@@ -152,21 +152,21 @@ else
 fi
 
 VPN_TBL="ovpnc"$VPN_UNIT
-START_PRIO=$((10000+(200*($VPN_UNIT-1))))
-END_PRIO=$(($START_PRIO+199))
+START_PRIO=$((10000+(200*(VPN_UNIT-1))))
+END_PRIO=$((START_PRIO+199))
 WAN_PRIO=$START_PRIO
-VPN_PRIO=$(($START_PRIO+100))
+VPN_PRIO=$((START_PRIO+100))
 
 export VPN_GW VPN_IP VPN_TBL VPN_FORCE
 
 
 # webui reports that vpn_force changed while vpn client was down
-if [ $script_type = "rmupdate" ]
+if [ "$script_type" = "rmupdate" ]
 then
 	my_logger "Refreshing policy rules for client $VPN_UNIT"
 	purge_client_list
 
-	if [ $VPN_FORCE == "1" -a $VPN_REDIR -ge "2" ]
+	if [ "$VPN_FORCE" = "1" ] && [ "$VPN_REDIR" -ge "2" ]
 	then
 		init_table
 		my_logger "Tunnel down - VPN client access blocked"
@@ -181,7 +181,7 @@ then
 	exit 0
 fi
 
-if [ $script_type == "route-up" -a $VPN_REDIR -lt "2" ]
+if [ "$script_type" = "route-up" ] && [ "$VPN_REDIR" -lt "2" ]
 then
 	my_logger "Skipping, client $VPN_UNIT not in routing policy mode"
 	run_custom_script
@@ -190,11 +190,11 @@ fi
 
 /usr/bin/logger -t "openvpn-routing" "Configuring policy rules for client $VPN_UNIT"
 
-if [ $script_type == "route-pre-down" ]
+if [ "$script_type" = "route-pre-down" ]
 then
 	purge_client_list
 
-	if [ $VPN_FORCE == "1" -a $VPN_REDIR -ge "2" ]
+	if [ "$VPN_FORCE" = "1" ] && [ "$VPN_REDIR" -ge "2" ]
 	then
 		/usr/bin/logger -t "openvpn-routing" "Tunnel down - VPN client access blocked"
 		ip route change prohibit default table $VPN_TBL
@@ -207,7 +207,7 @@ fi	# End route down
 
 
 
-if [ $script_type == "route-up" ]
+if [ "$script_type" = "route-up" ]
 then
 	init_table
 
@@ -215,7 +215,7 @@ then
 	NET_LIST=$(ip route show|awk '$2=="via" && $3==ENVIRON["route_vpn_gateway"] && $4=="dev" && $5==ENVIRON["dev"] {print $1}')
 	for NET in $NET_LIST
 	do
-		ip route del $NET dev $dev
+		ip route del "$NET" dev "$dev"
 		my_logger "Removing route for $NET to $dev from main routing table"
 	done
 
@@ -226,14 +226,14 @@ then
 # Setup table default route
 	if [ "$VPN_IP_LIST" != "" ]
 	then
-		if [ "$VPN_FORCE" == "1" ]
+		if [ "$VPN_FORCE" = "1" ]
 		then
 			/usr/bin/logger -t "openvpn-routing" "Tunnel re-established, restoring WAN access to clients"
 		fi
 		if [ "$route_net_gateway" != "" ]
 		then
 			ip route del default table $VPN_TBL
-			ip route add default via $route_vpn_gateway table $VPN_TBL
+			ip route add default via "$route_vpn_gateway" table $VPN_TBL
 		else
 			/usr/bin/logger -t "openvpn-routing" "WARNING: no VPN gateway provided, routing might not work properly!"
 		fi
@@ -242,7 +242,7 @@ then
 	if [ "$route_net_gateway" != "" ]
 	then
 		ip route del default
-		ip route add default via $route_net_gateway
+		ip route add default via "$route_net_gateway"
 	fi
 fi	# End route-up
 
