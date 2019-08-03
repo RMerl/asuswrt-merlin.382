@@ -761,11 +761,6 @@ function applyRule(){
 		}
 		
 		document.form.wl_sched.value = wifi_schedule_value;	
-		if(amesh_support && (isSwMode("rt") || isSwMode("ap"))) {
-			var radio_value = (document.form.wl_radio[0].checked) ? 1 : 0;
-			if(!AiMesh_confirm_msg("Wireless_Radio",radio_value))
-				return;
-		}
 		showLoading();
 		document.form.submit();
 	}
