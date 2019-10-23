@@ -51,7 +51,7 @@ Set Up Environment(Tested in Fedora 8/9 and Ubuntu)
 		libglib2.0-dev
 		gtk-doc-tools
 
-		If you are using Ubuntu amd64, you may need to install 32-bit packages listed below.
+		If you are using Ubuntu amd64, You may need to install 32-bit packages listed below.
 			libc6-i386
 			lib32stdc++6
 			lib32z1
@@ -70,13 +70,13 @@ Set Up Environment(Tested in Fedora 8/9 and Ubuntu)
 		If you are using Fedora 19 or above, you need to install below packages.
 		sudo yum groupinstall "C Development Tools and Libraries"
 
-		If you are using Fedora x86_64, you may need to install 32-bit packages listed below.
+		If you are using Fedora x86_64, You may need to install 32-bit packages listed below.
 			elfutils-libelf.i686
 			glibc.i686
 			libstdc++.i686
 			zlib.i686
 
-		If you are using Fedora 24+, you may need to install 32-bit packages listed below.
+		If you are using Fedora 24+, You may need to install 32-bit packages listed below.
 			ncurses-compat-libs.i686
 
    2. prepare source to, ex, $HOME/asuswrt
@@ -90,9 +90,9 @@ Set Up Environment(Tested in Fedora 8/9 and Ubuntu)
 	===================
 
 		To install the tools:
-		    - copy the tools/brcm/ directory to /opt
-		    - add /opt/brcm/hndtools-mipsel-linux/bin to your path
-		    - add /opt/brcm/hndtools-mipsel-uclibc/bin to your path
+		    * copy the tools/brcm/ directory to /opt
+		    * add /opt/brcm/hndtools-mipsel-linux/bin to your path
+		    * add /opt/brcm/hndtools-mipsel-uclibc/bin to your path
 
 	Broadcom HND SoC models
 	=======================
@@ -157,19 +157,19 @@ Set Up Environment(Tested in Fedora 8/9 and Ubuntu)
 
    4. build firmware.
 
-	a. rt-n16
+	1. rt-n16
 		cd release/src-rt
 		make rt-n16
 
-	b. rt-n56u
+	2. rt-n56u
 		cd release/src-ra
 		make rt-n56u
 
-	c. rt-n65u
+	3. rt-n65u
 		cd release/src-ra-3.0
 		make rt-n65u
 
-	d. rt-n14u (/ rt-ac52u / rt-ac51u / rt-n11p / rt-n54u)
+	4. rt-n14u (/ rt-ac52u / rt-ac51u / rt-n11p / rt-n54u)
 		cd release/src-ra-mt7620
 		make rt-n14u
 		( make rt-ac52u  )
@@ -177,23 +177,23 @@ Set Up Environment(Tested in Fedora 8/9 and Ubuntu)
 		( make rt-n11p   )
 		( make rt-n54u   )
 
-	e. rt-ac56u (/ rt-ac68u / rt-n18uhp)
+	5. rt-ac56u (/ rt-ac68u / rt-n18uhp)
 		cd release/src-rt-6.x.4708
 		make rt-ac56u
 		( make rt-ac68u  )
 		( make rt-n18uhp )
 
-	f. rt-ac55u (/ rt-ac55uhp )
+	6. rt-ac55u (/ rt-ac55uhp )
 		cd release/src-qca
 		make rt-ac55u
 		( make rt-ac55uhp )
 
-	g. brt-ac828 (/ rt-ac88q / rt-ad7200 )
+	7. brt-ac828 (/ rt-ac88q / rt-ad7200 )
 		cd release/src-qca-ipq8064
 		make brt-ac828
 		( make rt-ad7200 )
 
-	h. rt-ac58u (/ rt-ac82u / map-ac1300 / map-ac2200 / vrz-ac1300 )
+	8. rt-ac58u (/ rt-ac82u / map-ac1300 / map-ac2200 / vrz-ac1300 )
 		cd release/src-qca-dakota
 		make rt-ac58u
 		( make rt-ac82u )
@@ -201,13 +201,13 @@ Set Up Environment(Tested in Fedora 8/9 and Ubuntu)
 		( make map-ac2200 )
 		( make vrz-ac1300 )
 
-	i. rt-ac85u (/ rt-ac85u / rt-ac65u / rp-ac87 )
+	9. rt-ac85u (/ rt-ac85u / rt-ac65u / rp-ac87 )
 		cd release/src-ra-5010
 		make rt-ac85u
 		( make rt-ac65u )
 		( make rp-ac87 )
 
-	j. rt-ac1200 (/ rt-n11p_b1 / rt-n10p_v3 / rt-ac1200gu / rt-ac51u+ / rt-ac53 )
+	10. rt-ac1200 (/ rt-n11p_b1 / rt-n10p_v3 / rt-ac1200gu / rt-ac51u+ / rt-ac53 )
 		cd release/src-ra-4300
 		make rt-ac1200
 		( make rt-n11p_b1 )
@@ -216,7 +216,7 @@ Set Up Environment(Tested in Fedora 8/9 and Ubuntu)
 		( make rt-ac51u+ )
 		( make rt-ac53 )
 
-	k. rp-ac68u (/ rp-ac53 / rp-ac55 )
+	11. rp-ac68u (/ rp-ac53 / rp-ac55 )
 		cd release/src-rtk-819x
 		make rp-ac68u
 		( make rp-ac53 )
