@@ -907,7 +907,7 @@ Asuswrt-Merlin 384/NG Changelog
 
    Also note that the primary download site was changed to
    Sourceforge, due to numerous issues with Mediafire.  Onedrive
-   will be the oficial mirror to the SF.net download site.
+   will be the official mirror to the SF.net download site.
 
    - NEW: Moved to Asus382 codebase.  Some of the most important
           changes between Asus380 and Asus382:
