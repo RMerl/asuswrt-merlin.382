@@ -58,7 +58,7 @@ Asuswrt-Merlin 384/NG Changelog
   - FIXED: Let's Encrypt support would sometime fail when using
            Asus DDNS (fixed DNS publishing of validation record)
            (in addition to general failure fixed by GPL 81351)
-  - FIXED: IPv6 neighbour solnicitation drop toggle not working
+  - FIXED: IPv6 neighbour solicitation drop toggle not working
            for some models
 
 
