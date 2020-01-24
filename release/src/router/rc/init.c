@@ -8956,10 +8956,6 @@ int init_nvram(void)
 	add_rc_support("dnspriv");
 #endif
 
-#ifdef RTCONFIG_DNSPRIVACY
-	add_rc_support("dnspriv");
-#endif
-
 #ifdef RTCONFIG_DSL
 	set_wanscap_support("dsl");
 #elif defined(RTCONFIG_NO_WANPORT)
