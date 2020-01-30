@@ -256,7 +256,7 @@ void dnsfilter_setup_dnsmasq(FILE *fp) {
 
 	defmode = nvram_get_int("dnsfilter_mode");
 
-	for (dnsmode = 1; dnsmode < (sizeof server_table / sizeof server_table[0]); dnsmode++) {
+	for (dnsmode = 1; dnsmode < (sizeof(server_table)/sizeof(server_table[0])); dnsmode++) {
 		if (dnsmode == defmode)
 			continue;
 		count = get_dns_filter(AF_INET6, dnsmode, server);
