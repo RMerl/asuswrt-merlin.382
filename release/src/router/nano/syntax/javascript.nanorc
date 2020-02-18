@@ -12,9 +12,7 @@ color brightyellow "\<(await|export|import|throw|try|catch|finally|new|delete)\>
 color magenta "\<(break|continue|return|yield)\>"
 
 # Octal/decimal and hexadecimal numbers.
-color cyan "\<([0-9]+|0x[0-9A-Fa-f]+)\>"
-# Special values.
-color cyan "\<(true|false|null|undefined)\>"
+color cyan "\<[0-9]+\>" "\<0x[0-9A-Fa-f]+\>"
 
 # Strings.
 color brightmagenta ""(\\.|[^"])*"" "'(\\.|[^'])*'" "`(\\.|[^`])*`"

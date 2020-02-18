@@ -35,7 +35,7 @@
       if(result)                                \
         break;                                  \
     }                                           \
-  } while(0)
+  } WHILE_FALSE
 
 /* allow removed features to simulate success: */
 bool tool_setopt_skip(CURLoption tag);

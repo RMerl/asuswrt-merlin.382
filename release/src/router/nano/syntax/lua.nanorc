@@ -5,9 +5,8 @@
 
 syntax lua "\.lua$"
 magic "Lua script"
+linter "luacheck --no-color"
 comment "--"
-
-linter luacheck --no-color
 
 color brightwhite "\[\[.*\]\]"
 

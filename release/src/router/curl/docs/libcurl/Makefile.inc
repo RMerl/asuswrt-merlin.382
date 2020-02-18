@@ -54,7 +54,6 @@ man_MANS = \
  curl_multi_socket_all.3 \
  curl_multi_strerror.3 \
  curl_multi_timeout.3 \
- curl_multi_wakeup.3 \
  curl_multi_wait.3 \
  curl_share_cleanup.3 \
  curl_share_init.3 \

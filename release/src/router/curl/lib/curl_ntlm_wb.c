@@ -108,8 +108,10 @@ void Curl_http_auth_cleanup_ntlm_wb(struct connectdata *conn)
     conn->ntlm_auth_hlpr_pid = 0;
   }
 
-  Curl_safefree(conn->challenge_header);
-  Curl_safefree(conn->response_header);
+  free(conn->challenge_header);
+  conn->challenge_header = NULL;
+  free(conn->response_header);
+  conn->response_header = NULL;
 }
 
 static CURLcode ntlm_wb_init(struct connectdata *conn, const char *userp)
@@ -391,6 +393,7 @@ CURLcode Curl_output_ntlm_wb(struct connectdata *conn,
   struct auth *authp;
 
   CURLcode res = CURLE_OK;
+  char *input;
 
   DEBUGASSERT(conn);
   DEBUGASSERT(conn->data);
@@ -441,17 +444,19 @@ CURLcode Curl_output_ntlm_wb(struct connectdata *conn,
                             proxy ? "Proxy-" : "",
                             conn->response_header);
     DEBUG_OUT(fprintf(stderr, "**** Header %s\n ", *allocuserpwd));
-    Curl_safefree(conn->response_header);
+    free(conn->response_header);
     if(!*allocuserpwd)
       return CURLE_OUT_OF_MEMORY;
+    conn->response_header = NULL;
     break;
 
-  case NTLMSTATE_TYPE2: {
-    char *input = aprintf("TT %s\n", conn->challenge_header);
+  case NTLMSTATE_TYPE2:
+    input = aprintf("TT %s\n", conn->challenge_header);
     if(!input)
       return CURLE_OUT_OF_MEMORY;
     res = ntlm_wb_response(conn, input, *state);
     free(input);
+    input = NULL;
     if(res)
       return res;
 
@@ -466,7 +471,7 @@ CURLcode Curl_output_ntlm_wb(struct connectdata *conn,
     if(!*allocuserpwd)
       return CURLE_OUT_OF_MEMORY;
     break;
-  }
+
   case NTLMSTATE_TYPE3:
     /* connection is already authenticated,
      * don't send a header in future requests */

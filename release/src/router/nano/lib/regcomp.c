@@ -1,5 +1,5 @@
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002-2020 Free Software Foundation, Inc.
+   Copyright (C) 2002-2019 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
@@ -1436,7 +1436,7 @@ link_nfa_nodes (void *extra, bin_tree_t *node)
       break;
 
     case END_OF_RE:
-      DEBUG_ASSERT (node->next == NULL);
+      assert (node->next == NULL);
       break;
 
     case OP_DUP_ASTERISK:
@@ -1452,8 +1452,8 @@ link_nfa_nodes (void *extra, bin_tree_t *node)
 	  right = node->right->first->node_idx;
 	else
 	  right = node->next->node_idx;
-	DEBUG_ASSERT (left > -1);
-	DEBUG_ASSERT (right > -1);
+	assert (left > -1);
+	assert (right > -1);
 	err = re_node_set_init_2 (dfa->edests + idx, left, right);
       }
       break;
@@ -1471,7 +1471,7 @@ link_nfa_nodes (void *extra, bin_tree_t *node)
       break;
 
     default:
-      DEBUG_ASSERT (!IS_EPSILON_NODE (node->token.type));
+      assert (!IS_EPSILON_NODE (node->token.type));
       dfa->nexts[idx] = node->next->node_idx;
       break;
     }
@@ -1653,7 +1653,9 @@ calc_eclosure (re_dfa_t *dfa)
 {
   Idx node_idx;
   bool incomplete;
-  DEBUG_ASSERT (dfa->nodes_len > 0);
+#ifdef DEBUG
+  assert (dfa->nodes_len > 0);
+#endif
   incomplete = false;
   /* For each nodes, calculate epsilon closure.  */
   for (node_idx = 0; ; ++node_idx)
@@ -1668,7 +1670,9 @@ calc_eclosure (re_dfa_t *dfa)
 	  node_idx = 0;
 	}
 
-      DEBUG_ASSERT (dfa->eclosures[node_idx].nelem != -1);
+#ifdef DEBUG
+      assert (dfa->eclosures[node_idx].nelem != -1);
+#endif
 
       /* If we have already calculated, skip it.  */
       if (dfa->eclosures[node_idx].nelem != 0)
@@ -2438,7 +2442,9 @@ parse_expression (re_string_t *regexp, regex_t *preg, re_token_t *token,
 
     default:
       /* Must not happen?  */
-      DEBUG_ASSERT (false);
+#ifdef DEBUG
+      assert (0);
+#endif
       return NULL;
     }
   fetch_token (token, regexp, syntax);
@@ -3300,7 +3306,7 @@ parse_bracket_exp (re_string_t *regexp, re_dfa_t *dfa, re_token_t *token,
 	       goto parse_bracket_exp_free_return;
 	      break;
 	    default:
-	      DEBUG_ASSERT (false);
+	      assert (0);
 	      break;
 	    }
 	}
@@ -3656,6 +3662,7 @@ build_charclass_op (re_dfa_t *dfa, RE_TRANSLATE_TYPE trans,
   Idx alloc = 0;
 #endif /* not RE_ENABLE_I18N */
   reg_errcode_t ret;
+  re_token_t br_token;
   bin_tree_t *tree;
 
   sbcset = (re_bitset_ptr_t) calloc (sizeof (bitset_t), 1);
@@ -3706,7 +3713,11 @@ build_charclass_op (re_dfa_t *dfa, RE_TRANSLATE_TYPE trans,
 #endif
 
   /* Build a tree for simple bracket.  */
-  re_token_t br_token = { .type = SIMPLE_BRACKET, .opr.sbcset = sbcset };
+#if defined GCC_LINT || defined lint
+  memset (&br_token, 0, sizeof br_token);
+#endif
+  br_token.type = SIMPLE_BRACKET;
+  br_token.opr.sbcset = sbcset;
   tree = create_token_tree (dfa, NULL, NULL, &br_token);
   if (__glibc_unlikely (tree == NULL))
     goto build_word_op_espace;
@@ -3797,7 +3808,11 @@ static bin_tree_t *
 create_tree (re_dfa_t *dfa, bin_tree_t *left, bin_tree_t *right,
 	     re_token_type_t type)
 {
-  re_token_t t = { .type = type };
+  re_token_t t;
+#if defined GCC_LINT || defined lint
+  memset (&t, 0, sizeof t);
+#endif
+  t.type = type;
   return create_token_tree (dfa, left, right, &t);
 }
 

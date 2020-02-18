@@ -594,13 +594,11 @@ int Curl_pgrsUpdate(struct connectdata *conn)
                                    data->progress.size_ul,
                                    data->progress.uploaded);
       Curl_set_in_callback(data, false);
-      if(result != CURL_PROGRESSFUNC_CONTINUE) {
-        if(result)
-          failf(data, "Callback aborted");
-        return result;
-      }
+      if(result)
+        failf(data, "Callback aborted");
+      return result;
     }
-    else if(data->set.fprogress) {
+    if(data->set.fprogress) {
       int result;
       /* The older deprecated callback is set, call that */
       Curl_set_in_callback(data, true);
@@ -610,11 +608,9 @@ int Curl_pgrsUpdate(struct connectdata *conn)
                                    (double)data->progress.size_ul,
                                    (double)data->progress.uploaded);
       Curl_set_in_callback(data, false);
-      if(result != CURL_PROGRESSFUNC_CONTINUE) {
-        if(result)
-          failf(data, "Callback aborted");
-        return result;
-      }
+      if(result)
+        failf(data, "Callback aborted");
+      return result;
     }
 
     if(showprogress)

@@ -166,17 +166,17 @@ static CURLcode main_init(struct GlobalConfig *config)
         config->first->global = config;
       }
       else {
-        errorf(config, "error retrieving curl library information\n");
+        helpf(stderr, "error retrieving curl library information\n");
         free(config->first);
       }
     }
     else {
-      errorf(config, "error initializing curl library\n");
+      helpf(stderr, "error initializing curl library\n");
       free(config->first);
     }
   }
   else {
-    errorf(config, "error initializing curl\n");
+    helpf(stderr, "error initializing curl\n");
     result = CURLE_FAILED_INIT;
   }
 

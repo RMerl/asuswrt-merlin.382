@@ -1,8 +1,8 @@
 /**************************************************************************
  *   history.c  --  This file is part of GNU nano.                        *
  *                                                                        *
- *   Copyright (C) 2003-2011, 2013-2020 Free Software Foundation, Inc.    *
- *   Copyright (C) 2016, 2017, 2019 Benno Schulenberg                     *
+ *   Copyright (C) 2003-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2016-2017 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
  *   it under the terms of the GNU General Public License as published    *
@@ -21,10 +21,10 @@
 
 #include "proto.h"
 
-#ifdef ENABLE_HISTORIES
-
 #include <errno.h>
 #include <string.h>
+
+#ifdef ENABLE_HISTORIES
 
 #ifndef SEARCH_HISTORY
 #define SEARCH_HISTORY "search_history"
@@ -48,17 +48,17 @@ static poshiststruct *position_history = NULL;
 void history_init(void)
 {
 	search_history = make_new_node(NULL);
-	search_history->data = copy_of("");
+	search_history->data = mallocstrcpy(NULL, "");
 	searchtop = search_history;
 	searchbot = search_history;
 
 	replace_history = make_new_node(NULL);
-	replace_history->data = copy_of("");
+	replace_history->data = mallocstrcpy(NULL, "");
 	replacetop = replace_history;
 	replacebot = replace_history;
 
 	execute_history = make_new_node(NULL);
-	execute_history->data = copy_of("");
+	execute_history->data = mallocstrcpy(NULL, "");
 	executetop = execute_history;
 	executebot = execute_history;
 }
@@ -136,7 +136,7 @@ void update_history(linestruct **item, const char *text)
 	(*hbot)->data = mallocstrcpy((*hbot)->data, text);
 	splice_node(*hbot, make_new_node(*hbot));
 	*hbot = (*hbot)->next;
-	(*hbot)->data = copy_of("");
+	(*hbot)->data = mallocstrcpy(NULL, "");
 
 	/* Indicate that the history needs to be saved on exit. */
 	history_changed = TRUE;
@@ -229,6 +229,19 @@ char *get_history_completion(linestruct **h, char *s, size_t len)
 }
 #endif /* ENABLE_TABCOMP */
 
+void history_error(const char *msg, ...)
+{
+	va_list ap;
+
+	va_start(ap, msg);
+	vfprintf(stderr, _(msg), ap);
+	va_end(ap);
+
+	fprintf(stderr, _("\nPress Enter to continue\n"));
+	while (getchar() != '\n')
+		;
+}
+
 /* Check whether we have or could make a directory for history files. */
 bool have_statedir(void)
 {
@@ -267,14 +280,14 @@ bool have_statedir(void)
 			free(statepath);
 		}
 		if (mkdir(statedir, S_IRWXU) == -1) {
-			jot_error(N_("Unable to create directory %s: %s\n"
+			history_error(N_("Unable to create directory %s: %s\n"
 								"It is required for saving/loading "
 								"search history or cursor positions.\n"),
 								statedir, strerror(errno));
 			return FALSE;
 		}
 	} else if (!S_ISDIR(dirstat.st_mode)) {
-		jot_error(N_("Path %s is not a directory and needs to be.\n"
+		history_error(N_("Path %s is not a directory and needs to be.\n"
 								"Nano will be unable to load or save "
 								"search history or cursor positions.\n"),
 								statedir);
@@ -295,7 +308,7 @@ void load_history(void)
 		if (errno != ENOENT) {
 			/* When reading failed, don't save history when we quit. */
 			UNSET(HISTORYLOG);
-			jot_error(N_("Error reading %s: %s"), histname,
+			history_error(N_("Error reading %s: %s"), histname,
 						strerror(errno));
 		}
 	} else {
@@ -391,7 +404,7 @@ void load_poshistory(void)
 		if (errno != ENOENT) {
 			/* When reading failed, don't save history when we quit. */
 			UNSET(POSITIONLOG);
-			jot_error(N_("Error reading %s: %s"), poshistname, strerror(errno));
+			history_error(N_("Error reading %s: %s"), poshistname, strerror(errno));
 		}
 	} else {
 		char *line = NULL, *lineptr, *xptr;
@@ -401,7 +414,7 @@ void load_poshistory(void)
 
 		/* Read and parse each line, and store the extracted data. */
 		while ((read = getline(&line, &buf_len, hisfile)) > 5) {
-			/* Decode NULs as embedded newlines. */
+			/* Decode nulls as embedded newlines. */
 			unsunder(line, read);
 
 			/* Find where the x index and line number are in the line. */
@@ -418,7 +431,7 @@ void load_poshistory(void)
 
 			/* Create a new position record. */
 			newrecord = (poshiststruct *)nmalloc(sizeof(poshiststruct));
-			newrecord->filename = copy_of(line);
+			newrecord->filename = mallocstrcpy(NULL, line);
 			newrecord->lineno = atoi(lineptr);
 			newrecord->xno = atoi(xptr);
 			newrecord->next = NULL;
@@ -471,7 +484,7 @@ void save_poshistory(void)
 						posptr->filename, posptr->lineno, posptr->xno);
 			length = strlen(path_and_place);
 
-			/* Encode newlines in filenames as NULs. */
+			/* Encode newlines in filenames as nulls. */
 			sunder(path_and_place);
 			/* Restore the terminating newline. */
 			path_and_place[length - 1] = '\n';
@@ -515,7 +528,7 @@ void update_poshistory(char *filename, ssize_t lineno, ssize_t xpos)
 	poshiststruct *posptr, *theone, *posprev = NULL;
 	char *fullpath = get_full_path(filename);
 
-	if (fullpath == NULL || *filename == '\0') {
+	if (fullpath == NULL || fullpath[strlen(fullpath) - 1] == '/') {
 		free(fullpath);
 		return;
 	}
@@ -550,7 +563,7 @@ void update_poshistory(char *filename, ssize_t lineno, ssize_t xpos)
 	 * not at the end, move the matching one to the end. */
 	if (theone == NULL) {
 		theone = (poshiststruct *)nmalloc(sizeof(poshiststruct));
-		theone->filename = copy_of(fullpath);
+		theone->filename = mallocstrcpy(NULL, fullpath);
 		if (position_history == NULL)
 			position_history = theone;
 		else

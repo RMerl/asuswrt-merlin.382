@@ -97,13 +97,9 @@
 
 /* A recent macro provided by libssh. Or make our own. */
 #ifndef SSH_STRING_FREE_CHAR
-#define SSH_STRING_FREE_CHAR(x)                 \
-  do {                                          \
-    if(x) {                                     \
-      ssh_string_free_char(x);                  \
-      x = NULL;                                 \
-    }                                           \
-  } while(0)
+/* !checksrc! disable ASSIGNWITHINCONDITION 1 */
+#define SSH_STRING_FREE_CHAR(x) \
+    do { if((x) != NULL) { ssh_string_free_char(x); x = NULL; } } while(0)
 #endif
 
 /* Local functions: */

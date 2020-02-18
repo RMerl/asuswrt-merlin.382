@@ -46,8 +46,6 @@ UNITTEST_START
   bool protocol_connect = FALSE;
 
   rc = Curl_open(&empty);
-  if(rc)
-    goto unit_test_abort;
   fail_unless(rc == CURLE_OK, "Curl_open() failed");
 
   rc = Curl_connect(empty, &async, &protocol_connect);

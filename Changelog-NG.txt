@@ -1,21 +1,7 @@
 Asuswrt-Merlin 384/NG Changelog
 ===============================
 
-384.16 (xx-xx-xxxx)
-  - UPDATED: Tor to 0.3.5.9.
-  - UPDATED: curl to 7.68.0.
-  - UPDATED: nano to 4.8.
-  - CHANGED: Wireless Log page will now regroup Guest Network
-             clients together and identify which guest instance
-             they are connected to.
-  - FIXED: DNS server was unreachable when connecting to an OpenVPN
-           server with Advertise DNS enabled, due to firewall rules.
-
-
-384.15 (8-Feb-2020)
-  The RT-AC87U and RT-AC3200 are not supported by this release, see
-  the 384.13_4 release released separately for these two models.
-
+384.15 (xx-xxx-xxxx)
   - NEW: wan-event script.  The first parameter will be the WAN unit
          (0 for first WAN, 1 for secondary).  The second parameter
          will be a string describing the type of event (init,
@@ -28,8 +14,7 @@ Asuswrt-Merlin 384/NG Changelog
          to ten different pages that can be added anywhere within
          the webui, and a dedicated storage repository for your
          settings, which can be interacted with through your
-         custom web page or through a shell script.
-         See the Wiki for more information:
+         custom web page.  See the Wiki for more information:
 
          https://github.com/RMerl/asuswrt-merlin/wiki/Addons-API
 
@@ -37,17 +22,11 @@ Asuswrt-Merlin 384/NG Changelog
          been added to the firmware.  Running "amtm" over SSH will
          give you a menu allowing you to select and install various
          addons, such as Diversion (ad blocker) or SKynet (an
-         advanced firewall extension).  The plugins for amtm are
-         still maintained by its original author (thelonelycoder).
-
-         https://github.com/RMerl/asuswrt-merlin/wiki/AMTM
+         advanced firewall extension).
 
   - UPDATED: Backported some fixes from 384_81981, mostly related
              to WAN, port bonding and mdns.
-  - UPDATED: Merged GPL 384_7756 for RT-AX88U, which adds OFDMA and
-             WPA3 support to that model.
-  - UPDATED: Merged with GPL 385_10002 for other models (from
-             RT-AC68U)
+  - UPDATED: Merged with GPL 385_10002 (from RT-AC68U)
   - UPDATED: odhcp6c to 1.1-97-ge199804 (themiron)
   - UPDATED: curl to 7.67.0.
   - UPDATED: openssl-1.0 to 1.0.2u
@@ -55,14 +34,9 @@ Asuswrt-Merlin 384/NG Changelog
   - CHANGED: Replaced entware-setup.sh script with link to amtm, as
              using the amtm Entware installer is now the supported
              method.
-  - CHANGED: Improved connection handling in httpd (themiron)
-  - FIXED: Some of the newest DNSFilter servers weren't properly set
-           up with IPv6 (dave14305)
 
 
-384.13_4 (8-Feb-2020)
-  This release is only available for the RT-AC87U and RT-AC3200.
-
+384.14_3 (xx-xx-xxxx) (RT-AC87U and RT-AC3200)
   - NEW: wan-event script.  The first parameter will be the WAN unit
          (0 for first WAN, 1 for secondary).  The second parameter
          will be a string describing the type of event (init,
@@ -75,31 +49,11 @@ Asuswrt-Merlin 384/NG Changelog
          to ten different pages that can be added anywhere within
          the webui, and a dedicated storage repository for your
          settings, which can be interacted with through your
-         custom web page or through a shell script.
-         See the Wiki for more information:
+         custom web page.  See the Wiki for more information:
 
+         (first draft of the documentation, need to be reorganized)
          https://github.com/RMerl/asuswrt-merlin/wiki/Addons-API
-
-  - NEW: amtm (Asuswrt-Merlin Terminal Menu) by thelonelycoder has
-         been added to the firmware.  Running "amtm" over SSH will
-         give you a menu allowing you to select and install various
-         addons, such as Diversion (ad blocker) or SKynet (an
-         advanced firewall extension).  The plugins for amtm are
-         still maintained by its original author (thelonelycoder).
-
-        https://github.com/RMerl/asuswrt-merlin/wiki/AMTM
-
-  - UPDATED: odhcp6c to 1.1-97-ge199804 (themiron)
-  - UPDATED: openssl-1.0 to 1.0.2u
   - UPDATED: curl to 7.67.0.
-  - UPDATED: OpenVPN to 2.4.8.
-  - UPDATED: dnsmasq to 2.80-114-ge40d8be (themiron)
-  - CHANGED: Replaced entware-setup.sh script with link to amtm, as
-             using the amtm Entware installer is now the supported
-             method.
-  - CHANGED: Improved connection handling in httpd (themiron)
-  - FIXED: Some of the newest DNSFilter servers weren't properly set
-           up with IPv6 (dave14305)
 
 
 384.14_2 (1-1-2020)

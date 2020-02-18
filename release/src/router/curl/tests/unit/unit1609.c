@@ -100,9 +100,6 @@ UNITTEST_START
 {
   int i;
   int testnum = sizeof(tests) / sizeof(struct testcase);
-  struct Curl_multi *multi = NULL;
-  struct Curl_easy *easy = NULL;
-  struct curl_slist *list = NULL;
 
 /* important: we setup cache outside of the loop
   and also clean cache after the loop. In contrast,for example,
@@ -113,9 +110,11 @@ UNITTEST_START
     int addressnum = sizeof (tests[i].address) / sizeof (*tests[i].address);
     struct Curl_addrinfo *addr;
     struct Curl_dns_entry *dns;
+    struct curl_slist *list;
     void *entry_id;
     bool problem = false;
-    easy = curl_easy_init();
+    struct Curl_multi *multi;
+    struct Curl_easy *easy = curl_easy_init();
     if(!easy) {
       curl_global_cleanup();
       return CURLE_OUT_OF_MEMORY;
@@ -123,23 +122,21 @@ UNITTEST_START
     /* create a multi handle and add the easy handle to it so that the
        hostcache is setup */
     multi = curl_multi_init();
-    if(!multi)
-      goto error;
     curl_multi_add_handle(multi, easy);
 
     list = curl_slist_append(NULL, tests[i].optval);
     if(!list)
-      goto error;
+        goto unit_test_abort;
 
     curl_easy_setopt(easy, CURLOPT_RESOLVE, list);
 
-    if(Curl_loadhostpairs(easy))
-      goto error;
+    Curl_loadhostpairs(easy);
 
     entry_id = (void *)aprintf("%s:%d", tests[i].host, tests[i].port);
-    if(!entry_id)
-      goto error;
-
+    if(!entry_id) {
+      curl_slist_free_all(list);
+      goto unit_test_abort;
+    }
     dns = Curl_hash_pick(easy->dns.hostcache, entry_id, strlen(entry_id) + 1);
     free(entry_id);
     entry_id = NULL;
@@ -197,22 +194,14 @@ UNITTEST_START
     }
 
     curl_easy_cleanup(easy);
-    easy = NULL;
     Curl_hash_destroy(&multi->hostcache);
     curl_multi_cleanup(multi);
-    multi = NULL;
     curl_slist_free_all(list);
-    list = NULL;
 
     if(problem) {
       unitfail++;
       continue;
     }
   }
-  goto unit_test_abort;
-  error:
-  curl_easy_cleanup(easy);
-  curl_multi_cleanup(multi);
-  curl_slist_free_all(list);
 }
 UNITTEST_STOP

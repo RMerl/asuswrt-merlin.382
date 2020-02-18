@@ -48,9 +48,7 @@
 /* Define USE_NTLM2SESSION in order to make the type-3 message include the
    NTLM2Session response message, requires USE_NTRESPONSES defined to 1 and a
    Crypto engine that we have curl_ssl_md5sum() for. */
-#if defined(USE_NTRESPONSES) && \
-  (!defined(USE_WIN32_CRYPTO) || \
-  (defined(USE_SSL) && !defined(CURL_DISABLE_CRYPTO_AUTH)))
+#if defined(USE_NTRESPONSES) && !defined(USE_WIN32_CRYPTO)
 #define USE_NTLM2SESSION
 #endif
 

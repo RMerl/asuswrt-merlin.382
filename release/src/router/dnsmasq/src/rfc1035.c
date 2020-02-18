@@ -1301,11 +1301,7 @@ static unsigned long crec_ttl(struct crec *crecp, time_t now)
   else
     return daemon->max_ttl;
 }
-
-static int cache_validated(const struct crec *crecp)
-{
-  return (option_bool(OPT_DNSSEC_VALID) && !(crecp->flags & F_DNSSECOK));
-}
+  
 
 /* return zero if we can't answer from cache, or packet size if we can */
 size_t answer_request(struct dns_header *header, char *limit, size_t qlen,  
@@ -1324,12 +1320,12 @@ size_t answer_request(struct dns_header *header, char *limit, size_t qlen,
   int nxdomain = 0, notimp = 0, auth = 1, trunc = 0, sec_data = 1;
   struct mx_srv_record *rec;
   size_t len;
-  int rd_bit = (header->hb3 & HB3_RD);
 
   /* never answer queries with RD unset, to avoid cache snooping. */
-  if (ntohs(header->ancount) != 0 ||
+  if (!(header->hb3 & HB3_RD) ||
+      ntohs(header->ancount) != 0 ||
       ntohs(header->nscount) != 0 ||
-      ntohs(header->qdcount) == 0 ||
+      ntohs(header->qdcount) == 0 || 
       OPCODE(header) != QUERY )
     return 0;
 
@@ -1376,7 +1372,9 @@ size_t answer_request(struct dns_header *header, char *limit, size_t qlen,
 
 	  /* If the client asked for DNSSEC  don't use cached data. */
 	  if ((crecp->flags & (F_HOSTS | F_DHCP | F_CONFIG)) ||
-	      (rd_bit && (!do_bit || cache_validated(crecp))))
+	      !do_bit ||
+	      (option_bool(OPT_DNSSEC_VALID) && !(crecp->flags & F_DNSSECOK)))
+
 	    {
 	      if (crecp->flags & F_CONFIG || qtype == T_CNAME)
 		ans = 1;
@@ -1545,8 +1543,9 @@ size_t answer_request(struct dns_header *header, char *limit, size_t qlen,
 		  /* Don't use cache when DNSSEC data required, unless we know that
 		     the zone is unsigned, which implies that we're doing
 		     validation. */
-		  if ((crecp->flags & (F_HOSTS | F_DHCP | F_CONFIG)) ||
-		      (rd_bit && (!do_bit || cache_validated(crecp)) ))
+		  if ((crecp->flags & (F_HOSTS | F_DHCP | F_CONFIG)) || 
+		      !do_bit || 
+		      (option_bool(OPT_DNSSEC_VALID) && !(crecp->flags & F_DNSSECOK)))
 		    {
 		      do 
 			{ 
@@ -1727,7 +1726,8 @@ size_t answer_request(struct dns_header *header, char *limit, size_t qlen,
 
 		  /* If the client asked for DNSSEC  don't use cached data. */
 		  if ((crecp->flags & (F_HOSTS | F_DHCP | F_CONFIG)) ||
-		      (rd_bit && (!do_bit || cache_validated(crecp)) ))
+		      !do_bit ||
+		      (option_bool(OPT_DNSSEC_VALID) && !(crecp->flags & F_DNSSECOK)))
 		    do
 		      { 
 			/* don't answer wildcard queries with data not from /etc/hosts
@@ -1808,7 +1808,7 @@ size_t answer_request(struct dns_header *header, char *limit, size_t qlen,
 		      }
 		  }
 	      
-	      if (!found && (option_bool(OPT_SELFMX) || option_bool(OPT_LOCALMX)) &&
+	      if (!found && (option_bool(OPT_SELFMX) || option_bool(OPT_LOCALMX)) && 
 		  cache_find_by_name(NULL, name, now, F_HOSTS | F_DHCP | F_NO_RR))
 		{ 
 		  ans = 1;
@@ -1870,7 +1870,7 @@ size_t answer_request(struct dns_header *header, char *limit, size_t qlen,
 	      if (!found)
 		{
 		  if ((crecp = cache_find_by_name(NULL, name, now, F_SRV | (dryrun ? F_NO_RR : 0))) &&
-		      rd_bit && (!do_bit || (option_bool(OPT_DNSSEC_VALID) && !(crecp->flags & F_DNSSECOK))))
+		      (!do_bit || (option_bool(OPT_DNSSEC_VALID) && !(crecp->flags & F_DNSSECOK))))
 		    {
 		      if (!(crecp->flags & F_DNSSECOK))
 			sec_data = 0;

@@ -1,8 +1,8 @@
 /**************************************************************************
  *   chars.c  --  This file is part of GNU nano.                          *
  *                                                                        *
- *   Copyright (C) 2001-2011, 2013-2020 Free Software Foundation, Inc.    *
- *   Copyright (C) 2016-2019 Benno Schulenberg                            *
+ *   Copyright (C) 2001-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2016-2018 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
  *   it under the terms of the GNU General Public License as published    *
@@ -160,7 +160,7 @@ bool is_word_mbchar(const char *c, bool allow_punct)
 
 	if (word_chars != NULL && *word_chars != '\0') {
 		char symbol[MAXCHARLEN + 1];
-		int symlen = collect_char(c, symbol);
+		int symlen = parse_mbchar(c, symbol, NULL);
 
 		symbol[symlen] = '\0';
 		return (strstr(word_chars, symbol) != NULL);
@@ -200,12 +200,11 @@ char control_mbrep(const char *c, bool isdata)
 		return control_rep(*c);
 }
 
-#ifdef ENABLE_UTF8
-/* Return the width in columns of the given (multibyte) character. */
+/* This function is equivalent to wcwidth() for multibyte characters. */
 int mbwidth(const char *c)
 {
-	/* Ask for the width only when the character isn't plain ASCII. */
-	if ((signed char)*c <= 0) {
+#ifdef ENABLE_UTF8
+	if (use_utf8) {
 		wchar_t wc;
 		int width;
 
@@ -214,41 +213,41 @@ int mbwidth(const char *c)
 
 		width = wcwidth(wc);
 
-		if (width < 0)
+		if (width == -1)
 			return 1;
 
 		return width;
 	} else
+#endif
 		return 1;
 }
-#endif
 
-/* Convert the Unicode value in code to a multibyte character, if possible.
+/* Convert the Unicode value in chr to a multibyte character, if possible.
  * If the conversion succeeds, return the (dynamically allocated) multibyte
  * character and its length.  Otherwise, return an undefined (dynamically
  * allocated) multibyte character and a length of zero. */
-char *make_mbchar(long code, int *length)
+char *make_mbchar(long chr, int *chr_mb_len)
 {
-	char *mb_char;
+	char *chr_mb;
 
 #ifdef ENABLE_UTF8
 	if (use_utf8) {
-		mb_char = charalloc(MAXCHARLEN);
-		*length = wctomb(mb_char, (wchar_t)code);
+		chr_mb = charalloc(MAXCHARLEN);
+		*chr_mb_len = wctomb(chr_mb, (wchar_t)chr);
 
 		/* Reject invalid Unicode characters. */
-		if (*length < 0 || !is_valid_unicode((wchar_t)code)) {
+		if (*chr_mb_len < 0 || !is_valid_unicode((wchar_t)chr)) {
 			IGNORE_CALL_RESULT(wctomb(NULL, 0));
-			*length = 0;
+			*chr_mb_len = 0;
 		}
 	} else
 #endif
 	{
-		mb_char = measured_copy((char *)&code, 1);
-		*length = 1;
+		*chr_mb_len = 1;
+		chr_mb = mallocstrncpy(NULL, (char *)&chr, 1);
 	}
 
-	return mb_char;
+	return chr_mb;
 }
 
 /* Return the length (in bytes) of the character located at *pointer. */
@@ -265,88 +264,50 @@ int char_length(const char *pointer)
 		return 1;
 }
 
-/* Return the number of (multibyte) characters in the given string. */
-size_t mbstrlen(const char *pointer)
+/* Parse a multibyte character from buf.  Return the number of bytes
+ * used.  If chr isn't NULL, store the multibyte character in it.  If
+ * col isn't NULL, add the character's width (in columns) to it. */
+int parse_mbchar(const char *buf, char *chr, size_t *col)
 {
-	size_t count = 0;
-
-	while (*pointer != '\0') {
-#ifdef ENABLE_UTF8
-		if ((signed char)*pointer < 0) {
-			int length = mblen(pointer, MAXCHARLEN);
-
-			pointer += (length < 0 ? 1 : length);
-		} else
-#endif
-			pointer++;
-
-		count++;
-	}
-
-	return count;
-}
-
-/* Return the length (in bytes) of the character at the start of the
- * given string, and return a copy of this character in *thechar. */
-int collect_char(const char *string, char *thechar)
-{
-	int charlen;
+	int length;
 
 #ifdef ENABLE_UTF8
 	/* If this is a UTF-8 starter byte, get the number of bytes of the character. */
-	if ((signed char)*string < 0) {
-		charlen = mblen(string, MAXCHARLEN);
+	if ((signed char)*buf < 0) {
+		length = mblen(buf, MAXCHARLEN);
 
 		/* When the multibyte sequence is invalid, only take the first byte. */
-		if (charlen <= 0)
-			charlen = 1;
+		if (length <= 0)
+			length = 1;
 	} else
 #endif
-		charlen = 1;
+		length = 1;
 
-	for (int i = 0; i < charlen; i++)
-		thechar[i] = string[i];
+	/* When requested, store the multibyte character in chr. */
+	if (chr != NULL)
+		for (int i = 0; i < length; i++)
+			chr[i] = buf[i];
 
-	return charlen;
-}
-
-/* Return the length (in bytes) of the character at the start of
- * the given string, and add this character's width to *column. */
-int advance_over(const char *string, size_t *column)
-{
+	/* When requested, add the width of the character to col. */
+	if (col != NULL) {
+		/* If we have a tab, compute its width in columns based on the
+		 * current value of col. */
+		if (*buf == '\t')
+			*col += tabsize - *col % tabsize;
+		/* If we have a control character, it's two columns wide: one
+		 * column for the "^", and one for the visible character. */
+		else if (is_cntrl_mbchar(buf))
+			*col += 2;
+		/* If we have a normal character, get its width normally. */
+		else if (length == 1)
+			*col += 1;
 #ifdef ENABLE_UTF8
-	if ((signed char)*string < 0) {
-		int charlen = mblen(string, MAXCHARLEN);
-
-		if (charlen > 0) {
-			if (is_cntrl_mbchar(string))
-				*column += 2;
-			else
-				*column += mbwidth(string);
-		} else {
-			charlen = 1;
-			*column += 1;
-		}
-
-		return charlen;
-	}
-#endif
-
-	if ((unsigned char)*string < 0x20) {
-		if (*string == '\t')
-			*column += tabsize - *column % tabsize;
 		else
-			*column += 2;
-	} else if (*string == 0x7F)
-		*column += 2;
-#ifndef ENABLE_UTF8
-	else if (0x7F < (unsigned char)*string && (unsigned char)*string < 0xA0)
-		*column += 2;
+			*col += mbwidth(buf);
 #endif
-	else
-		*column += 1;
+	}
 
-	return 1;
+	return length;
 }
 
 /* Return the index in buf of the beginning of the multibyte character
@@ -385,7 +346,7 @@ size_t step_left(const char *buf, size_t pos)
 		return before - charlen;
 	} else
 #endif
-		return (pos == 0 ? 0 : pos - 1);
+	return (pos == 0 ? 0 : pos - 1);
 }
 
 /* Return the index in buf of the beginning of the multibyte character
@@ -526,6 +487,27 @@ char *mbrevstrcasestr(const char *haystack, const char *needle,
 		return revstrcasestr(haystack, needle, pointer);
 }
 
+/* Count the number of (multibyte) characters in the given string. */
+size_t mbstrlen(const char *pointer)
+{
+	size_t count = 0;
+
+	while (*pointer != '\0') {
+#ifdef ENABLE_UTF8
+		if ((signed char)*pointer < 0) {
+			int length = mblen(pointer, MAXCHARLEN);
+
+			pointer += (length < 0 ? 1 : length);
+		} else
+#endif
+			pointer++;
+
+		count++;
+	}
+
+	return count;
+}
+
 #if !defined(NANO_TINY) || defined(ENABLE_JUSTIFY)
 /* This function is equivalent to strchr() for multibyte strings. */
 char *mbstrchr(const char *string, const char *chr)
@@ -610,7 +592,7 @@ bool has_blank_char(const char *string)
 	char symbol[MAXCHARLEN];
 
 	while (*string != '\0') {
-		string += collect_char(string, symbol);
+		string += parse_mbchar(string, symbol, NULL);
 
 		if (is_blank_mbchar(symbol))
 			return TRUE;

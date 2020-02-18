@@ -33,7 +33,7 @@ static void unit_stop(void)
 
 }
 
-#ifndef CURL_DISABLE_DOH
+#ifdef USE_NGHTTP2
 #define DNS_PREAMBLE "\x00\x00\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00"
 #define LABEL_TEST "\x04\x74\x65\x73\x74"
 #define LABEL_HOST "\x04\x68\x6f\x73\x74"
@@ -283,7 +283,7 @@ UNITTEST_START
 }
 UNITTEST_STOP
 
-#else /* CURL_DISABLE_DOH */
+#else /* USE_NGHTTP2 */
 UNITTEST_START
 {
   return 1; /* nothing to do, just fail */

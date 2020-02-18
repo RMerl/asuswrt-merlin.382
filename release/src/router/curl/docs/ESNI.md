@@ -122,7 +122,7 @@ Limitations:
 
 ## References
 
-Cloudflare blog: [Encrypting SNI: Fixing One of the Core Internet Bugs][corebug]
+CloudFlare blog: [Encrypting SNI: Fixing One of the Core Internet Bugs][corebug]
 
 Cloudflare blog: [Encrypt it or lose it: how encrypted SNI works][esniworks]
 

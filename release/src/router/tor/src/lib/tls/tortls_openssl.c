@@ -905,7 +905,7 @@ tor_tls_classify_client_ciphers(const SSL *ssl,
     smartlist_free(elts);
   }
  done:
-  if (tor_tls && peer_ciphers)
+  if (tor_tls)
     return tor_tls->client_cipher_list_type = res;
 
   return res;

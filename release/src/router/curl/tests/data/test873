@@ -37,7 +37,6 @@ pop3
 </server>
 <features>
 NTLM
-SSL
 !SSPI
 debug
 </features>

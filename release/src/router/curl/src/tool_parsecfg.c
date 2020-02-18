@@ -97,8 +97,6 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
       int i = 0;
       char prefix = '.';
       do {
-        /* if it was allocated in a previous attempt */
-        curl_free(pathalloc);
         /* check for .curlrc then _curlrc in the home dir */
         pathalloc = curl_maprintf("%s%s%ccurlrc", home, DIR_CHAR, prefix);
         if(!pathalloc) {
@@ -287,7 +285,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
   else
     rc = 1; /* couldn't open the file */
 
-  curl_free(pathalloc);
+  free(pathalloc);
   return rc;
 }
 

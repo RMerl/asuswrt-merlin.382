@@ -67,8 +67,7 @@ compat_getdelim_(char **buf, size_t *bufsiz, int delimiter, FILE *fp)
 			char *nbuf;
 			size_t nbufsiz = *bufsiz * 2;
 			ssize_t d = ptr - *buf;
-			if (nbufsiz < *bufsiz ||
-			    (nbuf = raw_realloc(*buf, nbufsiz)) == NULL)
+			if ((nbuf = raw_realloc(*buf, nbufsiz)) == NULL)
 				return -1;
 			*buf = nbuf;
 			*bufsiz = nbufsiz;

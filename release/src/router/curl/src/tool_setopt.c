@@ -124,7 +124,6 @@ const NameValue setopt_nv_CURLUSESSL[] = {
 const NameValueUnsigned setopt_nv_CURLSSLOPT[] = {
   NV(CURLSSLOPT_ALLOW_BEAST),
   NV(CURLSSLOPT_NO_REVOKE),
-  NV(CURLSSLOPT_NO_PARTIALCHAIN),
   NVEND,
 };
 
@@ -182,18 +181,18 @@ static const NameValue setopt_nv_CURLNONZERODEFAULTS[] = {
   ret = easysrc_add args; \
   if(ret) \
     goto nomem; \
-} while(0)
+} WHILE_FALSE
 #define ADDF(args) do { \
   ret = easysrc_addf args; \
   if(ret) \
     goto nomem; \
-} while(0)
+} WHILE_FALSE
 #define NULL_CHECK(p) do { \
   if(!p) { \
     ret = CURLE_OUT_OF_MEMORY; \
     goto nomem; \
   } \
-} while(0)
+} WHILE_FALSE
 
 #define DECL0(s) ADD((&easysrc_decl, s))
 #define DECL1(f,a) ADDF((&easysrc_decl, f,a))

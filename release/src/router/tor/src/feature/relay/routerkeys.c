@@ -188,7 +188,7 @@ load_ed_keys(const or_options_t *options, time_t now)
 
     /* Check/Create the key directory */
     if (create_keys_directory(options) < 0)
-      goto err;
+      return -1;
 
     char *fname;
     if (options->master_key_fname) {

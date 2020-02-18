@@ -366,13 +366,7 @@ measured_bw_line_parse(measured_bw_line_t *out, const char *orig_line,
   }
 
   do {
-    // If the line contains vote=0, ignore it.
-    if (strcmpstart(cp, "vote=0") == 0) {
-      log_debug(LD_DIRSERV, "Ignoring bandwidth file line that contains "
-                "vote=0: %s",escaped(orig_line));
-      tor_free(line);
-      return -1;
-    } else if (strcmpstart(cp, "bw=") == 0) {
+    if (strcmpstart(cp, "bw=") == 0) {
       int parse_ok = 0;
       char *endptr;
       if (got_bw) {

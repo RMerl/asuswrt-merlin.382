@@ -1385,7 +1385,7 @@ consensus_diff_apply(const char *consensus,
 
   r1 = consensus_compute_digest_as_signed(consensus, &d1);
   if (BUG(r1 < 0))
-    goto done;
+    return NULL; // LCOV_EXCL_LINE
 
   lines1 = smartlist_new();
   lines2 = smartlist_new();

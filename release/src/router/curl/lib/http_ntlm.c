@@ -44,7 +44,9 @@
 
 /* SSL backend-specific #if branches in this file must be kept in the order
    documented in curl_ntlm_core. */
-#if defined(USE_WINDOWS_SSPI)
+#if defined(NTLM_NEEDS_NSS_INIT)
+#include "vtls/nssg.h"
+#elif defined(USE_WINDOWS_SSPI)
 #include "curl_sspi.h"
 #endif
 
@@ -134,6 +136,11 @@ CURLcode Curl_output_ntlm(struct connectdata *conn, bool proxy)
 
   DEBUGASSERT(conn);
   DEBUGASSERT(conn->data);
+
+#if defined(NTLM_NEEDS_NSS_INIT)
+  if(CURLE_OK != Curl_nss_force_init(conn->data))
+    return CURLE_OUT_OF_MEMORY;
+#endif
 
   if(proxy) {
     allocuserpwd = &conn->allocptr.proxyuserpwd;

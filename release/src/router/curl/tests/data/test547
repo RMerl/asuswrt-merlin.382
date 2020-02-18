@@ -76,7 +76,6 @@ lib547
 </tool>
 <features>
 NTLM
-SSL
 !SSPI
 debug
 proxy

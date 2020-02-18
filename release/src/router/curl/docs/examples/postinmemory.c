@@ -104,9 +104,10 @@ int main(void)
 
     /* always cleanup */
     curl_easy_cleanup(curl);
-  }
 
+    /* we're done with libcurl, so clean it up */
+    curl_global_cleanup();
+  }
   free(chunk.memory);
-  curl_global_cleanup();
   return 0;
 }

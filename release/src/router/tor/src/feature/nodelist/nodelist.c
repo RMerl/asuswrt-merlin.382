@@ -2449,18 +2449,12 @@ compute_frac_paths_available(const networkstatus_t *consensus,
       f_exit = f_myexit;
   }
 
-  /* If the consensus has no exits that pass flag, descriptor, and policy
-   * checks, we can only build onion service paths, which are G - M - M. */
+  /* if the consensus has no exits, we can only build onion service paths,
+   * which are G - M - M. So use the middle fraction for the exit fraction. */
   if (router_have_consensus_path() != CONSENSUS_PATH_EXIT) {
-    /* If the exit bandwidth weight fraction is not zero, we need to wait for
-     * descriptors for those exits. (The bandwidth weight fraction does not
-     * check for descriptors.)
-     * If the exit bandwidth fraction is zero, there are no exits in the
-     * consensus at all. So it is safe to replace f_exit with f_mid.
-     *
-     * f_exit is non-negative, but some compilers complain about float and ==
-     */
-    if (f_exit <= 0.0) {
+    /* If there are no exits in the consensus, then f_exit is always 0, so
+     * it is safe to replace f_exit with f_mid. */
+    if (!BUG(f_exit > 0.0)) {
       f_exit = f_mid;
     }
   }

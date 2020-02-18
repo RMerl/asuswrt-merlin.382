@@ -1144,6 +1144,8 @@ extern int is_valid_volname(const char *name);
 extern void restart_lfp(void);
 extern int get_meminfo_item(const char *name);
 extern void setup_timezone(void);
+extern int is_valid_hostname(const char *name);
+extern int is_valid_domainname(const char *name);
 extern void setup_ct_timeout(int connflag);
 extern void setup_udp_timeout(int connflag);
 extern void setup_ftp_conntrack(int port);

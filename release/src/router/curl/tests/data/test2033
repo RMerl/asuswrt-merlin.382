@@ -67,7 +67,6 @@ Data connection 2: 402
 <client>
 <features>
 NTLM
-SSL
 !SSPI
 </features>
 <server>

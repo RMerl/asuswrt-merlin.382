@@ -72,7 +72,7 @@
 #include "warnless.h"
 #include "multiif.h"
 #include "sigpipe.h"
-#include "vssh/ssh.h"
+#include "ssh.h"
 #include "setopt.h"
 #include "http_digest.h"
 #include "system_win32.h"
@@ -157,20 +157,20 @@ static CURLcode global_init(long flags, bool memoryfuncs)
 
   if(!Curl_ssl_init()) {
     DEBUGF(fprintf(stderr, "Error: Curl_ssl_init failed\n"));
-    goto fail;
+    return CURLE_FAILED_INIT;
   }
 
 #ifdef WIN32
   if(Curl_win32_init(flags)) {
     DEBUGF(fprintf(stderr, "Error: win32_init failed\n"));
-    goto fail;
+    return CURLE_FAILED_INIT;
   }
 #endif
 
 #ifdef __AMIGA__
   if(!Curl_amiga_init()) {
     DEBUGF(fprintf(stderr, "Error: Curl_amiga_init failed\n"));
-    goto fail;
+    return CURLE_FAILED_INIT;
   }
 #endif
 
@@ -182,14 +182,14 @@ static CURLcode global_init(long flags, bool memoryfuncs)
 
   if(Curl_resolver_global_init()) {
     DEBUGF(fprintf(stderr, "Error: resolver_global_init failed\n"));
-    goto fail;
+    return CURLE_FAILED_INIT;
   }
 
   (void)Curl_ipv6works();
 
 #if defined(USE_SSH)
   if(Curl_ssh_init()) {
-    goto fail;
+    return CURLE_FAILED_INIT;
   }
 #endif
 
@@ -201,10 +201,6 @@ static CURLcode global_init(long flags, bool memoryfuncs)
   Curl_version_init();
 
   return CURLE_OK;
-
-  fail:
-  initialized--; /* undo the increase */
-  return CURLE_FAILED_INIT;
 }
 
 
@@ -1031,10 +1027,9 @@ CURLcode curl_easy_pause(struct Curl_easy *data, int action)
       Curl_update_timer(data->multi);
   }
 
-  if(!data->state.done)
-    /* This transfer may have been moved in or out of the bundle, update the
-       corresponding socket callback, if used */
-    Curl_updatesocket(data);
+  /* This transfer may have been moved in or out of the bundle, update
+     the corresponding socket callback, if used */
+  Curl_updatesocket(data);
 
   return result;
 }

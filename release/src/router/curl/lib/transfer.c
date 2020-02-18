@@ -484,9 +484,8 @@ CURLcode Curl_readrewind(struct connectdata *conn)
   return CURLE_OK;
 }
 
-static int data_pending(const struct Curl_easy *data)
+static int data_pending(const struct connectdata *conn)
 {
-  struct connectdata *conn = data->conn;
   /* in the case of libssh2, we can never be really sure that we have emptied
      its internal buffers so we MUST always try until we get EAGAIN back */
   return conn->handler->protocol&(CURLPROTO_SCP|CURLPROTO_SFTP) ||
@@ -500,8 +499,6 @@ static int data_pending(const struct Curl_easy *data)
        be called and we cannot signal the HTTP/2 stream has closed. As
        a workaround, we return nonzero here to call http2_recv. */
     ((conn->handler->protocol&PROTO_FAMILY_HTTP) && conn->httpversion >= 20);
-#elif defined(ENABLE_QUIC)
-    Curl_ssl_data_pending(conn, FIRSTSOCKET) || Curl_quic_data_pending(data);
 #else
     Curl_ssl_data_pending(conn, FIRSTSOCKET);
 #endif
@@ -921,7 +918,7 @@ static CURLcode readwrite_data(struct Curl_easy *data,
       break;
     }
 
-  } while(data_pending(data) && maxloops--);
+  } while(data_pending(conn) && maxloops--);
 
   if(maxloops <= 0) {
     /* we mark it as read-again-please */
@@ -1177,7 +1174,7 @@ static CURLcode readwrite_upload(struct Curl_easy *data,
     }
 
 
-  } while(0); /* just to break out from! */
+  } WHILE_FALSE; /* just to break out from! */
 
   return CURLE_OK;
 }
