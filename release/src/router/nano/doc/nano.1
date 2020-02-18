@@ -1,4 +1,4 @@
-.\" Copyright (C) 1999-2011, 2013-2019 Free Software Foundation, Inc.
+.\" Copyright (C) 1999-2011, 2013-2020 Free Software Foundation, Inc.
 .\"
 .\" This document is dual-licensed.  You may distribute and/or modify it
 .\" under the terms of either of the following licenses:
@@ -16,7 +16,7 @@
 .\"   Documentation License along with this program.  If not, see
 .\"   <https://www.gnu.org/licenses/>.
 .\"
-.TH NANO 1 "version 4.4" "August 2019"
+.TH NANO 1 "version 4.8" "February 2020"
 
 .SH NAME
 nano \- Nano's ANOther editor, inspired by Pico
@@ -28,12 +28,18 @@ nano \- Nano's ANOther editor, inspired by Pico
 .BR nano " [" \fIoptions "] [[" + [ crCR ]( / | ? ) \fIstring "] " \fIfile ]...
 
 .SH NOTICE
-Starting with version 4.0, \fBnano\fR no longer hard-wraps an overlong
-line by default.  It further uses smooth scrolling by default, and by
-default includes the line below the title bar into the editing area.
+Since version 4.0, \fBnano\fR by default:
+.sp
+.RS 4
+\(bu does not automatically hard-wrap lines that become overlong,
+.br
+\(bu includes the line below the title bar in the editing area,
+.br
+\(bu does linewise (smooth) scrolling.
+.RE
 .sp
 If you want the old, Pico behavior back, you can use \fB\-\-breaklonglines\fR,
-\fB\-\-jumpyscrolling\fR, and \fB\-\-emptyline\fR (or \fB\-bje\fR for short).
+\fB\-\-emptyline\fR, and \fB\-\-jumpyscrolling\fR (or \fB\-bej\fR for short).
 
 .SH DESCRIPTION
 \fBnano\fP is a small and friendly editor.  It copies the look and feel
@@ -44,6 +50,7 @@ syntax coloring, line numbering, and soft-wrapping overlong lines.
 When giving a filename on the command line, the cursor can be put on a
 specific line by adding the line number with a plus sign (\fB+\fR) before
 the filename, and even in a specific column by adding it with a comma.
+(Negative numbers count from the end of the file or line.)
 The cursor can be put on the first or last occurrence of a specific string
 by specifying that string after \fB+/\fR or \fB+?\fR before the filename.
 The string can be made case sensitive and/or caused to be interpreted as a
@@ -105,7 +112,10 @@ numbered one every time a file is saved -- when backups are enabled (\fB\-B\fR).
 The uniquely numbered files are stored in the specified \fIdirectory\fR.
 .TP
 .BR \-D ", " \-\-boldtext
-Use bold text instead of reverse video text.
+For the interface, use bold instead of reverse video.  This will be overridden
+by setting the options \fBtitlecolor\fP, \fBstatuscolor\fP, \fBkeycolor\fP,
+\fBfunctioncolor\fP, \fBnumbercolor\fP, and/or \fBselectedcolor\fP in your
+nanorc file.  See \fBnanorc\fR(5).
 .TP
 .BR \-E ", " \-\-tabstospaces
 Convert typed tabs to spaces.
@@ -225,6 +235,10 @@ system either Backspace acts like Delete or Delete acts like Backspace.
 .BR \-e ", " \-\-emptyline
 Do not use the line below the title bar, leaving it entirely blank.
 .TP
+.BR \-f\ \fIfile ", " \-\-rcfile= \fIfile
+Read only this \fIfile\fR for setting nano's options, instead of reading
+both the system-wide and the user's nanorc files.
+.TP
 .BR \-g ", " \-\-showcursor
 Make the cursor visible in the file browser (putting it on the
 highlighted item) and in the help viewer.  Useful for braille users
@@ -277,8 +291,9 @@ at the width of the screen minus \fInumber\fR columns, allowing the wrap
 point to vary along with the width of the screen if the screen is resized.
 The default value is \-8.
 .TP
-.B "\-s ""\fIprogram\fR [\fIarg\fR...]\fB""\fR, \fB\-\-speller=""\fIprogram\fR [\fIarg\fR...]\fB"""
-Use this alternative command to perform spell checking.
+.B "\-s ""\fIprogram\fR [\fIargument \fR...]\fB""\fR, \fB\-\-speller=""\fIprogram\fR [\fIargument \fR...]\fB"""
+Use this command to perform spell checking and correcting, instead of
+using the built-in corrector that calls \fBhunspell\fR or GNU \fBspell\fR.
 .TP
 .BR \-t ", " \-\-tempfile
 Save a changed buffer without prompting (when exiting with \fB^X\fR).
@@ -325,6 +340,8 @@ hard-wrapping of long lines, \fBM\-S\fR toggles soft-wrapping,
 See at the end of the \fB^G\fR help text for a complete list.
 
 .SH FILES
+When \fB\-\-rcfile\fR is given, \fBnano\fR will read just the specified file
+for setting its options and syntaxes and key bindings.  Without that option,
 \fBnano\fR will read two configuration files: first the system's
 \fInanorc\fR (if it exists), and then the user's \fInanorc\fR (if it
 exists), either \fI~/.nanorc\fR or \fI$XDG_CONFIG_HOME/nano/nanorc\fR

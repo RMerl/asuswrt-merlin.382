@@ -26,7 +26,8 @@ void hs_circ_service_rp_has_opened(const hs_service_t *service,
                                    origin_circuit_t *circ);
 int hs_circ_launch_intro_point(hs_service_t *service,
                                const hs_service_intro_point_t *ip,
-                               extend_info_t *ei);
+                               extend_info_t *ei,
+                               bool direct_conn);
 int hs_circ_launch_rendezvous_point(const hs_service_t *service,
                                     const curve25519_public_key_t *onion_key,
                                     const uint8_t *rendezvous_cookie);

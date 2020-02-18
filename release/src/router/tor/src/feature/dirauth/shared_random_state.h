@@ -140,6 +140,8 @@ STATIC int is_phase_transition(sr_phase_t next_phase);
 
 STATIC void set_sr_phase(sr_phase_t phase);
 STATIC sr_state_t *get_sr_state(void);
+STATIC void state_del_previous_srv(void);
+STATIC void state_del_current_srv(void);
 
 #endif /* defined(TOR_UNIT_TESTS) */
 

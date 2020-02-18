@@ -1,5 +1,5 @@
-# nl_langinfo.m4 serial 6
-dnl Copyright (C) 2009-2019 Free Software Foundation, Inc.
+# nl_langinfo.m4 serial 7
+dnl Copyright (C) 2009-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -10,6 +10,7 @@ AC_DEFUN([gl_FUNC_NL_LANGINFO],
   AC_REQUIRE([gl_LANGINFO_H])
   AC_CHECK_FUNCS_ONCE([nl_langinfo])
   AC_REQUIRE([AC_CANONICAL_HOST]) dnl for cross-compiles
+  AC_REQUIRE([gl_FUNC_SETLOCALE_NULL])
   if test $ac_cv_func_nl_langinfo = yes; then
     # On Irix 6.5, YESEXPR is defined, but nl_langinfo(YESEXPR) is broken.
     AC_CACHE_CHECK([whether YESEXPR works],
@@ -50,4 +51,11 @@ AC_DEFUN([gl_FUNC_NL_LANGINFO],
   else
     HAVE_NL_LANGINFO=0
   fi
+  if test $HAVE_NL_LANGINFO = 0 || test $HAVE_LANGINFO_CODESET = 0; then
+    LIB_NL_LANGINFO="$LIB_SETLOCALE_NULL"
+  else
+    LIB_NL_LANGINFO=
+  fi
+  dnl LIB_NL_LANGINFO is expected to be empty everywhere.
+  AC_SUBST([LIB_NL_LANGINFO])
 ])

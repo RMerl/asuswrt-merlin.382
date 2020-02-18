@@ -36,7 +36,7 @@
 #include "sendf.h"
 #include "connect.h"
 #include "vtls/vtls.h"
-#include "ssh.h"
+#include "vssh/ssh.h"
 #include "easyif.h"
 #include "multiif.h"
 #include "non-ascii.h"
@@ -224,7 +224,7 @@ bool Curl_recv_has_postponed_data(struct connectdata *conn, int sockindex)
   (void)sockindex;
   return false;
 }
-#define pre_receive_plain(c,n) do {} WHILE_FALSE
+#define pre_receive_plain(c,n) do {} while(0)
 #define get_pre_recved(c,n,b,l) 0
 #endif /* ! USE_RECV_BEFORE_SEND_WORKAROUND */
 

@@ -4,6 +4,8 @@
 /* See LICENSE for licensing information */
 
 #define CIRCUITBUILD_PRIVATE
+#define CIRCUITLIST_PRIVATE
+#define ENTRYNODES_PRIVATE
 
 #include "core/or/or.h"
 #include "test/test.h"
@@ -13,7 +15,11 @@
 #include "core/or/circuitbuild.h"
 #include "core/or/circuitlist.h"
 
+#include "core/or/cpath_build_state_st.h"
 #include "core/or/extend_info_st.h"
+#include "core/or/origin_circuit_st.h"
+
+#include "feature/client/entrynodes.h"
 
 /* Dummy nodes smartlist for testing */
 static smartlist_t dummy_nodes;
@@ -126,10 +132,51 @@ test_new_route_len_unhandled_exit(void *arg)
   UNMOCK(count_acceptable_nodes);
 }
 
+static void
+test_upgrade_from_guard_wait(void *arg)
+{
+  circuit_t *circ = NULL;
+  origin_circuit_t *orig_circ = NULL;
+  entry_guard_t *guard = NULL;
+  smartlist_t *list = NULL;
+
+  (void) arg;
+
+  circ = dummy_origin_circuit_new(0);
+  orig_circ = TO_ORIGIN_CIRCUIT(circ);
+  tt_assert(orig_circ);
+
+  orig_circ->build_state = tor_malloc_zero(sizeof(cpath_build_state_t));
+
+  circuit_set_state(circ, CIRCUIT_STATE_GUARD_WAIT);
+
+  /* Put it in guard wait state. */
+  guard = tor_malloc_zero(sizeof(*guard));
+  guard->in_selection = get_guard_selection_info();
+
+  orig_circ->guard_state =
+    circuit_guard_state_new(guard, GUARD_CIRC_STATE_WAITING_FOR_BETTER_GUARD,
+                            NULL);
+
+  /* Mark the circuit for close. */
+  circuit_mark_for_close(circ, END_CIRC_REASON_TORPROTOCOL);
+  tt_int_op(circ->marked_for_close, OP_NE, 0);
+
+  /* We shouldn't pick the mark for close circuit. */
+  list = circuit_find_circuits_to_upgrade_from_guard_wait();
+  tt_assert(!list);
+
+ done:
+  circuit_free(circ);
+  entry_guard_free_(guard);
+}
+
 struct testcase_t circuitbuild_tests[] = {
   { "noexit", test_new_route_len_noexit, 0, NULL, NULL },
   { "safe_exit", test_new_route_len_safe_exit, 0, NULL, NULL },
   { "unsafe_exit", test_new_route_len_unsafe_exit, 0, NULL, NULL },
   { "unhandled_exit", test_new_route_len_unhandled_exit, 0, NULL, NULL },
+  { "upgrade_from_guard_wait", test_upgrade_from_guard_wait, TT_FORK,
+    NULL, NULL },
   END_OF_TESTCASES
 };

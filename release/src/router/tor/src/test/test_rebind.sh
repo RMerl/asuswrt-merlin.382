@@ -27,6 +27,6 @@ elif [ ! -d "$tmpdir" ]; then
   exit 3
 fi
 
-"${PYTHON:-python}" "${abs_top_srcdir:-.}/src/test/test_rebind.py" "${TESTING_TOR_BINARY}" "$tmpdir" || exitcode=1
+"${PYTHON:-python}" "${abs_top_srcdir:-.}/src/test/test_rebind.py" "${TESTING_TOR_BINARY}" "$tmpdir"
 
-exit ${exitcode}
+exit $?

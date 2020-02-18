@@ -577,6 +577,7 @@ tor_init(int argc, char *argv[])
       if (!strcmp(cl->key, "--version") || !strcmp(cl->key, "--digests") ||
           !strcmp(cl->key, "--list-torrc-options") ||
           !strcmp(cl->key, "--library-versions") ||
+          !strcmp(cl->key, "--list-modules") ||
           !strcmp(cl->key, "--hash-password") ||
           !strcmp(cl->key, "-h") || !strcmp(cl->key, "--help")) {
         if (quiet < 1)

@@ -1,7 +1,7 @@
 /**************************************************************************
  *   prompt.c  --  This file is part of GNU nano.                         *
  *                                                                        *
- *   Copyright (C) 1999-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 1999-2011, 2013-2020 Free Software Foundation, Inc.    *
  *   Copyright (C) 2016, 2018 Benno Schulenberg                           *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
@@ -24,18 +24,18 @@
 #include <string.h>
 
 static char *prompt = NULL;
-		/* The prompt string used for statusbar questions. */
+		/* The prompt string used for status-bar questions. */
 static size_t typing_x = HIGHEST_POSITIVE;
 		/* The cursor position in answer. */
 
 #ifdef ENABLE_MOUSE
-/* Handle a mouse click on the statusbar prompt or the shortcut list. */
+/* Handle a mouse click on the status-bar prompt or the shortcut list. */
 int do_statusbar_mouse(void)
 {
 	int click_row, click_col;
 	int retval = get_mouseinput(&click_row, &click_col, TRUE);
 
-	/* We can click on the statusbar window text to move the cursor. */
+	/* We can click on the status-bar window text to move the cursor. */
 	if (retval == 0 && wmouse_trafo(bottomwin, &click_row, &click_col, FALSE)) {
 		size_t start_col = breadth(prompt) + 2;
 
@@ -115,7 +115,7 @@ int do_statusbar_input(bool *finished)
 	if ((shortcut || get_key_buffer_len() == 0) && kbinput != NULL) {
 		/* Inject all characters in the input buffer at once, filtering out
 		 * control characters. */
-		do_statusbar_output(kbinput, kbinput_len, TRUE);
+		inject_into_answer(kbinput, kbinput_len, TRUE);
 
 		/* Empty the input buffer. */
 		kbinput_len = 0;
@@ -185,8 +185,7 @@ int do_statusbar_input(bool *finished)
 
 /* The user typed input_len multibyte characters.  Add them to the answer,
  * filtering out ASCII control characters if filtering is TRUE. */
-void do_statusbar_output(int *the_input, size_t input_len,
-		bool filtering)
+void inject_into_answer(int *the_input, size_t input_len, bool filtering)
 {
 	char *output = charalloc(input_len + 1);
 	char onechar[MAXCHARLEN];
@@ -203,7 +202,7 @@ void do_statusbar_output(int *the_input, size_t input_len,
 			output[j] = '\n';
 
 		/* Interpret the next multibyte character. */
-		charlen = parse_mbchar(output + j, onechar, NULL);
+		charlen = collect_char(output + j, onechar);
 
 		j += charlen;
 
@@ -213,7 +212,7 @@ void do_statusbar_output(int *the_input, size_t input_len,
 
 		/* Insert the typed character into the existing answer string. */
 		answer = charealloc(answer, strlen(answer) + charlen + 1);
-		charmove(answer + typing_x + charlen, answer + typing_x,
+		memmove(answer + typing_x + charlen, answer + typing_x,
 								strlen(answer) - typing_x + 1);
 		strncpy(answer + typing_x, onechar, charlen);
 
@@ -255,7 +254,7 @@ void do_statusbar_delete(void)
 	if (answer[typing_x] != '\0') {
 		int charlen = char_length(answer + typing_x);
 
-		charmove(answer + typing_x, answer + typing_x + charlen,
+		memmove(answer + typing_x, answer + typing_x + charlen,
 						strlen(answer) - typing_x - charlen + 1);
 	}
 }
@@ -340,7 +339,7 @@ void do_statusbar_verbatim_input(void)
 
 	kbinput = get_verbatim_kbinput(bottomwin, &kbinput_len);
 
-	do_statusbar_output(kbinput, kbinput_len, FALSE);
+	inject_into_answer(kbinput, kbinput_len, FALSE);
 
 	free(kbinput);
 }
@@ -363,7 +362,7 @@ void do_statusbar_uncut_text(void)
 }
 
 /* Return the column number of the first character of the answer that is
- * displayed in the statusbar when the cursor is at the given column,
+ * displayed in the status bar when the cursor is at the given column,
  * with the available room for the answer starting at base.  Note that
  * (0 <= column - get_statusbar_page_start(column) < COLS). */
 size_t get_statusbar_page_start(size_t base, size_t column)
@@ -424,19 +423,19 @@ void draw_the_promptbar(void)
 void add_or_remove_pipe_symbol_from_answer(void)
 {
 	if (answer[0] == '|') {
-		charmove(answer, answer + 1, strlen(answer) + 1);
+		memmove(answer, answer + 1, strlen(answer) + 1);
 		if (typing_x > 0)
 			typing_x--;
 	} else {
 		answer = charealloc(answer, strlen(answer) + 2);
-		charmove(answer + 1, answer, strlen(answer) + 1);
+		memmove(answer + 1, answer, strlen(answer) + 1);
 		answer[0] = '|';
 		typing_x++;
 	}
 }
 #endif
 
-/* Get a string of input at the statusbar prompt. */
+/* Get a string of input at the status-bar prompt. */
 functionptrtype acquire_an_answer(int *actual, bool allow_tabs,
 		bool allow_files, bool *listed, linestruct **history_list,
 		void (*refresh_func)(void))
@@ -543,14 +542,18 @@ functionptrtype acquire_an_answer(int *actual, bool allow_tabs,
 			}
 		} else
 #endif /* ENABLE_HISTORIES */
-		if (func == do_help_void) {
+		if (func == do_help) {
 			/* This key has a shortcut-list entry when it's used to go to
-			 * the help browser or display a message indicating that help
+			 * the help viewer or display a message indicating that help
 			 * is disabled, which means that finished has been set to TRUE.
 			 * Set it back to FALSE here, so that we aren't kicked out of
-			 * the statusbar prompt. */
+			 * the status-bar prompt. */
 			finished = FALSE;
 		}
+#ifndef NANO_TINY
+		else if (func == do_nothing)
+			finished = FALSE;
+#endif
 
 		/* If we have a shortcut with an associated function, break out if
 		 * we're finished after running or trying to run the function. */
@@ -575,30 +578,30 @@ functionptrtype acquire_an_answer(int *actual, bool allow_tabs,
 	return func;
 }
 
-/* Ask a question on the statusbar.  Return 0 when text was entered,
+/* Ask a question on the status bar.  Return 0 when text was entered,
  * -1 for a cancelled entry, -2 for a blank string, and the relevant
  * keycode when a valid shortcut key was pressed.
  *
  * The allow_tabs parameter indicates whether tab completion is allowed,
  * and allow_files indicates whether all files (and not just directories)
- * can be tab completed.  The curranswer parameter is the default answer
+ * can be tab completed.  The 'provided' parameter is the default answer
  * for when simply Enter is typed. */
 int do_prompt(bool allow_tabs, bool allow_files,
-		int menu, const char *curranswer, linestruct **history_list,
+		int menu, const char *provided, linestruct **history_list,
 		void (*refresh_func)(void), const char *msg, ...)
 {
 	va_list ap;
 	int retval;
 	functionptrtype func = NULL;
 	bool listed = FALSE;
-	/* Save a possible current statusbar x position and prompt. */
+	/* Save a possible current status-bar x position and prompt. */
 	size_t was_typing_x = typing_x;
 	char *saved_prompt = prompt;
 
 	bottombars(menu);
 
-	if (answer != curranswer || answer == NULL)
-		answer = mallocstrcpy(answer, curranswer);
+	if (answer != provided)
+		answer = mallocstrcpy(answer, provided);
 
 #ifndef NANO_TINY
   redo_theprompt:
@@ -645,7 +648,7 @@ int do_prompt(bool allow_tabs, bool allow_files,
 }
 
 /* Ask a simple Yes/No (and optionally All) question, specified in msg,
- * on the statusbar.  Return 1 for Yes, 0 for No, 2 for All (if all is
+ * on the status bar.  Return 1 for Yes, 0 for No, 2 for All (if all is
  * TRUE when passed in), and -1 for Cancel. */
 int do_yesno_prompt(bool all, const char *msg)
 {
@@ -707,6 +710,12 @@ int do_yesno_prompt(bool all, const char *msg)
 		/* When not replacing, show the cursor while waiting for a key. */
 		kbinput = get_kbinput(bottomwin, !all);
 
+#ifndef NANO_TINY
+		/* Accept the first character of an external paste. */
+		if (bracketed_paste && kbinput == BRACKETED_PASTE_MARKER)
+			kbinput = get_kbinput(bottomwin, BLIND);
+#endif
+
 #ifdef ENABLE_NLS
 		letter[index++] = (unsigned char)kbinput;
 #ifdef ENABLE_UTF8
@@ -762,6 +771,14 @@ int do_yesno_prompt(bool all, const char *msg)
 			}
 		}
 #endif /* ENABLE_MOUSE */
+		else
+			beep();
+
+#ifndef NANO_TINY
+		/* Ignore the rest of an external paste. */
+		while (bracketed_paste)
+			kbinput = get_kbinput(bottomwin, BLIND);
+#endif
 	}
 
 	return choice;

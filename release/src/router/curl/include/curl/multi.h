@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -72,6 +72,7 @@ typedef enum {
                             attempted to get added - again */
   CURLM_RECURSIVE_API_CALL, /* an api function was called from inside a
                                callback */
+  CURLM_WAKEUP_FAILURE, /* wakeup is unavailable or failed */
   CURLM_LAST
 } CURLMcode;
 
@@ -186,6 +187,15 @@ CURL_EXTERN CURLMcode curl_multi_poll(CURLM *multi_handle,
                                       unsigned int extra_nfds,
                                       int timeout_ms,
                                       int *ret);
+
+/*
+ * Name:     curl_multi_wakeup()
+ *
+ * Desc:     wakes up a sleeping curl_multi_poll call.
+ *
+ * Returns:  CURLMcode type, general multi error code.
+ */
+CURL_EXTERN CURLMcode curl_multi_wakeup(CURLM *multi_handle);
 
  /*
   * Name:    curl_multi_perform()
@@ -450,9 +460,6 @@ typedef int (*curl_push_callback)(CURL *parent,
                                   size_t num_headers,
                                   struct curl_pushheaders *headers,
                                   void *userp);
-
-/* value for MAXIMUM CONCURRENT STREAMS upper limit */
-#define INITIAL_MAX_CONCURRENT_STREAMS ((1U << 31) - 1)
 
 #ifdef __cplusplus
 } /* end of extern "C" */

@@ -1,5 +1,5 @@
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002-2019 Free Software Foundation, Inc.
+   Copyright (C) 2002-2020 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
@@ -20,7 +20,6 @@
 #ifndef _REGEX_INTERNAL_H
 #define _REGEX_INTERNAL_H 1
 
-#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +33,14 @@
 #include <stdint.h>
 
 #include <intprops.h>
+#include <verify.h>
+
+#if defined DEBUG && DEBUG != 0
+# include <assert.h>
+# define DEBUG_ASSERT(x) assert (x)
+#else
+# define DEBUG_ASSERT(x) assume (x)
+#endif
 
 #ifdef _LIBC
 # include <libc-lock.h>
@@ -44,22 +51,7 @@
 # define lock_unlock(lock) __libc_lock_unlock (lock)
 #elif defined GNULIB_LOCK && !defined USE_UNLOCKED_IO
 # include "glthread/lock.h"
-  /* Use gl_lock_define if empty macro arguments are known to work.
-     Otherwise, fall back on less-portable substitutes.  */
-# if ((defined __GNUC__ && !defined __STRICT_ANSI__) \
-      || (defined __STDC_VERSION__ && 199901L <= __STDC_VERSION__))
-#  define lock_define(name) gl_lock_define (, name)
-# elif USE_POSIX_THREADS
-#  define lock_define(name) pthread_mutex_t name;
-# elif USE_PTH_THREADS
-#  define lock_define(name) pth_mutex_t name;
-# elif USE_SOLARIS_THREADS
-#  define lock_define(name) mutex_t name;
-# elif USE_WINDOWS_THREADS
-#  define lock_define(name) gl_lock_t name;
-# else
-#  define lock_define(name)
-# endif
+# define lock_define(name) gl_lock_define (, name)
 # define lock_init(lock) glthread_lock_init (&(lock))
 # define lock_fini(lock) glthread_lock_destroy (&(lock))
 # define lock_lock(lock) glthread_lock_lock (&(lock))
@@ -149,6 +141,24 @@
 #ifndef SSIZE_MAX
 # define SSIZE_MAX ((ssize_t) (SIZE_MAX / 2))
 #endif
+#ifndef ULONG_WIDTH
+# define ULONG_WIDTH REGEX_UINTEGER_WIDTH (ULONG_MAX)
+/* The number of usable bits in an unsigned integer type with maximum
+   value MAX, as an int expression suitable in #if.  Cover all known
+   practical hosts.  This implementation exploits the fact that MAX is
+   1 less than a power of 2, and merely counts the number of 1 bits in
+   MAX; "COBn" means "count the number of 1 bits in the low-order n bits".  */
+# define REGEX_UINTEGER_WIDTH(max) REGEX_COB128 (max)
+# define REGEX_COB128(n) (REGEX_COB64 ((n) >> 31 >> 31 >> 2) + REGEX_COB64 (n))
+# define REGEX_COB64(n) (REGEX_COB32 ((n) >> 31 >> 1) + REGEX_COB32 (n))
+# define REGEX_COB32(n) (REGEX_COB16 ((n) >> 16) + REGEX_COB16 (n))
+# define REGEX_COB16(n) (REGEX_COB8 ((n) >> 8) + REGEX_COB8 (n))
+# define REGEX_COB8(n) (REGEX_COB4 ((n) >> 4) + REGEX_COB4 (n))
+# define REGEX_COB4(n) (!!((n) & 8) + !!((n) & 4) + !!((n) & 2) + ((n) & 1))
+# if ULONG_MAX / 2 + 1 != 1ul << (ULONG_WIDTH - 1)
+#  error "ULONG_MAX out of range"
+# endif
+#endif
 
 /* The type of indexes into strings.  This is signed, not size_t,
    since the API requires indexes to fit in regoff_t anyway, and using
@@ -172,36 +182,8 @@ typedef __re_size_t re_hashval_t;
 typedef unsigned long int bitset_word_t;
 /* All bits set in a bitset_word_t.  */
 #define BITSET_WORD_MAX ULONG_MAX
-
-/* Number of bits in a bitset_word_t.  For portability to hosts with
-   padding bits, do not use '(sizeof (bitset_word_t) * CHAR_BIT)';
-   instead, deduce it directly from BITSET_WORD_MAX.  Avoid
-   greater-than-32-bit integers and unconditional shifts by more than
-   31 bits, as they're not portable.  */
-#if BITSET_WORD_MAX == 0xffffffffUL
-# define BITSET_WORD_BITS 32
-#elif BITSET_WORD_MAX >> 31 >> 4 == 1
-# define BITSET_WORD_BITS 36
-#elif BITSET_WORD_MAX >> 31 >> 16 == 1
-# define BITSET_WORD_BITS 48
-#elif BITSET_WORD_MAX >> 31 >> 28 == 1
-# define BITSET_WORD_BITS 60
-#elif BITSET_WORD_MAX >> 31 >> 31 >> 1 == 1
-# define BITSET_WORD_BITS 64
-#elif BITSET_WORD_MAX >> 31 >> 31 >> 9 == 1
-# define BITSET_WORD_BITS 72
-#elif BITSET_WORD_MAX >> 31 >> 31 >> 31 >> 31 >> 3 == 1
-# define BITSET_WORD_BITS 128
-#elif BITSET_WORD_MAX >> 31 >> 31 >> 31 >> 31 >> 31 >> 31 >> 31 >> 31 >> 7 == 1
-# define BITSET_WORD_BITS 256
-#elif BITSET_WORD_MAX >> 31 >> 31 >> 31 >> 31 >> 31 >> 31 >> 31 >> 31 >> 7 > 1
-# define BITSET_WORD_BITS 257 /* any value > SBC_MAX will do here */
-# if BITSET_WORD_BITS <= SBC_MAX
-#  error "Invalid SBC_MAX"
-# endif
-#else
-# error "Add case for new bitset_word_t size"
-#endif
+/* Number of bits in a bitset_word_t.  */
+#define BITSET_WORD_BITS ULONG_WIDTH
 
 /* Number of bitset_word_t values in a bitset_t.  */
 #define BITSET_WORDS ((SBC_MAX + BITSET_WORD_BITS - 1) / BITSET_WORD_BITS)
@@ -609,20 +591,15 @@ struct re_backref_cache_entry
   Idx str_idx;
   Idx subexp_from;
   Idx subexp_to;
+  bitset_word_t eps_reachable_subexps_map;
   char more;
-  char unused;
-  unsigned short int eps_reachable_subexps_map;
 };
 
 typedef struct
 {
   /* The string object corresponding to the input string.  */
   re_string_t input;
-#if defined _LIBC || (defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L)
   const re_dfa_t *const dfa;
-#else
-  const re_dfa_t *dfa;
-#endif
   /* EFLAGS of the argument of regexec.  */
   int eflags;
   /* Where the matching ends.  */

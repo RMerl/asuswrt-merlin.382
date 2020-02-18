@@ -278,19 +278,17 @@ construct_ntor_key_map(void)
 {
   di_digest256_map_t *m = NULL;
 
-  if (!tor_mem_is_zero((const char*)
-                       curve25519_onion_key.pubkey.public_key,
-                       CURVE25519_PUBKEY_LEN)) {
-    dimap_add_entry(&m,
-                    curve25519_onion_key.pubkey.public_key,
+  const uint8_t *cur_pk = curve25519_onion_key.pubkey.public_key;
+  const uint8_t *last_pk = last_curve25519_onion_key.pubkey.public_key;
+
+  if (!tor_mem_is_zero((const char *)cur_pk, CURVE25519_PUBKEY_LEN)) {
+    dimap_add_entry(&m, cur_pk,
                     tor_memdup(&curve25519_onion_key,
                                sizeof(curve25519_keypair_t)));
   }
-  if (!tor_mem_is_zero((const char*)
-                          last_curve25519_onion_key.pubkey.public_key,
-                       CURVE25519_PUBKEY_LEN)) {
-    dimap_add_entry(&m,
-                    last_curve25519_onion_key.pubkey.public_key,
+  if (!tor_mem_is_zero((const char*)last_pk, CURVE25519_PUBKEY_LEN) &&
+      tor_memneq(cur_pk, last_pk, CURVE25519_PUBKEY_LEN)) {
+    dimap_add_entry(&m, last_pk,
                     tor_memdup(&last_curve25519_onion_key,
                                sizeof(curve25519_keypair_t)));
   }
@@ -2936,12 +2934,11 @@ extrainfo_dump_to_string(char **s_out, extrainfo_t *extrainfo,
                         "conn-bi-direct", now, &contents) > 0) {
       smartlist_add(chunks, contents);
     }
-  }
-
-  if (options->PaddingStatistics) {
-    contents = rep_hist_get_padding_count_lines();
-    if (contents)
-      smartlist_add(chunks, contents);
+    if (options->PaddingStatistics) {
+      contents = rep_hist_get_padding_count_lines();
+      if (contents)
+        smartlist_add(chunks, contents);
+    }
   }
 
   /* Add information about the pluggable transports we support. */

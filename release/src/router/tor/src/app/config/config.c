@@ -2412,7 +2412,8 @@ options_act(const or_options_t *old_options)
     if (!bool_eq(directory_fetches_dir_info_early(options),
                  directory_fetches_dir_info_early(old_options)) ||
         !bool_eq(directory_fetches_dir_info_later(options),
-                 directory_fetches_dir_info_later(old_options))) {
+                 directory_fetches_dir_info_later(old_options)) ||
+        !config_lines_eq(old_options->Bridges, options->Bridges)) {
       /* Make sure update_router_have_minimum_dir_info() gets called. */
       router_dir_info_changed();
       /* We might need to download a new consensus status later or sooner than
@@ -2474,6 +2475,7 @@ static const struct {
   { "--quiet",                TAKES_NO_ARGUMENT },
   { "--hush",                 TAKES_NO_ARGUMENT },
   { "--version",              TAKES_NO_ARGUMENT },
+  { "--list-modules",         TAKES_NO_ARGUMENT },
   { "--library-versions",     TAKES_NO_ARGUMENT },
   { "-h",                     TAKES_NO_ARGUMENT },
   { "--help",                 TAKES_NO_ARGUMENT },
@@ -2693,6 +2695,13 @@ list_deprecated_options(void)
   for (d = option_deprecation_notes_; d->name; ++d) {
     printf("%s\n", d->name);
   }
+}
+
+/** Print all compile-time modules and their enabled/disabled status. */
+static void
+list_enabled_modules(void)
+{
+  printf("%s: %s\n", "dirauth", have_module_dirauth() ? "yes" : "no");
 }
 
 /** Last value actually set by resolve_my_address. */
@@ -5198,6 +5207,11 @@ options_init_from_torrc(int argc, char **argv)
     return 1;
   }
 
+  if (config_line_find(cmdline_only_options, "--list-modules")) {
+    list_enabled_modules();
+    return 1;
+  }
+
   if (config_line_find(cmdline_only_options, "--library-versions")) {
     printf("Tor version %s. \n", get_version());
     printf("Library versions\tCompiled\t\tRuntime\n");
@@ -7061,13 +7075,13 @@ parse_port_config(smartlist_t *out,
                  portname, escaped(ports->value));
         goto err;
       }
-      if (bind_ipv4_only && tor_addr_family(&addr) == AF_INET6) {
-        log_warn(LD_CONFIG, "Could not interpret %sPort address as IPv6",
+      if (bind_ipv4_only && tor_addr_family(&addr) != AF_INET) {
+        log_warn(LD_CONFIG, "Could not interpret %sPort address as IPv4",
                  portname);
         goto err;
       }
-      if (bind_ipv6_only && tor_addr_family(&addr) == AF_INET) {
-        log_warn(LD_CONFIG, "Could not interpret %sPort address as IPv4",
+      if (bind_ipv6_only && tor_addr_family(&addr) != AF_INET6) {
+        log_warn(LD_CONFIG, "Could not interpret %sPort address as IPv6",
                  portname);
         goto err;
       }
@@ -7080,7 +7094,7 @@ parse_port_config(smartlist_t *out,
         if (!strcasecmpstart(elt, "SessionGroup=")) {
           int group = (int)tor_parse_long(elt+strlen("SessionGroup="),
                                           10, 0, INT_MAX, &ok, NULL);
-          if (!ok || !allow_no_stream_options) {
+          if (!ok || allow_no_stream_options) {
             log_warn(LD_CONFIG, "Invalid %sPort option '%s'",
                      portname, escaped(elt));
             goto err;

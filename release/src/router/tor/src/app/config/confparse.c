@@ -225,6 +225,7 @@ config_assign_value(const config_format_t *fmt, void *options,
       tor_asprintf(msg,
           "Interval '%s %s' is malformed or out of bounds.",
           c->key, c->value);
+      tor_free(tmp);
       return -1;
     }
     *(int *)lvalue = i;

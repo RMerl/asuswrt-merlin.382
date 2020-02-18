@@ -142,10 +142,6 @@
 #endif
 #endif
 
-#ifdef LIBRESSL_VERSION_NUMBER
-#define OpenSSL_version_num() LIBRESSL_VERSION_NUMBER
-#endif
-
 #if (OPENSSL_VERSION_NUMBER >= 0x1000200fL) && /* 1.0.2 or later */ \
     !(defined(LIBRESSL_VERSION_NUMBER) && \
       LIBRESSL_VERSION_NUMBER < 0x20700000L)
@@ -392,11 +388,20 @@ static const char *SSL_ERROR_to_str(int err)
  */
 static char *ossl_strerror(unsigned long error, char *buf, size_t size)
 {
+  if(size)
+    *buf = '\0';
+
 #ifdef OPENSSL_IS_BORINGSSL
   ERR_error_string_n((uint32_t)error, buf, size);
 #else
   ERR_error_string_n(error, buf, size);
 #endif
+
+  if(size > 1 && !*buf) {
+    strncpy(buf, (error ? "Unknown error" : "No error"), size);
+    buf[size - 1] = '\0';
+  }
+
   return buf;
 }
 
@@ -2768,19 +2773,29 @@ static CURLcode ossl_connect_step1(struct connectdata *conn, int sockindex)
     infof(data, "  CRLfile: %s\n", ssl_crlfile);
   }
 
-  /* Try building a chain using issuers in the trusted store first to avoid
-     problems with server-sent legacy intermediates.  Newer versions of
-     OpenSSL do alternate chain checking by default which gives us the same
-     fix without as much of a performance hit (slight), so we prefer that if
-     available.
-     https://rt.openssl.org/Ticket/Display.html?id=3621&user=guest&pass=guest
-  */
-#if defined(X509_V_FLAG_TRUSTED_FIRST) && !defined(X509_V_FLAG_NO_ALT_CHAINS)
   if(verifypeer) {
+    /* Try building a chain using issuers in the trusted store first to avoid
+       problems with server-sent legacy intermediates.  Newer versions of
+       OpenSSL do alternate chain checking by default which gives us the same
+       fix without as much of a performance hit (slight), so we prefer that if
+       available.
+       https://rt.openssl.org/Ticket/Display.html?id=3621&user=guest&pass=guest
+    */
+#if defined(X509_V_FLAG_TRUSTED_FIRST) && !defined(X509_V_FLAG_NO_ALT_CHAINS)
     X509_STORE_set_flags(SSL_CTX_get_cert_store(BACKEND->ctx),
                          X509_V_FLAG_TRUSTED_FIRST);
-  }
 #endif
+#ifdef X509_V_FLAG_PARTIAL_CHAIN
+    if(!SSL_SET_OPTION(no_partialchain)) {
+      /* Have intermediate certificates in the trust store be treated as
+         trust-anchors, in the same way as self-signed root CA certificates
+         are. This allows users to verify servers using the intermediate cert
+         only, instead of needing the whole chain. */
+      X509_STORE_set_flags(SSL_CTX_get_cert_store(BACKEND->ctx),
+                           X509_V_FLAG_PARTIAL_CHAIN);
+    }
+#endif
+  }
 
   /* SSL always tries to verify the peer, this only says whether it should
    * fail to connect if the verification fails, or if it should continue
@@ -2806,8 +2821,10 @@ static CURLcode ossl_connect_step1(struct connectdata *conn, int sockindex)
 
   /* give application a chance to interfere with SSL set up. */
   if(data->set.ssl.fsslctx) {
+    Curl_set_in_callback(data, true);
     result = (*data->set.ssl.fsslctx)(data, BACKEND->ctx,
                                       data->set.ssl.fsslctxp);
+    Curl_set_in_callback(data, false);
     if(result) {
       failf(data, "error signaled by ssl ctx callback");
       return result;
@@ -2988,8 +3005,13 @@ static CURLcode ossl_connect_step2(struct connectdata *conn, int sockindex)
         const char * const hostname = SSL_IS_PROXY() ?
           conn->http_proxy.host.name : conn->host.name;
         const long int port = SSL_IS_PROXY() ? conn->port : conn->remote_port;
+        char extramsg[80]="";
+        int sockerr = SOCKERRNO;
+        if(sockerr && detail == SSL_ERROR_SYSCALL)
+          Curl_strerror(sockerr, extramsg, sizeof(extramsg));
         failf(data, OSSL_PACKAGE " SSL_connect: %s in connection to %s:%ld ",
-              SSL_ERROR_to_str(detail), hostname, port);
+              extramsg[0] ? extramsg : SSL_ERROR_to_str(detail),
+              hostname, port);
         return result;
       }
 
@@ -3065,7 +3087,7 @@ do {                              \
   Curl_ssl_push_certinfo_len(data, _num, _label, ptr, info_len); \
   if(1 != BIO_reset(mem))                                        \
     break;                                                       \
-} WHILE_FALSE
+} while(0)
 
 static void pubkey_show(struct Curl_easy *data,
                         BIO *mem,
@@ -3097,7 +3119,7 @@ do {                              \
   if(_type->_name) { \
     pubkey_show(data, mem, _num, #_type, #_name, _type->_name); \
   } \
-} WHILE_FALSE
+} while(0)
 #endif
 
 static int X509V3_ext(struct Curl_easy *data,
@@ -3826,10 +3848,22 @@ static ssize_t ossl_send(struct connectdata *conn,
       *curlcode = CURLE_AGAIN;
       return -1;
     case SSL_ERROR_SYSCALL:
-      Curl_strerror(SOCKERRNO, error_buffer, sizeof(error_buffer));
-      failf(conn->data, OSSL_PACKAGE " SSL_write: %s", error_buffer);
-      *curlcode = CURLE_SEND_ERROR;
-      return -1;
+      {
+        int sockerr = SOCKERRNO;
+        sslerror = ERR_get_error();
+        if(sslerror)
+          ossl_strerror(sslerror, error_buffer, sizeof(error_buffer));
+        else if(sockerr)
+          Curl_strerror(sockerr, error_buffer, sizeof(error_buffer));
+        else {
+          strncpy(error_buffer, SSL_ERROR_to_str(err), sizeof(error_buffer));
+          error_buffer[sizeof(error_buffer) - 1] = '\0';
+        }
+        failf(conn->data, OSSL_PACKAGE " SSL_write: %s, errno %d",
+              error_buffer, sockerr);
+        *curlcode = CURLE_SEND_ERROR;
+        return -1;
+      }
     case SSL_ERROR_SSL:
       /*  A failure in the SSL library occurred, usually a protocol error.
           The OpenSSL error queue contains more information on the error. */
@@ -3894,11 +3928,6 @@ static ssize_t ossl_recv(struct connectdata *conn, /* connection data */
       /* there's data pending, re-invoke SSL_read() */
       *curlcode = CURLE_AGAIN;
       return -1;
-    case SSL_ERROR_SYSCALL:
-      Curl_strerror(SOCKERRNO, error_buffer, sizeof(error_buffer));
-      failf(conn->data, OSSL_PACKAGE " SSL_read: %s", error_buffer);
-      *curlcode = CURLE_RECV_ERROR;
-      return -1;
     default:
       /* openssl/ssl.h for SSL_ERROR_SYSCALL says "look at error stack/return
          value/errno" */
@@ -3907,14 +3936,44 @@ static ssize_t ossl_recv(struct connectdata *conn, /* connection data */
       if((nread < 0) || sslerror) {
         /* If the return code was negative or there actually is an error in the
            queue */
+        int sockerr = SOCKERRNO;
+        if(sslerror)
+          ossl_strerror(sslerror, error_buffer, sizeof(error_buffer));
+        else if(sockerr && err == SSL_ERROR_SYSCALL)
+          Curl_strerror(sockerr, error_buffer, sizeof(error_buffer));
+        else {
+          strncpy(error_buffer, SSL_ERROR_to_str(err), sizeof(error_buffer));
+          error_buffer[sizeof(error_buffer) - 1] = '\0';
+        }
         failf(conn->data, OSSL_PACKAGE " SSL_read: %s, errno %d",
-              (sslerror ?
-               ossl_strerror(sslerror, error_buffer, sizeof(error_buffer)) :
-               SSL_ERROR_to_str(err)),
-              SOCKERRNO);
+              error_buffer, sockerr);
         *curlcode = CURLE_RECV_ERROR;
         return -1;
       }
+      /* For debug builds be a little stricter and error on any
+         SSL_ERROR_SYSCALL. For example a server may have closed the connection
+         abruptly without a close_notify alert. For compatibility with older
+         peers we don't do this by default. #4624
+
+         We can use this to gauge how many users may be affected, and
+         if it goes ok eventually transition to allow in dev and release with
+         the newest OpenSSL: #if (OPENSSL_VERSION_NUMBER >= 0x10101000L) */
+#ifdef DEBUGBUILD
+      if(err == SSL_ERROR_SYSCALL) {
+        int sockerr = SOCKERRNO;
+        if(sockerr)
+          Curl_strerror(sockerr, error_buffer, sizeof(error_buffer));
+        else {
+          msnprintf(error_buffer, sizeof(error_buffer),
+                    "Connection closed abruptly");
+        }
+        failf(conn->data, OSSL_PACKAGE " SSL_read: %s, errno %d"
+              " (Fatal because this is a curl debug build)",
+              error_buffer, sockerr);
+        *curlcode = CURLE_RECV_ERROR;
+        return -1;
+      }
+#endif
     }
   }
   return nread;
@@ -3922,13 +3981,35 @@ static ssize_t ossl_recv(struct connectdata *conn, /* connection data */
 
 static size_t Curl_ossl_version(char *buffer, size_t size)
 {
-#ifdef OPENSSL_IS_BORINGSSL
+#ifdef LIBRESSL_VERSION_NUMBER
+#if LIBRESSL_VERSION_NUMBER < 0x2070100fL
+  return msnprintf(buffer, size, "%s/%lx.%lx.%lx",
+                   OSSL_PACKAGE,
+                   (LIBRESSL_VERSION_NUMBER>>28)&0xf,
+                   (LIBRESSL_VERSION_NUMBER>>20)&0xff,
+                   (LIBRESSL_VERSION_NUMBER>>12)&0xff);
+#else /* OpenSSL_version() first appeared in LibreSSL 2.7.1 */
+  char *p;
+  int count;
+  const char *ver = OpenSSL_version(OPENSSL_VERSION);
+  const char expected[] = OSSL_PACKAGE " "; /* ie "LibreSSL " */
+  if(Curl_strncasecompare(ver, expected, sizeof(expected) - 1)) {
+    ver += sizeof(expected) - 1;
+  }
+  count = msnprintf(buffer, size, "%s/%s", OSSL_PACKAGE, ver);
+  for(p = buffer; *p; ++p) {
+    if(ISSPACE(*p))
+      *p = '_';
+  }
+  return count;
+#endif
+#elif defined(OPENSSL_IS_BORINGSSL)
   return msnprintf(buffer, size, OSSL_PACKAGE);
 #elif defined(HAVE_OPENSSL_VERSION) && defined(OPENSSL_VERSION_STRING)
   return msnprintf(buffer, size, "%s/%s",
                    OSSL_PACKAGE, OpenSSL_version(OPENSSL_VERSION_STRING));
 #else
-  /* not BoringSSL and not using OpenSSL_version */
+  /* not LibreSSL, BoringSSL and not using OpenSSL_version */
 
   char sub[3];
   unsigned long ssleay_value;

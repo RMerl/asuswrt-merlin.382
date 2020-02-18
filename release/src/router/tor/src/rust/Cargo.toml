@@ -10,6 +10,17 @@ members = [
     "tor_util",
 ]
 
+# Can remove panic="abort" when this issue is fixed:
+# https://github.com/rust-lang/rust/issues/52652
+[profile.dev]
+panic = "abort"
+
 [profile.release]
 debug = true
+panic = "abort"
+
+[profile.test]
+panic = "abort"
+
+[profile.bench]
 panic = "abort"

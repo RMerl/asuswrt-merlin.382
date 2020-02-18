@@ -88,6 +88,10 @@ COMMAND-LINE OPTIONS
     List all valid options that are scheduled to become obsolete in a
     future version. (This is a warning, not a promise.)
 
+[[opt-list-modules]] **--list-modules**::
+    For each optional module, list whether or not it has been compiled
+    into Tor.  (Any module not listed is not optional in this version of Tor.)
+
 [[opt-version]] **--version**::
     Display Tor version and exit.
 
@@ -1849,15 +1853,16 @@ is non-zero):
 [[ExitRelay]] **ExitRelay** **0**|**1**|**auto**::
     Tells Tor whether to run as an exit relay.  If Tor is running as a
     non-bridge server, and ExitRelay is set to 1, then Tor allows traffic to
-    exit according to the ExitPolicy option (or the default ExitPolicy if
-    none is specified). +
+    exit according to the ExitPolicy option, the ReducedExitPolicy option,
+    or the default ExitPolicy (if no other exit policy option is specified). +
  +
     If ExitRelay is set to 0, no traffic is allowed to
-    exit, and the ExitPolicy option is ignored. +
+    exit, and the ExitPolicy and ReducedExitPolicy options are ignored. +
  +
-    If ExitRelay is set to "auto", then Tor behaves as if it were set to 1, but
-    warns the user if this would cause traffic to exit.  In a future version,
-    the default value will be 0. (Default: auto)
+    If ExitRelay is set to "auto", then Tor checks the ExitPolicy and
+    ReducedExitPolicy options. If either is set, Tor behaves as if ExitRelay
+    were set to 1. If neither exit policy option is set, Tor behaves as if
+    ExitRelay were set to 0. (Default: auto)
 
 [[ExitPolicy]] **ExitPolicy** __policy__,__policy__,__...__::
     Set an exit policy for this server. Each policy is of the form
@@ -2279,7 +2284,7 @@ is non-zero):
     extra-info document. (Default: 0)
 
 [[PaddingStatistics]] **PaddingStatistics** **0**|**1**::
-    Relays only.
+    Relays and bridges only.
     When this option is enabled, Tor collects statistics for padding cells
     sent and received by this relay, in addition to total cell counts.
     These statistics are rounded, and omitted if traffic is low. This

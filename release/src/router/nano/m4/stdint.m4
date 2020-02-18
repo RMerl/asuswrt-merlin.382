@@ -1,5 +1,5 @@
-# stdint.m4 serial 53
-dnl Copyright (C) 2001-2019 Free Software Foundation, Inc.
+# stdint.m4 serial 54
+dnl Copyright (C) 2001-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -17,21 +17,12 @@ AC_DEFUN_ONCE([gl_STDINT_H],
   AC_REQUIRE([gl_LIMITS_H])
   AC_REQUIRE([gt_TYPE_WINT_T])
 
-  dnl Check for long long int and unsigned long long int.
-  AC_REQUIRE([AC_TYPE_LONG_LONG_INT])
-  if test $ac_cv_type_long_long_int = yes; then
-    HAVE_LONG_LONG_INT=1
-  else
-    HAVE_LONG_LONG_INT=0
-  fi
-  AC_SUBST([HAVE_LONG_LONG_INT])
-  AC_REQUIRE([AC_TYPE_UNSIGNED_LONG_LONG_INT])
-  if test $ac_cv_type_unsigned_long_long_int = yes; then
-    HAVE_UNSIGNED_LONG_LONG_INT=1
-  else
-    HAVE_UNSIGNED_LONG_LONG_INT=0
-  fi
-  AC_SUBST([HAVE_UNSIGNED_LONG_LONG_INT])
+  dnl For backward compatibility. Some packages may still be testing these
+  dnl macros.
+  AC_DEFINE([HAVE_LONG_LONG_INT], [1],
+    [Define to 1 if the system has the type 'long long int'.])
+  AC_DEFINE([HAVE_UNSIGNED_LONG_LONG_INT], [1],
+    [Define to 1 if the system has the type 'unsigned long long int'.])
 
   dnl Check for <wchar.h>, in the same way as gl_WCHAR_H does.
   AC_CHECK_HEADERS_ONCE([wchar.h])

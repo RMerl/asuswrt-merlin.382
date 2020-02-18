@@ -1,4 +1,4 @@
-.\" Copyright (C) 2003-2011, 2013-2019 Free Software Foundation, Inc.
+.\" Copyright (C) 2003-2011, 2013-2020 Free Software Foundation, Inc.
 .\"
 .\" This document is dual-licensed.  You may distribute and/or modify it
 .\" under the terms of either of the following licenses:
@@ -16,27 +16,36 @@
 .\"   Documentation License along with this program.  If not, see
 .\"   <https://www.gnu.org/licenses/>.
 .\"
-.TH NANORC 5 "version 4.4" "August 2019"
+.TH NANORC 5 "version 4.8" "February 2020"
 
 .SH NAME
 nanorc \- GNU nano's configuration file
 
-.SH NOTICE
-Starting with version 4.0, \fBnano\fR no longer hard-wraps an overlong
-line by default.  It further uses smooth scrolling by default, and by
-default includes the line below the title bar into the editing area.
-.sp
-If you want the old, Pico behavior back, you can use \fBset breaklonglines\fR,
-\fBset jumpyscrolling\fR, and \fBset emptyline\fR.
-
 .SH DESCRIPTION
-The \fInanorc\fP file contains the default settings for \fBnano\fP, a
-small and friendly editor.  The file should be in Unix format, not in
-DOS or Mac format.  During startup, \fBnano\fP will first read the
+The \fInanorc\fP files contain the default settings for \fBnano\fP, a
+small and friendly editor.  They should be in Unix format, not in
+DOS or Mac format.  During startup, if \fB\-\-rcfile\fR is not given,
+\fBnano\fR will read two files: first the
 system-wide settings, from \fI/etc/nanorc\fP (the exact path might be
 different on your system), and then the user-specific settings, either
 from \fI~/.nanorc\fR or from \fI$XDG_CONFIG_HOME/nano/nanorc\fR
 or from \fI~/.config/nano/nanorc\fR, whichever is encountered first.
+If \fB\-\-rcfile\fR is given, \fBnano\fR will read just the specified
+settings file.
+
+.SH NOTICE
+Since version 4.0, \fBnano\fR by default:
+.sp
+.RS 4
+\(bu does not automatically hard-wrap lines that become overlong,
+.br
+\(bu includes the line below the title bar in the editing area,
+.br
+\(bu does linewise (smooth) scrolling.
+.RE
+.sp
+To get the old, Pico behavior back, you can use \fBset breaklonglines\fR,
+\fBset emptyline\fR, and \fBset jumpyscrolling\fR.
 
 .SH OPTIONS
 The configuration file accepts a series of \fBset\fP and \fBunset\fP
@@ -44,6 +53,7 @@ commands, which can be used to configure nano on startup without using
 command-line options.  Additionally, there are some commands to define
 syntax highlighting and to rebind keys -- see the two separate sections
 on those.  \fBnano\fP reads one command per line.
+All commands and keywords should be written in lowercase.
 .sp
 Options in \fInanorc\fP files take precedence over nano's defaults, and
 command-line options override \fInanorc\fP settings.  Also, options that
@@ -183,8 +193,7 @@ Don't automatically add a newline when a text does not end with one.
 (This can cause you to save non-POSIX text files.)
 .TP
 .B set nopauses
-Don't pause between warnings at startup.  This means that only
-the last one will be visible (when there are multiple ones).
+Obsolete option.  Ignored.
 .TP
 .B set nowrap
 Deprecated option since it has become the default setting.
@@ -261,9 +270,9 @@ When needed, use \fBunset jumpyscrolling\fR instead.
 .B set softwrap
 Enable soft line wrapping for easier viewing of very long lines.
 .TP
-.B set speller """\fIprogram\fR [\fIarg\fR...]\fB"""
-Use the given \fIprogram\fR to do spell checking and correcting,
-instead of the built-in corrector that calls \fBspell\fR.
+.B set speller """\fIprogram\fR [\fIargument \fR...]\fB"""
+Use the given \fIprogram\fR to do spell checking and correcting, instead of
+using the built-in corrector that calls \fBhunspell\fR or GNU \fBspell\fR.
 .TP
 .B set statuscolor \fIfgcolor\fR,\fIbgcolor\fR
 Specify the color combination to use for the status bar.
@@ -382,7 +391,13 @@ file, to determine whether this syntax should be used for it.
 (This functionality only works when \fBlibmagic\fP is installed on the
 system and will be silently ignored otherwise.)
 .TP
-.BI linter " program " \fR[ "arg " \fR...]
+.BI formatter " program " \fR[ "argument " \fR...]
+Run the given \fIprogram\fR on the full contents of the current buffer.
+(The current buffer is written out to a temporary file, the program is
+run on it, and then the temporary file is read back in, replacing the
+contents of the buffer.)
+.TP
+.BI linter " program " \fR[ "argument " \fR...]
 Use the given \fIprogram\fR to run a syntax check on the current buffer.
 .TP
 .BI "comment """ string """
@@ -396,6 +411,11 @@ for Python files.  If empty double quotes are specified, the comment/uncomment
 function is disabled; for example, "" for JSON.
 The default value is "\fB#\fP".
 .TP
+.BI "tabgives """ string """
+Make the <Tab> key produce the given \fIstring\fR.  Useful for languages like
+Python that want to see only spaces for indentation.
+This overrides the setting of the \fBtabstospaces\fR option.
+.TP
 .BI "color " fgcolor , bgcolor " """ regex """ " \fR...
 Paint all pieces of text that match the extended regular expression
 \fIregex\fP with the given foreground and background colors, at least
@@ -406,6 +426,9 @@ one of which must be specified.  Valid color names are:
 You may use the prefix \fBbright\fR for the foreground color to get a
 stronger highlight.  If your terminal supports transparency, not specifying
 a \fIbgcolor\fP tells \fBnano\fP to attempt to use a transparent background.
+.sp
+All coloring commands are applied in the order in which they are specified,
+which means that later commands can recolor stuff that was colored earlier.
 .TP
 .BI "icolor " fgcolor , bgcolor " """ regex """ " \fR...
 Same as above, except that the matching is case insensitive.
@@ -427,39 +450,22 @@ Read in self-contained color syntaxes from \fIsyntaxfile\fP.  Note that
 \fIsyntaxfile\fP may contain only the above commands, from \fBsyntax\fP
 to \fBicolor\fP.
 .TP
-.BI extendsyntax " name command " \fR[ "arg " \fR...]
+.BI extendsyntax " name command argument " \fR...
 Extend the syntax previously defined as \fIname\fR with another
 \fIcommand\fR.  This allows adding a new \fBcolor\fP, \fBicolor\fP,
-\fBheader\fP, \fBmagic\fP, \fBcomment\fP, or \fBlinter\fP
+\fBheader\fR, \fBmagic\fR, \fBformatter\fR, \fBlinter\fR, \fBcomment\fR,
+or \fBtabgives\fR
 command to an already defined syntax -- useful when you want to
 slightly improve a syntax defined in one of the system-installed
 files (which normally are not writable).
-
-.P
-Note: the \fBformatter\fR command has been removed.  It was superseded by
-a more general mechanism: the filtering of buffer or marked text through
-an external command.  Such filtering is done by typing \fB^R^X\fR and then
-preceding your formatter command with the pipe symbol (\fB|\fR).  It has
-the added advantage that the operation can be undone.
-.sp
-If you use such a formatting command regularly, you could assign the relevant
-series of keystrokes to a single key in your nanorc:
-.sp
-.RS
-.B "bind  M\-F  \(dq^R^X|yourformatcommand^M\(dq  main"
-.RE
-.sp
-(Note that the \fB^R\fR, \fB^X\fR, and \fB^M\fR are each a single, literal
-control character.  You can enter them by preceding each with \fBM\-V\fR.)
 
 .SH REBINDING KEYS
 Key bindings can be changed via the following three commands:
 .RS 3
 .TP
 .BI bind " key function menu"
-Rebinds the key \fIkey\fP to a new function named \fIfunction\fP in the
-context of menu \fImenu\fP (or in all menus where the function exists
-by using \fBall\fP).
+Rebinds the given \fIkey\fP to the given \fIfunction\fP in the given \fImenu\fP
+(or in all menus where the function exists when \fBall\fP is used).
 .TP
 .BI bind " key " """" string """" " menu"
 Makes the given \fIkey\fR produce the given \fIstring\fR in the given
@@ -467,32 +473,44 @@ Makes the given \fIkey\fR produce the given \fIstring\fR in the given
 The \fIstring\fR can consist of text or commands or a mix of them.
 (To enter a command into the \fIstring\fR, precede its keystroke
 with \fBM\-V\fR.)
-
 .TP
 .BI unbind " key menu"
-Unbinds the key \fIkey\fP from the menu named \fImenu\fP (or from all
-menus where it exists by using \fBall\fP).
+Unbinds the given \fIkey\fP from the given \fImenu\fP (or from all
+menus where the key exists when \fBall\fP is used).
 .RE
 
 .TP
 The format of \fIkey\fP should be one of:
 .RS 3
-.TP 3
-.B ^
-followed by a Latin letter, by one of several ASCII characters
-(@, ], \\, ^, or _), or by the word "Space".
+.TP 7
+.BI ^ X
+where \fIX\fR is a Latin letter, or one of several ASCII characters
+(@, ], \\, ^, _), or the word "Space".
 Example: ^C.
 .TP
-.B M\-
-followed by any ASCII character except [, or by the word "Space".
-Example: M\-C.
+.BI M\- X
+where \fIX\fR is any ASCII character except [, or the word "Space".
+Example: M\-8.
 .TP
-.B F
-followed by a numeric value from 1 to 16.
+.BI Sh\-M\- X
+where \fIX\fR is a Latin letter.
+Example: Sh\-M\-U.
+By default, each Meta+letter keystroke does the same as the corresponding
+Shift+Meta+letter.  But when any Shift+Meta bind is made, that will
+no longer be the case, for all letters.
+.TP
+.BI F N
+where \fIN\fR is a numeric value from 1 to 24.
 Example: F10.
+(Often, \fBF13\fR to \fBF24\fR can be typed as \fBF1\fR to \fBF12\fR with Shift.)
+
 .TP
-the word "Ins" or the word "Del".
+.BR Ins " or " Del .
 .RE
+
+Rebinding \fB^M\fR (Enter) or \fB^I\fR (Tab) is probably not a good idea.
+On some terminals it's not possible to rebind \fB^H\fR (unless \fB\-\-raw\fR
+is used) because its keycode is identical to that of the Backspace key.
 
 .TP
 Valid \fIfunction\fP names to be bound are:
@@ -572,8 +590,11 @@ Shows the current cursor position: the line, column, and character positions.
 Counts the number of words, lines and characters in the current buffer.
 .TP
 .B speller
-Invokes a spell-checking program, either the default one, or the one
-defined by \fB\-\-speller\fR or \fBset speller\fR.
+Invokes a spell-checking program, either the default \fBhunspell\fR or GNU
+\fBspell\fR, or the one defined by \fB\-\-speller\fR or \fBset speller\fR.
+.TP
+.B formatter
+Invokes a full-buffer-processing program (if the active syntax defines one).
 .TP
 .B linter
 Invokes a syntax-checking program (if the active syntax defines one).
@@ -855,7 +876,7 @@ The menu for inserting output from an external command, reached from the insert 
 The help-viewer menu.
 .TP
 .B spell
-The interactive spell checker Yes/no menu.
+The menu of the integrated spell checker where the user can edit a misspelled word.
 .TP
 .B linter
 The linter menu.

@@ -2611,6 +2611,10 @@ entry_guards_upgrade_waiting_circuits(guard_selection_t *gs,
     entry_guard_t *guard = entry_guard_handle_get(state->guard);
     if (!guard || guard->in_selection != gs)
       continue;
+    if (TO_CIRCUIT(circ)->marked_for_close) {
+      /* Don't consider any marked for close circuits. */
+      continue;
+    }
 
     smartlist_add(all_circuits, circ);
   } SMARTLIST_FOREACH_END(circ);
@@ -3300,6 +3304,9 @@ num_bridges_usable,(int use_maybe_reachable))
   }
 
   SMARTLIST_FOREACH_BEGIN(gs->sampled_entry_guards, entry_guard_t *, guard) {
+    /* Not a bridge, or not one we are configured to be able to use. */
+    if (! guard->is_filtered_guard)
+      continue;
     /* Definitely not usable */
     if (guard->is_reachable == GUARD_REACHABLE_NO)
       continue;
@@ -3758,7 +3765,8 @@ guard_selection_get_err_str_if_dir_info_missing(guard_selection_t *gs,
 
   /* otherwise return a helpful error string */
   tor_asprintf(&ret_str, "We're missing descriptors for %d/%d of our "
-               "primary entry guards (total %sdescriptors: %d/%d).",
+               "primary entry guards (total %sdescriptors: %d/%d). "
+               "That's ok. We will try to fetch missing descriptors soon.",
                n_missing_descriptors, num_primary_to_check,
                using_mds?"micro":"", num_present, num_usable);
 

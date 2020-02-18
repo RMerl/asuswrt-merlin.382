@@ -519,7 +519,7 @@ monotime_init_internal(void)
 
   HANDLE h = load_windows_system_library(TEXT("kernel32.dll"));
   if (h) {
-    GetTickCount64_fn = (GetTickCount64_fn_t)
+    GetTickCount64_fn = (GetTickCount64_fn_t) (void(*)(void))
       GetProcAddress(h, "GetTickCount64");
   }
   // FreeLibrary(h) ?

@@ -50,7 +50,7 @@ test_gen_establish_intro_cell(void *arg)
   /* Check the contents of the cell */
   {
     /* First byte is the auth key type: make sure its correct */
-    tt_int_op(buf[0], OP_EQ, HS_INTRO_AUTH_KEY_TYPE_ED25519);
+    tt_int_op(buf[0], OP_EQ, TRUNNEL_HS_INTRO_AUTH_KEY_TYPE_ED25519);
     /* Next two bytes is auth key len */
     tt_int_op(ntohs(get_uint16(buf+1)), OP_EQ, ED25519_PUBKEY_LEN);
     /* Skip to the number of extensions: no extensions */

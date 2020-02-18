@@ -898,7 +898,7 @@ int dnssec_validate_ds(time_t now, struct dns_header *header, size_t plen, char 
   
   if (rc == STAT_INSECURE)
     {
-      my_syslog(LOG_WARNING, _("Insecure DS reply received for %s, could be bad domain configuration or lack of DNSSEC support from upstream DNS servers"), name);
+      my_syslog(LOG_WARNING, _("Insecure DS reply received for %s, check domain configuration and upstream DNS server DNSSEC support"), name);
       rc = STAT_BOGUS;
     }
   

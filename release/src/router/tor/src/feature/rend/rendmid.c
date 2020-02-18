@@ -70,7 +70,8 @@ rend_mid_establish_intro_legacy(or_circuit_t *circ, const uint8_t *request,
     goto err;
   }
   if (tor_memneq(expected_digest, request+2+asn1len, DIGEST_LEN)) {
-    log_warn(LD_PROTOCOL, "Hash of session info was not as expected.");
+    log_fn(LOG_PROTOCOL_WARN, LD_PROTOCOL,
+           "Hash of session info was not as expected.");
     reason = END_CIRC_REASON_TORPROTOCOL;
     goto err;
   }

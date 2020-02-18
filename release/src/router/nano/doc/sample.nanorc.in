@@ -54,9 +54,9 @@
 ## Do not use the line below the title bar, leaving it entirely blank.
 # set emptyline
 
-## Enable hard-wrapping and set the target width, both for automatic
-## line wrapping and for justifying paragraphs.  If the value is 0 or
-## less, the wrapping point will be the screen width minus this number.
+## Set the target width for automatic hard-wrapping and for justifying
+## paragraphs.  If the specified value is 0 or less, the wrapping point
+## will be the terminal's width minus this number.
 # set fill -8
 
 ## Remember the used search/replace strings for the next session.
@@ -96,10 +96,6 @@
 
 ## Don't automatically add a newline when a file does not end with one.
 # set nonewlines
-
-## Don't pause between warnings at startup.  Which means that only the
-## last one will be readable (when there are multiple ones).
-# set nopauses
 
 ## Set operating directory.  nano will not read or write files outside
 ## this directory and its subdirectories.  Also, the current directory
@@ -218,47 +214,42 @@
 
 ## Setup of syntax coloring.
 ##
-## Format:
+##   syntax "name" ["filename regex" ...]
 ##
-## syntax "short description" ["filename regex" ...]
+##   color|icolor foreground,background "regex" ["regex"...]
+##   [...]
 ##
-## The "none" syntax is reserved; specifying it on the command line is
-## the same as not having a syntax at all.  The "default" syntax is
-## special: it takes no filename regexes, and applies to files that
-## don't match any other syntax's filename regexes.
-##
-## color foreground,background "regex" ["regex"...]
-## or
-## icolor foreground,background "regex" ["regex"...]
-##
-## "color" will do case-sensitive matches, while "icolor" will do
+## 'color' will do case-sensitive matches, while 'icolor' will do
 ## case-insensitive matches.
 ##
-## Valid color names ares: white, black, normal, red, blue, green,
-## yellow, magenta, cyan.  For foreground colors, you may use the
-## prefix "bright" to get a stronger highlight.
+## All color commands are applied in the order in which they are specified,
+## meaning that later commands can recolor stuff that was colored earlier.
+##
+## Valid color names for foreground and background are: white, black, normal,
+## red, blue, green, yellow, magenta, cyan.  For foreground colors, you may
+## use the prefix "bright" to get a stronger highlight.
 ##
 ## All regexes (regular expressions) are of the extended type (ERE).
 ##
-## To use multi-line regexes, use the start="regex" end="regex"
-## [start="regex" end="regex"...] format.
+## If the coloring rule should span multiple lines, use the following format:
 ##
-## If your system supports transparency, not specifying a background
-## color will use a transparent color.  If you don't want this, be sure
-## to set the background color to black or white.
+##   color fg,bg  start="regex" end="regex"
 ##
 ## If you wish, you may put your syntax definitions in separate files.
 ## You can make use of such files as follows:
 ##
-## include "/path/to/syntax_file.nanorc"
-##
-## Unless otherwise noted, the name of the syntax file (without the
-## ".nanorc" extension) should be the same as the "short description"
-## name inside that file.  These names are kept fairly short to make
-## them easier to remember and faster to type using nano's -Y option.
+##   include "/path/to/syntax_file.nanorc"
 
 ## To include all existing syntax definitions, you can do:
 # include "@PKGDATADIR@/*.nanorc"
+
+
+## If <Tab> should always produce four spaces when editing a Python file,
+## independent of the settings of 'tabsize' and 'tabstospaces':
+# extendsyntax python tabgives "    "
+
+## If <Tab> should always produce an actual TAB when editing a Makefile:
+# extendsyntax makefile tabgives "	"
 
 
 ## Key bindings.
@@ -277,6 +268,9 @@
 ## such as ^O for Open, ^F for Find, ^H for Help, and ^Q for Quit,
 ## then uncomment these:
 #bind ^Q exit all
+#bind ^S savefile main
+#bind ^W writeout main
+#bind ^O insert main
 #bind ^H help all
 #bind ^H exit help
 #bind ^F whereis all
@@ -284,23 +278,23 @@
 #bind ^B wherewas all
 #bind ^D findprevious all
 #bind ^R replace main
-#bind ^W writeout main
-#bind ^O insert main
-#unbind ^V all
-#unbind ^Y all
 #bind M-X flipnewbuffer all
 #bind ^X cut all
-#bind ^C copy all
+#bind ^C copy main
 #bind ^V paste all
 #bind ^P curpos main
+#bind ^A mark main
+#unbind ^K main
+#unbind ^U all
+#unbind ^N main
+#unbind ^Y all
+#unbind M-J main
+#unbind M-T main
 #bind ^T gotoline main
 #bind ^T gotodir browser
 #bind ^Y speller main
-#unbind ^K all
-#unbind ^U all
+#bind M-U undo main
 #bind M-R redo main
 #bind ^U undo main
 #bind ^E redo main
-#unbind M-J main
-#unbind M-T main
 #set multibuffer

@@ -1,8 +1,8 @@
 /**************************************************************************
  *   utils.c  --  This file is part of GNU nano.                          *
  *                                                                        *
- *   Copyright (C) 1999-2011, 2013-2019 Free Software Foundation, Inc.    *
- *   Copyright (C) 2016-2017 Benno Schulenberg                            *
+ *   Copyright (C) 1999-2011, 2013-2020 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2016, 2017, 2019 Benno Schulenberg                     *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
  *   it under the terms of the GNU General Public License as published    *
@@ -49,7 +49,7 @@ void get_homedir(void)
 		/* Only set homedir if some home directory could be determined,
 		 * otherwise keep homedir NULL. */
 		if (homenv != NULL && *homenv != '\0')
-			homedir = mallocstrcpy(NULL, homenv);
+			homedir = copy_of(homenv);
 	}
 }
 
@@ -149,7 +149,7 @@ bool parse_line_column(const char *str, ssize_t *line, ssize_t *column)
 	if (comma == str)
 		return retval;
 
-	firstpart = mallocstrcpy(NULL, str);
+	firstpart = copy_of(str);
 	firstpart[comma - str] = '\0';
 
 	retval = parse_num(firstpart, line) && retval;
@@ -159,23 +159,24 @@ bool parse_line_column(const char *str, ssize_t *line, ssize_t *column)
 	return retval;
 }
 
-/* For non-null-terminated lines.  A line, by definition, shouldn't
- * normally have newlines in it, so encode its nulls as newlines. */
-void unsunder(char *str, size_t true_len)
+/* In the given string, recode each embedded NUL as a newline. */
+void unsunder(char *string, size_t length)
 {
-	for (; true_len > 0; true_len--, str++) {
-		if (*str == '\0')
-			*str = '\n';
+	while (length > 0) {
+		if (*string == '\0')
+			*string = '\n';
+		length--;
+		string++;
 	}
 }
 
-/* For non-null-terminated lines.  A line, by definition, shouldn't
- * normally have newlines in it, so decode its newlines as nulls. */
-void sunder(char *str)
+/* In the given string, recode each embedded newline as a NUL. */
+void sunder(char *string)
 {
-	for (; *str != '\0'; str++) {
-		if (*str == '\n')
-			*str = '\0';
+	while (*string != '\0') {
+		if (*string == '\n')
+			*string = '\0';
+		string++;
 	}
 }
 
@@ -202,8 +203,8 @@ bool is_separate_word(size_t position, size_t length, const char *buf)
 	size_t word_end = position + length;
 
 	/* Get the characters before and after the word, if any. */
-	parse_mbchar(buf + step_left(buf, position), before, NULL);
-	parse_mbchar(buf + word_end, after, NULL);
+	collect_char(buf + step_left(buf, position), before);
+	collect_char(buf + word_end, after);
 
 	/* If the word starts at the beginning of the line OR the character before
 	 * the word isn't a letter, and if the word ends at the end of the line OR
@@ -311,24 +312,32 @@ void *nrealloc(void *ptr, size_t howmuch)
 	return r;
 }
 
-/* Allocate and copy the first n characters of the given src string, after
- * freeing the destination.  Usage: "dest = mallocstrncpy(dest, src, n);". */
-char *mallocstrncpy(char *dest, const char *src, size_t n)
+/* Return an appropriately reallocated dest string holding a copy of src.
+ * Usage: "dest = mallocstrcpy(dest, src);". */
+char *mallocstrcpy(char *dest, const char *src)
 {
-	if (src == NULL)
-		src = "";
+	size_t count = strlen(src) + 1;
 
-	dest = charealloc(dest, n);
-	strncpy(dest, src, n);
+	dest = charealloc(dest, count);
+	strncpy(dest, src, count);
 
 	return dest;
 }
 
-/* Free the dest string and return a malloc'ed copy of src.  Should be used as:
- * "dest = mallocstrcpy(dest, src);". */
-char *mallocstrcpy(char *dest, const char *src)
+/* Return an allocated copy of the first count characters of the given string. */
+char *measured_copy(const char *string, size_t count)
 {
-	return mallocstrncpy(dest, src, (src == NULL) ? 1 : strlen(src) + 1);
+	char *thecopy = charalloc(count);
+
+	strncpy(thecopy, string, count);
+
+	return thecopy;
+}
+
+/* Return an allocated copy of the given string. */
+char *copy_of(const char *string)
+{
+	return measured_copy(string, strlen(string) + 1);
 }
 
 /* Free the string at dest and return the string at src. */
@@ -370,7 +379,7 @@ size_t actual_x(const char *text, size_t column)
 		/* The current accumulated span, in columns. */
 
 	while (*text != '\0') {
-		int charlen = parse_mbchar(text, NULL, &width);
+		int charlen = advance_over(text, &width);
 
 		if (width > column)
 			break;
@@ -391,7 +400,7 @@ size_t wideness(const char *text, size_t maxlen)
 		return 0;
 
 	while (*text != '\0') {
-		size_t charlen = parse_mbchar(text, NULL, &width);
+		size_t charlen = advance_over(text, &width);
 
 		if (maxlen <= charlen)
 			break;
@@ -409,7 +418,7 @@ size_t breadth(const char *text)
 	size_t span = 0;
 
 	while (*text != '\0')
-		text += parse_mbchar(text, NULL, &span);
+		text += advance_over(text, &span);
 
 	return span;
 }
@@ -418,7 +427,7 @@ size_t breadth(const char *text)
 void new_magicline(void)
 {
 	openfile->filebot->next = make_new_node(openfile->filebot);
-	openfile->filebot->next->data = mallocstrcpy(NULL, "");
+	openfile->filebot->next->data = copy_of("");
 	openfile->filebot = openfile->filebot->next;
 	openfile->totsize++;
 }

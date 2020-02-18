@@ -1259,16 +1259,16 @@ load_client_keys(hs_service_t *service)
     client_key_file_path = hs_path_from_filename(client_keys_dir_path,
                                                  filename);
     client_key_str = read_file_to_str(client_key_file_path, 0, NULL);
-    /* Free immediately after using it. */
-    tor_free(client_key_file_path);
 
     /* If we cannot read the file, continue with the next file. */
     if (!client_key_str)  {
       log_warn(LD_REND, "Client authorization file %s can't be read. "
                         "Corrupted or verify permission? Ignoring.",
                client_key_file_path);
+      tor_free(client_key_file_path);
       continue;
     }
+    tor_free(client_key_file_path);
 
     client = parse_authorized_client(client_key_str);
     /* Wipe and free immediately after using it. */
@@ -1686,6 +1686,15 @@ build_desc_intro_points(const hs_service_t *service,
 
   DIGEST256MAP_FOREACH(desc->intro_points.map, key,
                        const hs_service_intro_point_t *, ip) {
+    if (!ip->circuit_established) {
+      /* Ignore un-established intro points. They can linger in that list
+       * because their circuit has not opened and they haven't been removed
+       * yet even though we have enough intro circuits.
+       *
+       * Due to #31561, it can stay in that list until rotation so this check
+       * prevents to publish an intro point without a circuit. */
+      continue;
+    }
     hs_desc_intro_point_t *desc_ip = hs_desc_intro_point_new();
     if (setup_desc_intro_point(&desc->signing_kp, ip, now, desc_ip) < 0) {
       hs_desc_intro_point_free(desc_ip);
@@ -2105,6 +2114,7 @@ build_all_descriptors(time_t now)
 static hs_service_intro_point_t *
 pick_intro_point(unsigned int direct_conn, smartlist_t *exclude_nodes)
 {
+  const or_options_t *options = get_options();
   const node_t *node;
   extend_info_t *info = NULL;
   hs_service_intro_point_t *ip = NULL;
@@ -2113,11 +2123,19 @@ pick_intro_point(unsigned int direct_conn, smartlist_t *exclude_nodes)
   /* Single onion flags. */
   router_crn_flags_t direct_flags = flags | CRN_PREF_ADDR | CRN_DIRECT_CONN;
 
-  node = router_choose_random_node(exclude_nodes, get_options()->ExcludeNodes,
+  node = router_choose_random_node(exclude_nodes, options->ExcludeNodes,
                                    direct_conn ? direct_flags : flags);
-  /* Unable to find a node. When looking for a node for a direct connection,
-   * we could try a 3-hop path instead. We'll add support for this in a later
-   * release. */
+
+  /* If we are in single onion mode, retry node selection for a 3-hop
+   * path */
+  if (direct_conn && !node) {
+    log_info(LD_REND,
+             "Unable to find an intro point that we can connect to "
+             "directly, falling back to a 3-hop path.");
+    node = router_choose_random_node(exclude_nodes, options->ExcludeNodes,
+                                     flags);
+  }
+
   if (!node) {
     goto err;
   }
@@ -2644,7 +2662,7 @@ launch_intro_point_circuits(hs_service_t *service)
    * circuits using the current map. */
   FOR_EACH_DESCRIPTOR_BEGIN(service, desc) {
     /* Keep a ref on if we need a direct connection. We use this often. */
-    unsigned int direct_conn = service->config.is_single_onion;
+    bool direct_conn = service->config.is_single_onion;
 
     DIGEST256MAP_FOREACH_MODIFY(desc->intro_points.map, key,
                                 hs_service_intro_point_t *, ip) {
@@ -2655,8 +2673,15 @@ launch_intro_point_circuits(hs_service_t *service)
       if (hs_circ_service_get_intro_circ(ip)) {
         continue;
       }
-
       ei = get_extend_info_from_intro_point(ip, direct_conn);
+
+      /* If we can't connect directly to the intro point, get an extend_info
+       * for a multi-hop path instead. */
+      if (ei == NULL && direct_conn) {
+        direct_conn = false;
+        ei = get_extend_info_from_intro_point(ip, 0);
+      }
+
       if (ei == NULL) {
         /* This is possible if we can get a node_t but not the extend info out
          * of it. In this case, we remove the intro point and a new one will
@@ -2668,7 +2693,7 @@ launch_intro_point_circuits(hs_service_t *service)
 
       /* Launch a circuit to the intro point. */
       ip->circuit_retries++;
-      if (hs_circ_launch_intro_point(service, ip, ei) < 0) {
+      if (hs_circ_launch_intro_point(service, ip, ei, direct_conn) < 0) {
         log_info(LD_REND, "Unable to launch intro circuit to node %s "
                           "for service %s.",
                  safe_str_client(extend_info_describe(ei)),

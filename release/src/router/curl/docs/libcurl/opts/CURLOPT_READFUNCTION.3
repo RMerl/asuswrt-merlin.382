@@ -20,7 +20,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_READFUNCTION 3 "August 12, 2019" "libcurl 7.67.0" "curl_easy_setopt options"
+.TH CURLOPT_READFUNCTION 3 "January 06, 2020" "libcurl 7.68.0" "curl_easy_setopt options"
 
 .SH NAME
 CURLOPT_READFUNCTION \- read callback for data uploads
@@ -89,14 +89,14 @@ size_t read_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 
 void setup(char *uploadthis)
 {
-  FILE *file = fopen("rb", uploadthis);
+  FILE *file = fopen(uploadthis, "rb");
   CURLcode result;
 
   /* set callback to use */
   curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
 
   /* pass in suitable argument to callback */
-  curl_easy_setopt(curl, CURLOPT_READDATA, uploadthis);
+  curl_easy_setopt(curl, CURLOPT_READDATA, (void *)file);
 
   result = curl_easy_perform(curl);
 }

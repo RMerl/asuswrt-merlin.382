@@ -1,5 +1,5 @@
-# glob.m4 serial 22
-dnl Copyright (C) 2005-2007, 2009-2019 Free Software Foundation, Inc.
+# glob.m4 serial 23
+dnl Copyright (C) 2005-2007, 2009-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -31,27 +31,33 @@ char a[_GNU_GLOB_INTERFACE_VERSION == 1 || _GNU_GLOB_INTERFACE_VERSION == 2 ? 1 
     if test $REPLACE_GLOB = 0; then
       AC_CACHE_CHECK([whether glob lists broken symlinks],
                      [gl_cv_glob_lists_symlinks],
-        [if ln -s conf-doesntexist conf$$-globtest 2>/dev/null; then
-           gl_cv_glob_lists_symlinks=maybe
+        [if test $cross_compiling != yes; then
+           if ln -s conf-doesntexist conf$$-globtest 2>/dev/null; then
+             gl_cv_glob_lists_symlinks=maybe
+           else
+             # If we can't make a symlink, then we cannot test this issue.  Be
+             # pessimistic about this.
+             gl_cv_glob_lists_symlinks=no
+           fi
+           if test $gl_cv_glob_lists_symlinks = maybe; then
+             AC_RUN_IFELSE(
+               [AC_LANG_PROGRAM(
+                  [[#include <stddef.h>
+                    #include <glob.h>]],
+                  [[glob_t found;
+                    if (glob ("conf*-globtest", 0, NULL, &found) == GLOB_NOMATCH)
+                      return 1;
+                  ]])],
+               [gl_cv_glob_lists_symlinks=yes],
+               [gl_cv_glob_lists_symlinks=no],
+               [dnl We don't get here.
+                :
+               ])
+           fi
+           rm -f conf$$-globtest
          else
-           # If we can't make a symlink, then we cannot test this issue.  Be
-           # pessimistic about this.
-           gl_cv_glob_lists_symlinks=no
+           gl_cv_glob_lists_symlinks="$gl_cross_guess_normal"
          fi
-         if test $gl_cv_glob_lists_symlinks = maybe; then
-           AC_RUN_IFELSE(
-             [AC_LANG_PROGRAM(
-                [[#include <stddef.h>
-                  #include <glob.h>]],
-                [[glob_t found;
-                  if (glob ("conf*-globtest", 0, NULL, &found) == GLOB_NOMATCH)
-                    return 1;
-                ]])],
-             [gl_cv_glob_lists_symlinks=yes],
-             [gl_cv_glob_lists_symlinks=no],
-             [gl_cv_glob_lists_symlinks="guessing no"])
-         fi
-         rm -f conf$$-globtest
         ])
       case "$gl_cv_glob_lists_symlinks" in
         *yes) ;;

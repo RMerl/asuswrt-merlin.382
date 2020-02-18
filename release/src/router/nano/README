@@ -25,10 +25,10 @@ Overview
 
 How to compile and install nano
 
-    Download the nano source code, then:
+    Download the latest nano source tarball, then:
 
-        tar xvzf nano-x.y.z.tar.gz
-        cd nano-x.y.z
+        tar -xvf nano-x.y.tar.gz
+        cd nano-x.y
         ./configure
         make
         make install

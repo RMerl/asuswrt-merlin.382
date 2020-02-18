@@ -20,7 +20,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PROGRESSFUNCTION 3 "February 03, 2016" "libcurl 7.67.0" "curl_easy_setopt options"
+.TH CURLOPT_PROGRESSFUNCTION 3 "November 26, 2019" "libcurl 7.68.0" "curl_easy_setopt options"
 
 .SH NAME
 CURLOPT_PROGRESSFUNCTION \- callback to progress meter function
@@ -61,8 +61,11 @@ Unknown/unused argument values passed to the callback will be set to zero
 the callback will be called one or more times first, before it knows the data
 sizes so a program must be made to handle that.
 
-Returning a non-zero value from this callback will cause libcurl to abort the
-transfer and return \fICURLE_ABORTED_BY_CALLBACK\fP.
+If your callback function returns CURL_PROGRESSFUNC_CONTINUE it will cause
+libcurl to continue executing the default progress function.
+
+Returning any other non-zero value from this callback will cause libcurl to
+abort the transfer and return \fICURLE_ABORTED_BY_CALLBACK\fP.
 
 If you transfer data with the multi interface, this function will not be
 called during periods of idleness unless you call the appropriate libcurl

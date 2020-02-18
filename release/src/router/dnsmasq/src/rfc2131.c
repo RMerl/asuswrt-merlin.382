@@ -504,7 +504,7 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
   mess->op = BOOTREPLY;
   
   config = find_config(daemon->dhcp_conf, context, clid, clid_len, 
-		       mess->chaddr, mess->hlen, mess->htype, NULL);
+		       mess->chaddr, mess->hlen, mess->htype, NULL, run_tag_if(netid));
 
   /* set "known" tag for known hosts */
   if (config)
@@ -514,7 +514,7 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
       netid = &known_id;
     }
   else if (find_config(daemon->dhcp_conf, NULL, clid, clid_len, 
-		       mess->chaddr, mess->hlen, mess->htype, NULL))
+		       mess->chaddr, mess->hlen, mess->htype, NULL, run_tag_if(netid)))
     {
       known_id.net = "known-othernet";
       known_id.next = netid;
@@ -781,7 +781,7 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
 		 to avoid impersonation by name. */
 	      struct dhcp_config *new = find_config(daemon->dhcp_conf, context, NULL, 0,
 						    mess->chaddr, mess->hlen, 
-						    mess->htype, hostname);
+						    mess->htype, hostname, run_tag_if(netid));
 	      if (new && !have_config(new, CONFIG_CLID) && !new->hwaddr)
 		{
 		  config = new;

@@ -963,8 +963,7 @@ static char *set_prefix(char *arg)
    return arg;
 }
 
-static struct dhcp_netid *
-dhcp_netid_create(const char *net, struct dhcp_netid *next)
+static struct dhcp_netid *dhcp_netid_create(const char *net, struct dhcp_netid *next)
 {
   struct dhcp_netid *tt;
   tt = opt_malloc(sizeof (struct dhcp_netid));
@@ -1020,15 +1019,31 @@ static void dhcp_config_free(struct dhcp_config *config)
   if (config)
     {
       struct hwaddr_config *hwaddr = config->hwaddr;
+      
       while (hwaddr)
         {
 	  struct hwaddr_config *tmp = hwaddr;
           hwaddr = hwaddr->next;
 	  free(tmp);
         }
+      
       dhcp_netid_list_free(config->netid);
+      dhcp_netid_free(config->filter);
+      
       if (config->flags & CONFIG_CLID)
         free(config->clid);
+
+      if (config->flags & CONFIG_ADDR6)
+	{
+	  struct addrlist *addr, *tmp;
+	  
+	  for (addr = config->addr6; addr; addr = tmp)
+	    {
+	      tmp = addr->next;
+	      free(addr);
+	    }
+	}
+
       free(config);
     }
 }
@@ -2585,7 +2600,7 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	serv = newlist;
 	while (serv->next)
 	  {
-	    serv->next->flags = serv->flags;
+	    serv->next->flags |= serv->flags & ~(SERV_HAS_DOMAIN | SERV_FOR_NODOTS);
 	    serv->next->addr = serv->addr;
 	    serv->next->source_addr = serv->source_addr;
 	    strcpy(serv->next->interface, serv->interface);
@@ -2605,9 +2620,14 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	struct in6_addr addr6;
  
 	unhide_metas(arg);
-	if (!arg || !(comma=split(arg)) || !(string = split_chr(arg, '/')) || !atoi_check(string, &size))
+	if (!arg)
 	  ret_err(gen_err);
+	
+	comma=split(arg);
 
+	if (!(string = split_chr(arg, '/')) || !atoi_check(string, &size))
+	  ret_err(gen_err);
+	
 	if (inet_pton(AF_INET, arg, &addr4))
 	  {
 	    serv = add_rev4(addr4, size);
@@ -3195,8 +3215,6 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
     case LOPT_BANK:
     case 'G':  /* --dhcp-host */
       {
-	int j, k = 0;
-	char *a[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 	struct dhcp_config *new;
 	struct in_addr in;
 	
@@ -3206,198 +3224,221 @@ static int one_opt(int option, char *arg, char *errstr, char *gen_err, int comma
 	new->flags = (option == LOPT_BANK) ? CONFIG_BANK : 0;
 	new->hwaddr = NULL;
 	new->netid = NULL;
+	new->filter = NULL;
 	new->clid = NULL;
+	new->addr6 = NULL;
 
-	if ((a[0] = arg))
-	  for (k = 1; k < 7; k++)
-	    if (!(a[k] = split(a[k-1])))
-	      break;
-	
-	for (j = 0; j < k; j++)
-	  if (strchr(a[j], ':')) /* ethernet address, netid or binary CLID */
-	    {
-	      char *arg = a[j];
-	      
-	      if ((arg[0] == 'i' || arg[0] == 'I') &&
-		  (arg[1] == 'd' || arg[1] == 'D') &&
-		  arg[2] == ':')
-		{
-		  if (arg[3] == '*')
-		    new->flags |= CONFIG_NOCLID;
-		  else
-		    {
-		      int len;
-		      arg += 3; /* dump id: */
-		      if (strchr(arg, ':'))
-			len = parse_hex(arg, (unsigned char *)arg, -1, NULL, NULL);
-		      else
-			{
-			  unhide_metas(arg);
-			  len = (int) strlen(arg);
-			}
-
-		      if (len == -1)
-			{
-			  dhcp_config_free(new);
-			  ret_err(_("bad hex constant"));
-			}
-		      else if ((new->clid = opt_malloc(len)))
-			{
-			  new->flags |= CONFIG_CLID;
-			  new->clid_len = len;
-			  memcpy(new->clid, arg, len);
-			}
-		    }
-		}
-	      /* dhcp-host has strange backwards-compat needs. */
-	      else if (strstr(arg, "net:") == arg || strstr(arg, "set:") == arg)
-		{
-		  struct dhcp_netid_list *newlist = opt_malloc(sizeof(struct dhcp_netid_list));
-		  newlist->next = new->netid;
-		  new->netid = newlist;
-		  newlist->list = dhcp_netid_create(arg+4, NULL);
-		}
-	      else if (strstr(arg, "tag:") == arg)
-		{
-		  
-		  dhcp_config_free(new);
-		  ret_err(_("cannot match tags in --dhcp-host"));
-		}
-#ifdef HAVE_DHCP6
-	      else if (arg[0] == '[' && arg[strlen(arg)-1] == ']')
-		{
-		  arg[strlen(arg)-1] = 0;
-		  arg++;
-		  
-		  if (!inet_pton(AF_INET6, arg, &new->addr6))
-		    {
-		      dhcp_config_free(new);
-		      ret_err(_("bad IPv6 address"));
-		    }
-
-		  for (i= 0; i < 8; i++)
-		    if (new->addr6.s6_addr[i] != 0)
-		      break;
-
-		  /* set WILDCARD if network part all zeros */
-		  if (i == 8)
-		    new->flags |= CONFIG_WILDCARD;
-		  
-		  new->flags |= CONFIG_ADDR6;
-		}
-#endif
-	      else
-		{
-		  struct hwaddr_config *newhw = opt_malloc(sizeof(struct hwaddr_config));
-		  if ((newhw->hwaddr_len = parse_hex(a[j], newhw->hwaddr, DHCP_CHADDR_MAX, 
-						     &newhw->wildcard_mask, &newhw->hwaddr_type)) == -1)
-		    {
-		      free(newhw);
-		      dhcp_config_free(new);
-		      ret_err(_("bad hex constant"));
-		    }
-		  else
-		    {
-		      newhw->next = new->hwaddr;
-		      new->hwaddr = newhw;
-		    }		    
-		}
-	    }
-	  else if (strchr(a[j], '.') && (inet_pton(AF_INET, a[j], &in) > 0))
-	    {
-	      struct dhcp_config *configs;
-	      
-	      new->addr = in;
-	      new->flags |= CONFIG_ADDR;
-
-	      /* If the same IP appears in more than one host config, then DISCOVER
-		 for one of the hosts will get the address, but REQUEST will be NAKed,
-		 since the address is reserved by the other one -> protocol loop. */
-	      for (configs = daemon->dhcp_conf; configs; configs = configs->next) 
-		if ((configs->flags & CONFIG_ADDR) && configs->addr.s_addr == in.s_addr)
+	while (arg)
+	  {
+	    comma = split(arg);
+	    if (strchr(arg, ':')) /* ethernet address, netid or binary CLID */
+	      {
+		if ((arg[0] == 'i' || arg[0] == 'I') &&
+		    (arg[1] == 'd' || arg[1] == 'D') &&
+		    arg[2] == ':')
 		  {
-		    sprintf(errstr, _("duplicate dhcp-host IP address %s"),  inet_ntoa(in));
-		    return 0;
-		  }	      
-	    }
-	  else
-	    {
-	      char *cp, *lastp = NULL, last = 0;
-	      int fac = 1, isdig = 0;
-	      
-	      if (strlen(a[j]) > 1)
-		{
-		  lastp = a[j] + strlen(a[j]) - 1;
-		  last = *lastp;
-		  switch (last)
-		    {
-		    case 'w':
-		    case 'W':
-		      fac *= 7;
-		      /* fall through */
-		    case 'd':
-		    case 'D':
-		      fac *= 24;
-		      /* fall through */
-		    case 'h':
-		    case 'H':
-		      fac *= 60;
-		      /* fall through */
-		    case 'm':
-		    case 'M':
-		      fac *= 60;
-		      /* fall through */
-		    case 's':
-		    case 'S':
-		      *lastp = 0;
-		    }
-		}
-	      
-	      for (cp = a[j]; *cp; cp++)
-		if (isdigit((unsigned char)*cp))
-		  isdig = 1;
-		else if (*cp != ' ')
-		  break;
+		    if (arg[3] == '*')
+		      new->flags |= CONFIG_NOCLID;
+		    else
+		      {
+			int len;
+			arg += 3; /* dump id: */
+			if (strchr(arg, ':'))
+			  len = parse_hex(arg, (unsigned char *)arg, -1, NULL, NULL);
+			else
+			  {
+			    unhide_metas(arg);
+			    len = (int) strlen(arg);
+			  }
+			
+			if (len == -1)
+			  {
+			    dhcp_config_free(new);
+			    ret_err(_("bad hex constant"));
+			  }
+			else if ((new->clid = opt_malloc(len)))
+			  {
+			    new->flags |= CONFIG_CLID;
+			    new->clid_len = len;
+			    memcpy(new->clid, arg, len);
+			  }
+		      }
+		  }
+		/* dhcp-host has strange backwards-compat needs. */
+		else if (strstr(arg, "net:") == arg || strstr(arg, "set:") == arg)
+		  {
+		    struct dhcp_netid_list *newlist = opt_malloc(sizeof(struct dhcp_netid_list));
+		    newlist->next = new->netid;
+		    new->netid = newlist;
+		    newlist->list = dhcp_netid_create(arg+4, NULL);
+		  }
+		else if (strstr(arg, "tag:") == arg)
+		  new->filter = dhcp_netid_create(arg+4, new->filter);
+		  
+#ifdef HAVE_DHCP6
+		else if (arg[0] == '[' && arg[strlen(arg)-1] == ']')
+		  {
+		    char *pref;
+		    struct in6_addr in6;
+		    struct addrlist *new_addr;
+		    
+		    arg[strlen(arg)-1] = 0;
+		    arg++;
+		    pref = split_chr(arg, '/');
+		    
+		    if (!inet_pton(AF_INET6, arg, &in6))
+		      {
+			dhcp_config_free(new);
+			ret_err(_("bad IPv6 address"));
+		      }
 
-	      if (*cp)
-		{
-		  if (lastp)
-		    *lastp = last;
-		  if (strcmp(a[j], "infinite") == 0)
+		    new_addr = opt_malloc(sizeof(struct addrlist));
+		    new_addr->next = new->addr6;
+		    new_addr->flags = 0;
+		    new_addr->addr.addr6 = in6;
+		    new->addr6 = new_addr;
+		    
+		    if (pref)
+		      {
+			u64 addrpart = addr6part(&in6);
+			
+			if (!atoi_check(pref, &new_addr->prefixlen) ||
+			    new_addr->prefixlen > 128 ||
+			    (((1<<(128-new_addr->prefixlen))-1) & addrpart) != 0)
+			  {
+			    dhcp_config_free(new);
+			    ret_err(_("bad IPv6 prefix"));
+			  }
+			
+			new_addr->flags |= ADDRLIST_PREFIX;
+		      }
+		  
+		    for (i= 0; i < 8; i++)
+		      if (in6.s6_addr[i] != 0)
+			break;
+		    
+		    /* set WILDCARD if network part all zeros */
+		    if (i == 8)
+		      new_addr->flags |= ADDRLIST_WILDCARD;
+		    
+		    new->flags |= CONFIG_ADDR6;
+		  }
+#endif
+		else
+		  {
+		    struct hwaddr_config *newhw = opt_malloc(sizeof(struct hwaddr_config));
+		    if ((newhw->hwaddr_len = parse_hex(arg, newhw->hwaddr, DHCP_CHADDR_MAX, 
+						       &newhw->wildcard_mask, &newhw->hwaddr_type)) == -1)
+		      {
+			free(newhw);
+			dhcp_config_free(new);
+			ret_err(_("bad hex constant"));
+		      }
+		    else
+		      {
+			newhw->next = new->hwaddr;
+			new->hwaddr = newhw;
+		      }		    
+		  }
+	      }
+	    else if (strchr(arg, '.') && (inet_pton(AF_INET, arg, &in) > 0))
+	      {
+		struct dhcp_config *configs;
+		
+		new->addr = in;
+		new->flags |= CONFIG_ADDR;
+		
+		/* If the same IP appears in more than one host config, then DISCOVER
+		   for one of the hosts will get the address, but REQUEST will be NAKed,
+		   since the address is reserved by the other one -> protocol loop. */
+		for (configs = daemon->dhcp_conf; configs; configs = configs->next) 
+		  if ((configs->flags & CONFIG_ADDR) && configs->addr.s_addr == in.s_addr)
 		    {
-		      new->lease_time = 0xffffffff;
-		      new->flags |= CONFIG_TIME;
-		    }
-		  else if (strcmp(a[j], "ignore") == 0)
-		    new->flags |= CONFIG_DISABLE;
-		  else
-		    {
-		      if (!(new->hostname = canonicalise_opt(a[j])) ||
-			  !legal_hostname(new->hostname))
-			{
-			  dhcp_config_free(new);
-			  ret_err(_("bad DHCP host name"));
-			}
-		     
-		      new->flags |= CONFIG_NAME;
-		      new->domain = strip_hostname(new->hostname);			
-		    }
-		}
-	      else if (isdig)
-		{
-		  new->lease_time = atoi(a[j]) * fac; 
-		  /* Leases of a minute or less confuse
-		     some clients, notably Apple's */
-		  if (new->lease_time < 120)
-		    new->lease_time = 120;
-		  new->flags |= CONFIG_TIME;
-		}
-	    }
-	
+		      sprintf(errstr, _("duplicate dhcp-host IP address %s"),  inet_ntoa(in));
+		      return 0;
+		    }	      
+	      }
+	    else
+	      {
+		char *cp, *lastp = NULL, last = 0;
+		int fac = 1, isdig = 0;
+		
+		if (strlen(arg) > 1)
+		  {
+		    lastp = arg + strlen(arg) - 1;
+		    last = *lastp;
+		    switch (last)
+		      {
+		      case 'w':
+		      case 'W':
+			fac *= 7;
+			/* fall through */
+		      case 'd':
+		      case 'D':
+			fac *= 24;
+			/* fall through */
+		      case 'h':
+		      case 'H':
+			fac *= 60;
+			/* fall through */
+		      case 'm':
+		      case 'M':
+			fac *= 60;
+			/* fall through */
+		      case 's':
+		      case 'S':
+			*lastp = 0;
+		      }
+		  }
+		
+		for (cp = arg; *cp; cp++)
+		  if (isdigit((unsigned char)*cp))
+		    isdig = 1;
+		  else if (*cp != ' ')
+		    break;
+
+		if (*cp)
+		  {
+		    if (lastp)
+		      *lastp = last;
+		    if (strcmp(arg, "infinite") == 0)
+		      {
+			new->lease_time = 0xffffffff;
+			new->flags |= CONFIG_TIME;
+		      }
+		    else if (strcmp(arg, "ignore") == 0)
+		      new->flags |= CONFIG_DISABLE;
+		    else
+		      {
+			if (!(new->hostname = canonicalise_opt(arg)) ||
+			    !legal_hostname(new->hostname))
+			  {
+			    dhcp_config_free(new);
+			    ret_err(_("bad DHCP host name"));
+			  }
+			
+			new->flags |= CONFIG_NAME;
+			new->domain = strip_hostname(new->hostname);			
+		      }
+		  }
+		else if (isdig)
+		  {
+		    new->lease_time = atoi(arg) * fac; 
+		    /* Leases of a minute or less confuse
+		       some clients, notably Apple's */
+		    if (new->lease_time < 120)
+		      new->lease_time = 120;
+		    new->flags |= CONFIG_TIME;
+		  }
+	      }
+
+	    arg = comma;
+	  }
+
 	daemon->dhcp_conf = new;
 	break;
       }
-
+      
     case LOPT_TAG_IF:  /* --tag-if */
       {
 	struct tag_if *new = opt_malloc(sizeof(struct tag_if));

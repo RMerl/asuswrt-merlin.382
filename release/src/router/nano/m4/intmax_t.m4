@@ -1,5 +1,5 @@
-# intmax_t.m4 serial 8
-dnl Copyright (C) 1997-2004, 2006-2007, 2009-2019 Free Software Foundation,
+# intmax_t.m4 serial 9
+dnl Copyright (C) 1997-2004, 2006-2007, 2009-2020 Free Software Foundation,
 dnl Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
@@ -19,11 +19,7 @@ AC_DEFUN([gl_AC_TYPE_INTMAX_T],
   AC_REQUIRE([gl_AC_HEADER_INTTYPES_H])
   AC_REQUIRE([gl_AC_HEADER_STDINT_H])
   if test $gl_cv_header_inttypes_h = no && test $gl_cv_header_stdint_h = no; then
-    AC_REQUIRE([AC_TYPE_LONG_LONG_INT])
-    test $ac_cv_type_long_long_int = yes \
-      && ac_type='long long' \
-      || ac_type='long'
-    AC_DEFINE_UNQUOTED([intmax_t], [$ac_type],
+    AC_DEFINE_UNQUOTED([intmax_t], [long long],
      [Define to long or long long if <inttypes.h> and <stdint.h> don't define.])
   else
     AC_DEFINE([HAVE_INTMAX_T], [1],
@@ -57,11 +53,7 @@ AC_DEFUN([gt_AC_TYPE_INTMAX_T],
     AC_DEFINE([HAVE_INTMAX_T], [1],
       [Define if you have the 'intmax_t' type in <stdint.h> or <inttypes.h>.])
   else
-    AC_REQUIRE([AC_TYPE_LONG_LONG_INT])
-    test $ac_cv_type_long_long_int = yes \
-      && ac_type='long long' \
-      || ac_type='long'
-    AC_DEFINE_UNQUOTED([intmax_t], [$ac_type],
+    AC_DEFINE_UNQUOTED([intmax_t], [long long],
      [Define to long or long long if <stdint.h> and <inttypes.h> don't define.])
   fi
 ])

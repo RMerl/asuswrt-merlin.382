@@ -951,7 +951,17 @@ void start_ovpn_server(int serverNum)
 		{
 			if ( nvram_safe_get("lan_domain")[0] != '\0' )
 				fprintf(fp, "push \"dhcp-option DOMAIN %s\"\n", nvram_safe_get("lan_domain"));
-			fprintf(fp, "push \"dhcp-option DNS %s\"\n", nvram_safe_get("lan_ipaddr"));
+
+			strlcpy(buffer, nvram_safe_get("dhcp_dns1_x"), sizeof (buffer));
+			strlcpy(buffer2, nvram_safe_get("dhcp_dns2_x"), sizeof (buffer2));
+
+			if (*buffer)
+				fprintf(fp, "push \"dhcp-option DNS %s\"\n", buffer);
+			if (*buffer2)
+				fprintf(fp, "push \"dhcp-option DNS %s\"\n", buffer2);
+
+			if (nvram_get_int("dhcpd_dns_router") ||  (*buffer == '\0' && *buffer2 == '\0'))
+				fprintf(fp, "push \"dhcp-option DNS %s\"\n", nvram_safe_get("lan_ipaddr"));
 		}
 
 		if ( nvram_pf_get_int(prefix, "client_access") != OVPN_CLT_ACCESS_LAN )
@@ -1340,6 +1350,24 @@ void start_ovpn_server(int serverNum)
 	{
 		ip2class(nvram_safe_get("lan_ipaddr"), nvram_safe_get("lan_netmask"), buffer);
 		fprintf(fp, "iptables -I OVPN -i %s ! -d %s -j ACCEPT\n", iface, buffer);
+
+		if (nvram_pf_get_int(prefix, "pdns")) {
+			strlcpy(buffer, nvram_safe_get("dhcp_dns1_x"), sizeof (buffer));
+			strlcpy(buffer2, nvram_safe_get("dhcp_dns2_x"), sizeof (buffer2));
+			// Open in the firewall in case they are within the LAN
+			if (*buffer) {
+				fprintf(fp, "iptables -I OVPN -i %s -p udp -d %s --dport 53 -j ACCEPT\n", iface, buffer);
+				fprintf(fp, "iptables -I OVPN -i %s -m tcp -p tcp -d %s --dport 53 -j ACCEPT\n", iface, buffer);
+			}
+			if (*buffer2) {
+				fprintf(fp, "iptables -I OVPN -i %s -p udp -d %s --dport 53 -j ACCEPT\n", iface, buffer2);
+				fprintf(fp, "iptables -I OVPN -i %s -m tcp -p tcp -d %s --dport 53 -j ACCEPT\n", iface, buffer2);
+			}
+			if (nvram_get_int("dhcpd_dns_router") ||  (*buffer == '\0' && *buffer2 == '\0')) {
+				fprintf(fp, "iptables -I OVPN -i %s -p udp -d %s --dport 53 -j ACCEPT\n", iface, nvram_safe_get("lan_ipaddr"));
+				fprintf(fp, "iptables -I OVPN -i %s -m tcp -p tcp -d %s --dport 53 -j ACCEPT\n", iface, nvram_safe_get("lan_ipaddr"));
+			}
+		}
 	} else	if (nvram_pf_get_int(prefix, "client_access") == OVPN_CLT_ACCESS_LAN)
 	{
 		ip2class(nvram_safe_get("lan_ipaddr"), nvram_safe_get("lan_netmask"), buffer);

@@ -1108,7 +1108,15 @@ channel_tls_handle_cell(cell_t *cell, or_connection_t *conn)
       /* do nothing */
       break;
     case CELL_VERSIONS:
-      tor_fragile_assert();
+      /* A VERSIONS cell should always be a variable-length cell, and
+       * so should never reach this function (which handles constant-sized
+       * cells). But if the connection is using the (obsolete) v1 link
+       * protocol, all cells will be treated as constant-sized, and so
+       * it's possible we'll reach this code.
+       */
+      log_fn(LOG_PROTOCOL_WARN, LD_CHANNEL,
+             "Received unexpected VERSIONS cell on a channel using link "
+             "protocol %d; ignoring.", conn->link_proto);
       break;
     case CELL_NETINFO:
       ++stats_n_netinfo_cells_processed;
@@ -1637,7 +1645,19 @@ channel_tls_process_padding_negotiate_cell(cell_t *cell, channel_tls_t *chan)
 }
 
 /**
- * Process a 'netinfo' cell.
+ * Helper: compute the absolute value of a time_t.
+ *
+ * (we need this because labs() doesn't always work for time_t, since
+ * long can be shorter than time_t.)
+ */
+static inline time_t
+time_abs(time_t val)
+{
+  return (val < 0) ? -val : val;
+}
+
+/**
+ * Process a 'netinfo' cell
  *
  * This function is called to handle an incoming NETINFO cell; read and act
  * on its contents, and set the connection state to "open".
@@ -1654,7 +1674,7 @@ channel_tls_process_netinfo_cell(cell_t *cell, channel_tls_t *chan)
   time_t now = time(NULL);
   const routerinfo_t *me = router_get_my_routerinfo();
 
-  long apparent_skew = 0;
+  time_t apparent_skew = 0;
   tor_addr_t my_apparent_addr = TOR_ADDR_NULL;
   int started_here = 0;
   const char *identity_digest = NULL;
@@ -1721,7 +1741,11 @@ channel_tls_process_netinfo_cell(cell_t *cell, channel_tls_t *chan)
 
   /* Decode the cell. */
   timestamp = ntohl(get_uint32(cell->payload));
-  if (labs(now - chan->conn->handshake_state->sent_versions_at) < 180) {
+  const time_t sent_versions_at =
+    chan->conn->handshake_state->sent_versions_at;
+  if (now > sent_versions_at && (now - sent_versions_at) < 180) {
+    /* If we have gotten the NETINFO cell reasonably soon after having
+     * sent our VERSIONS cell, maybe we can learn skew information from it. */
     apparent_skew = now - timestamp;
   }
 
@@ -1801,7 +1825,7 @@ channel_tls_process_netinfo_cell(cell_t *cell, channel_tls_t *chan)
   /* Act on apparent skew. */
   /** Warn when we get a netinfo skew with at least this value. */
 #define NETINFO_NOTICE_SKEW 3600
-  if (labs(apparent_skew) > NETINFO_NOTICE_SKEW &&
+  if (time_abs(apparent_skew) > NETINFO_NOTICE_SKEW &&
       (started_here ||
        connection_or_digest_is_known_relay(chan->conn->identity_digest))) {
     int trusted = router_digest_is_trusted_dir(chan->conn->identity_digest);

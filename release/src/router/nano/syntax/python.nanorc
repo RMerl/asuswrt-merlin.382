@@ -3,8 +3,9 @@
 syntax python "\.py$"
 header "^#!.*python"
 magic "Python script"
-linter pyflakes
 comment "#"
+
+linter pyflakes
 
 # Function definitions.
 color brightblue "def [0-9A-Za-z_]+"

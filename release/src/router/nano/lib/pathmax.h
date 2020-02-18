@@ -1,5 +1,5 @@
 /* Define PATH_MAX somehow.  Requires sys/types.h.
-   Copyright (C) 1992, 1999, 2001, 2003, 2005, 2009-2019 Free Software
+   Copyright (C) 1992, 1999, 2001, 2003, 2005, 2009-2020 Free Software
    Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 
 /* POSIX:2008 defines PATH_MAX to be the maximum number of bytes in a filename,
    including the terminating NUL byte.
-   <http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/limits.h.html>
+   <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/limits.h.html>
    PATH_MAX is not defined on systems which have no limit on filename length,
    such as GNU/Hurd.
 

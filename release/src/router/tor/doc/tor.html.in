@@ -891,6 +891,15 @@ Project&#8217;s website.</p></div>
 </p>
 </dd>
 <dt class="hdlist1">
+<a id="opt-list-modules"></a> <strong>--list-modules</strong>
+</dt>
+<dd>
+<p>
+    For each optional module, list whether or not it has been compiled
+    into Tor.  (Any module not listed is not optional in this version of Tor.)
+</p>
+</dd>
+<dt class="hdlist1">
 <a id="opt-version"></a> <strong>--version</strong>
 </dt>
 <dd>
@@ -3689,15 +3698,16 @@ is non-zero):</p></div>
 <p>
     Tells Tor whether to run as an exit relay.  If Tor is running as a
     non-bridge server, and ExitRelay is set to 1, then Tor allows traffic to
-    exit according to the ExitPolicy option (or the default ExitPolicy if
-    none is specified).<br />
+    exit according to the ExitPolicy option, the ReducedExitPolicy option,
+    or the default ExitPolicy (if no other exit policy option is specified).<br />
 <br />
     If ExitRelay is set to 0, no traffic is allowed to
-    exit, and the ExitPolicy option is ignored.<br />
+    exit, and the ExitPolicy and ReducedExitPolicy options are ignored.<br />
 <br />
-    If ExitRelay is set to "auto", then Tor behaves as if it were set to 1, but
-    warns the user if this would cause traffic to exit.  In a future version,
-    the default value will be 0. (Default: auto)
+    If ExitRelay is set to "auto", then Tor checks the ExitPolicy and
+    ReducedExitPolicy options. If either is set, Tor behaves as if ExitRelay
+    were set to 1. If neither exit policy option is set, Tor behaves as if
+    ExitRelay were set to 0. (Default: auto)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -4318,7 +4328,7 @@ reject *:*</code></pre>
 </dt>
 <dd>
 <p>
-    Relays only.
+    Relays and bridges only.
     When this option is enabled, Tor collects statistics for padding cells
     sent and received by this relay, in addition to total cell counts.
     These statistics are rounded, and omitted if traffic is low. This
@@ -6378,7 +6388,7 @@ A short history of bandwidth usage, as produced in the server
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-01-22 13:04:55 UTC
+ 2019-10-11 21:48:21 UTC
 </div>
 </div>
 </body>

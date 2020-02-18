@@ -1,5 +1,5 @@
 /* Work around platform bugs in utime.
-   Copyright (C) 2017-2019 Free Software Foundation, Inc.
+   Copyright (C) 2017-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 int
 _gl_utimens_windows (const char *name, struct timespec ts[2])
 {
-  /* POSIX <http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13>
+  /* POSIX <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13>
      specifies: "More than two leading <slash> characters shall be treated as
      a single <slash> character."  */
   if (ISSLASH (name[0]) && ISSLASH (name[1]) && ISSLASH (name[2]))
@@ -224,7 +224,7 @@ _gl_utimens_windows (const char *name, struct timespec ts[2])
         errno = ENAMETOOLONG;
         break;
 
-      case ERROR_DELETE_PENDING: /* XXX map to EACCESS or EPERM? */
+      case ERROR_DELETE_PENDING: /* XXX map to EACCES or EPERM? */
         errno = EPERM;
         break;
 

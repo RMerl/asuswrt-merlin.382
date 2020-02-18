@@ -1,5 +1,5 @@
 /* Substitute for and wrapper around <fnmatch.h>.
-   Copyright (C) 1991-1993, 1996-1999, 2001-2003, 2005, 2007, 2009-2019 Free
+   Copyright (C) 1991-1993, 1996-1999, 2001-2003, 2005, 2007, 2009-2020 Free
    Software Foundation, Inc.
 
    This file is part of the GNU C Library.
@@ -93,7 +93,7 @@ _GL_FUNCDECL_SYS (fnmatch, int,
 _GL_CXXALIAS_SYS (fnmatch, int,
                   (const char *pattern, const char *name, int flags));
 # endif
-# if !GNULIB_FNMATCH_GNU
+# if !GNULIB_FNMATCH_GNU && __GLIBC__ >= 2
 _GL_CXXALIASWARN (fnmatch);
 # endif
 #elif defined GNULIB_POSIXCHECK

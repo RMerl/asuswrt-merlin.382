@@ -1,6 +1,7 @@
 ## Here is an example for C/C++.
 
 syntax c "\.([ch](pp|xx)?|C|cc|c\+\+|cu|H|hh|ii?)$"
+header "-\*-.*\<C(\+\+)?((;|\s).*)?-\*-"
 magic "^(C|C\+\+) (source|program)"
 comment "//"
 

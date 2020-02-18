@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- Created by GNU Texinfo 6.6, http://www.gnu.org/software/texinfo/ -->
+<!-- Created by GNU Texinfo 6.7, http://www.gnu.org/software/texinfo/ -->
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>nano</title>
@@ -12,7 +12,6 @@
 <meta name="Generator" content="makeinfo">
 <link href="#Top" rel="start" title="Top">
 <link href="#SEC_Contents" rel="contents" title="Table of Contents">
-<link href="dir.html#Top" rel="up" title="(dir)">
 <style type="text/css">
 <!--
 a.summary-letter {text-decoration: none}
@@ -46,7 +45,7 @@ ul.no-bullet {list-style: none}
 
 
 <span id="Top"></span><span id="SEC_Top"></span>
-<p>This manual documents the GNU <code>nano</code> editor, version 4.4.
+<p>This manual documents the GNU <code>nano</code> editor, version 4.8.
 </p>
 <table class="menu" border="0" cellspacing="0">
 <tr><td align="left" valign="top">&bull; <a href="#Introduction" accesskey="1">Introduction</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
@@ -114,6 +113,7 @@ section), and to edit several files in a row.  Additionally, the cursor
 can be put on a specific line of a file by adding the line number
 with a plus sign before the filename, and even in a specific column by
 adding it with a comma.
+(Negative numbers count from the end of the file or line.)
 The cursor can also be put on the first or last occurrence of a specific string
 by specifying that string after <code>+/</code> or <code>+?</code> before the filename.
 The string can be made case sensitive and/or caused to be interpreted as a
@@ -136,6 +136,7 @@ you will rarely need to specify a line number.
 will read data from standard input.  This means you can pipe the output of
 a command straight into a buffer, and then edit it.
 </p>
+
 <hr>
 <span id="Command_002dline-Options"></span><span id="Command_002dline-Options-1"></span><h2 class="chapter">3 Command-line Options</h2>
 
@@ -166,7 +167,10 @@ The uniquely numbered files are stored in the specified directory.
 </dd>
 <dt><samp>-D</samp></dt>
 <dt><samp>--boldtext</samp></dt>
-<dd><p>Use bold text instead of reverse video text.
+<dd><p>For the interface, use bold instead of reverse video.  This will be overridden
+by setting the options <code>titlecolor</code>, <code>statuscolor</code>, <code>keycolor</code>,
+<code>functioncolor</code>, <code>numbercolor</code>, and/or <code>selectedcolor</code> in your
+nanorc file.  See <a href="#set-functioncolor"><code>set functioncolor</code></a> for details.
 </p>
 </dd>
 <dt><samp>-E</samp></dt>
@@ -342,6 +346,12 @@ system either Backspace acts like Delete or Delete acts like Backspace.
 <dd><p>Do not use the line below the title bar, leaving it entirely blank.
 </p>
 </dd>
+<dt><samp>-f <var>file</var></samp></dt>
+<dt><samp>--rcfile=<var>file</var></samp></dt>
+<dd><p>Read only this <var>file</var> for setting nano&rsquo;s options, instead of reading
+both the system-wide and the user&rsquo;s nanorc files.
+</p>
+</dd>
 <dt><samp>-g</samp></dt>
 <dt><samp>--showcursor</samp></dt>
 <dd><p>Make the cursor visible in the file browser (putting it on the
@@ -416,13 +426,14 @@ point to vary along with the width of the screen if the screen is resized.
 The default value is <tt>-8</tt>.
 </p>
 <span id="g_t_002d_002dspeller"></span></dd>
-<dt><samp>-s &quot;<var>program</var> [<var>arg</var> &hellip;]&quot;</samp></dt>
-<dt><samp>--speller=&quot;<var>program</var> [<var>arg</var> &hellip;]&quot;</samp></dt>
+<dt><samp>-s &quot;<var>program</var> [<var>argument</var> &hellip;]&quot;</samp></dt>
+<dt><samp>--speller=&quot;<var>program</var> [<var>argument</var> &hellip;]&quot;</samp></dt>
 <dd><p>Use the given program to do spell checking and correcting.  By default,
 <code>nano</code> uses the command specified in the <code>SPELL</code> environment
 variable.  If <code>SPELL</code> is not set, and <samp>--speller</samp> is
 not specified either, then <code>nano</code> uses its own interactive spell
-corrector, which requires the GNU <code>spell</code> program to be installed.
+corrector, which requires either <code>hunspell</code> or GNU <code>spell</code>
+to be installed.
 </p>
 </dd>
 <dt><samp>-t</samp></dt>
@@ -455,7 +466,7 @@ This is the default.  (This option is the opposite of <samp>-b</samp>
 (<samp>--breaklonglines</samp>) &mdash; the last one given takes effect.)
 </p>
 
-<span id="Expert-Mode"></span></dd>
+</dd>
 <dt><samp>-x</samp></dt>
 <dt><samp>--nohelp</samp></dt>
 <dd><p>Expert Mode: don&rsquo;t show the Shortcut List at the bottom of the screen.
@@ -646,6 +657,7 @@ is running.
 terminal emulator, not on a Linux console (VT), because the latter does
 not by default distinguish modified from unmodified arrow keys.
 </p>
+
 <hr>
 <span id="Built_002din-Help"></span><span id="Built_002din-Help-1"></span><h2 class="chapter">5 Built-in Help</h2>
 
@@ -725,16 +737,20 @@ The following global toggles are available:
 
 <p>The nanorc files contain the default settings for <code>nano</code>.  They
 should be in Unix format, not in DOS or Mac format.  During startup,
-<code>nano</code> will first read the system-wide settings, from /etc/nanorc
-(the exact path might be different), and then the user-specific settings,
+if <samp>--rcfile</samp> is not given, <code>nano</code> will read two files:
+first the system-wide settings, from <samp>/etc/nanorc</samp> (the exact path
+might be different on your system), and then the user-specific settings,
 either from <samp>~/.nanorc</samp> or from <samp>$XDG_CONFIG_HOME/nano/nanorc</samp>
 or from <samp>.config/nano/nanorc</samp>, whichever exists first.
+If <samp>--rcfile</samp> is given, <code>nano</code> will read just the
+specified settings file.
 </p>
 <p>A nanorc file accepts a series of &quot;set&quot; and &quot;unset&quot; commands, which can
 be used to configure <code>nano</code> on startup without using command-line
 options.  Additionally, there are some commands to define syntax highlighting
 and to rebind keys &mdash; see <a href="#Syntax-Highlighting">Syntax Highlighting</a> and <a href="#Rebinding-Keys">Rebinding Keys</a>.
 <code>nano</code> will read one command per line.
+All commands and keywords should be written in lowercase.
 </p>
 <p>Options in nanorc files take precedence over <code>nano</code>&rsquo;s defaults, and
 command-line options override nanorc settings.  Also, options that do not
@@ -795,9 +811,9 @@ The uniquely numbered files are stored in the specified directory.
 </dd>
 <dt><code>set boldtext</code></dt>
 <dd><p>Use bold instead of reverse video for the title bar, status bar, key combos,
-function tags, line numbers, and selected text.  This can be overridden by
+function tags, line numbers, and selected text.  This is overridden by
 setting the options <code>titlecolor</code>, <code>statuscolor</code>, <code>keycolor</code>,
-<code>functioncolor</code>, <code>numbercolor</code>, and <code>selectedcolor</code>.
+<code>functioncolor</code>, <code>numbercolor</code>, and/or <code>selectedcolor</code>.
 </p>
 </dd>
 <dt><code>set brackets &quot;<var>characters</var>&quot;</code></dt>
@@ -917,8 +933,7 @@ cursor, set the mark (with a double click), or execute shortcuts.
 </p>
 </dd>
 <dt><code>set nopauses</code></dt>
-<dd><p>Don&rsquo;t pause between warnings at startup.  This means that only
-the last one will be visible (when there are multiple ones).
+<dd><p>Obsolete option.  Ignored.
 </p>
 </dd>
 <dt><code>set nowrap</code></dt>
@@ -1014,7 +1029,7 @@ When needed, use <code>unset jumpyscrolling</code> instead.
 <dd><p>Enable soft line wrapping for easier viewing of very long lines.
 </p>
 </dd>
-<dt><code>set speller &quot;<var>program</var> [<var>arg</var> &hellip;]&quot;</code></dt>
+<dt><code>set speller &quot;<var>program</var> [<var>argument</var> &hellip;]&quot;</code></dt>
 <dd><p>Use the given program to do spell checking and correcting.
 See <a href="#g_t_002d_002dspeller"><samp>--speller</samp></a> for details.
 </p>
@@ -1153,7 +1168,14 @@ file, to determine whether this syntax should be used for it.
 on the system and will be silently ignored otherwise.)
 </p>
 </dd>
-<dt><code>linter <var>program</var> [<var>arg</var> &hellip;]</code></dt>
+<dt><code>formatter <var>program</var> [<var>argument</var> &hellip;]</code></dt>
+<dd><p>Run the given <var>program</var> on the full contents of the current buffer.
+(The current buffer is written out to a temporary file, the program is
+run on it, and then the temporary file is read back in, replacing the
+contents of the buffer.)
+</p>
+</dd>
+<dt><code>linter <var>program</var> [<var>argument</var> &hellip;]</code></dt>
 <dd><p>Use the given <var>program</var> to do a syntax check on the current buffer.
 </p>
 </dd>
@@ -1169,6 +1191,12 @@ functions are disabled; for example, <tt>&quot;&quot;</tt> for JSON.
 The default value is <tt>&quot;#&quot;</tt>.
 </p>
 </dd>
+<dt><code>tabgives &quot;<var>string</var>&quot;</code></dt>
+<dd><p>Make the &lt;Tab&gt; key produce the given <var>string</var>.  Useful for languages like
+Python that want to see only spaces for indentation.
+This overrides the setting of the <code>tabstospaces</code> option.
+</p>
+</dd>
 <dt><code>color <var>fgcolor</var>,<var>bgcolor</var> &quot;<var>regex</var>&quot; &hellip;</code></dt>
 <dd><p>Paint all pieces of text that match the extended regular expression &quot;regex&quot;
 with the given foreground and background colors, at least one of which must
@@ -1180,6 +1208,9 @@ You may use the prefix <code>bright</code> for the foreground color to get a
 stronger highlight.
 If your terminal supports transparency, not specifying a &quot;bgcolor&quot;
 tells <code>nano</code> to attempt to use a transparent background.
+</p>
+<p>All coloring commands are applied in the order in which they are specified,
+which means that later commands can recolor stuff that was colored earlier.
 </p>
 </dd>
 <dt><code>icolor <var>fgcolor</var>,<var>bgcolor</var> &quot;<var>regex</var>&quot; &hellip;</code></dt>
@@ -1205,32 +1236,17 @@ This allows syntax highlighting to span multiple lines.
 to <code>icolor</code>.
 </p>
 </dd>
-<dt><code>extendsyntax <var>name</var> <var>command</var> [<var>arg</var> &hellip;]</code></dt>
+<dt><code>extendsyntax <var>name</var> <var>command</var> <var>argument</var> &hellip;</code></dt>
 <dd><p>Extend the syntax previously defined as &quot;<var>name</var>&quot; with another <var>command</var>.
 This allows you to add a new <code>color</code>, <code>icolor</code>, <code>header</code>,
-<code>magic</code>, <code>comment</code>, or <code>linter</code> command to an already
+<code>magic</code>, <code>formatter</code>, <code>linter</code>, <code>comment</code>,
+or <code>tabgives</code> command to an already
 defined syntax &mdash; useful when you want to slightly improve a syntax defined
 in one of the system-installed files (which normally are not writable).
 </p>
 </dd>
 </dl>
 
-<p>Note: the <code>formatter</code> command has been removed.  It was superseded by
-a more general mechanism: the filtering of buffer or marked text through
-an external command.  Such filtering is done by typing <code>^R^X</code> and then
-preceding your formatter command with the pipe symbol (<code>|</code>).  It has
-the added advantage that the operation can be undone.
-</p>
-<p>If you use such a formatting command regularly, you could assign the relevant
-series of keystrokes to a single key in your nanorc:
-</p>
-<div class="example">
-<pre class="example">   bind  M-F  &quot;^R^X|yourformatcommand^M&quot;  main
-</pre></div>
-
-<p>(Note that the <tt class="key">^R</tt>, <tt class="key">^X</tt>, and <tt class="key">^M</tt> are each a single, literal
-control character.  You can enter them by preceding each with <tt class="key">M-V</tt>.)
-</p>
 <hr>
 <span id="Rebinding-Keys"></span><span id="Rebinding-Keys-1"></span><h3 class="section">7.3 Rebinding Keys</h3>
 
@@ -1240,7 +1256,7 @@ nanorc file:
 <dl compact="compact">
 <dt><code>bind key function menu</code></dt>
 <dd><p>Rebinds <code>key</code> to <code>function</code> in the context of <code>menu</code>
-(or in all menus where the function exists by using <code>all</code>).
+(or in all menus where the function exists when <code>all</code> is used).
 </p>
 </dd>
 <dt><code>bind key &quot;string&quot; menu</code></dt>
@@ -1253,7 +1269,7 @@ with <kbd>M-V</kbd>.)
 </dd>
 <dt><code>unbind key menu</code></dt>
 <dd><p>Unbinds <code>key</code> from <code>menu</code>
-(or from all menus where it exists by using <code>all</code>).
+(or from all menus where the key exists when <code>all</code> is used).
 </p>
 </dd>
 </dl>
@@ -1262,19 +1278,32 @@ with <kbd>M-V</kbd>.)
 <p>The format of <code>key</code> should be one of:
 </p>
 <ul class="no-bullet">
-<li><!-- /@w --> <code>^</code>&nbsp; followed by a Latin letter, by one of several ASCII characters
-(@, ], \, ^, or _), or by the word &quot;Space&quot;.
+<li><!-- /@w --> <code>^<var>X</var></code> &mdash;&mdash; where <var>X</var> is a Latin letter, or one of several
+ASCII characters (@, ], \, ^, _), or the word &quot;Space&quot;.
 Example: <code>^C</code>.
 
-</li><li><!-- /@w --> <code>M-</code>&nbsp; followed by any ASCII character except [, or by the word &quot;Space&quot;.
-Example: <code>M-C</code>.
+</li><li><!-- /@w --> <code>M-<var>X</var></code> &mdash;&mdash; where <var>X</var> is any ASCII character except [,
+or the word &quot;Space&quot;.
+Example: <code>M-8</code>.
 
-</li><li><!-- /@w --> <code>F</code>&nbsp; followed by a numeric value from 1 to 16.
+</li><li><!-- /@w --> <code>Sh-M-<var>X</var></code> &mdash;&mdash; where <var>X</var> is a Latin letter.
+Example: <code>Sh-M-U</code>.
+By default, each Meta+letter keystroke does the same as the corresponding
+Shift+Meta+letter.  But when any Shift+Meta bind is made, that will
+no longer be the case, for all letters.
+
+</li><li><!-- /@w --> <code>F<var>n</var></code> &mdash;&mdash; where <var>n</var> is a numeric value from 1 to 24.
 Example: <code>F10</code>.
+(Often, <code>F13</code> to <code>F24</code> can be typed as <code>F1</code> to <code>F12</code>
+with Shift.)
 
-</li><li><!-- /@w --> the word &quot;Ins&quot; or the word &quot;Del&quot;.
+</li><li><!-- /@w --> <code>Ins</code> or <code>Del</code>.
 </li></ul>
 
+<p>Rebinding <code>^M</code> (Enter) or <code>^I</code> (Tab) is probably not a good idea.
+On some terminals it&rsquo;s not possible to rebind <code>^H</code> (unless <code>--raw</code>
+is used) because its keycode is identical to that of the Backspace key.
+</p>
 <br>
 <p>Valid names for the <code>function</code> to be bound are:
 </p>
@@ -1374,8 +1403,13 @@ Or, when it is set, unsets the mark.
 </p>
 </dd>
 <dt><code>speller</code></dt>
-<dd><p>Invokes a spell-checking program, either the default one, or the one
-defined by <samp>--speller</samp> or <code>set speller</code>.
+<dd><p>Invokes a spell-checking program, either the default <code>hunspell</code>
+or GNU <code>spell</code>, or the one defined by <samp>--speller</samp> or
+<code>set speller</code>.
+</p>
+</dd>
+<dt><code>formatter</code></dt>
+<dd><p>Invokes a full-buffer-processing program (if the active syntax defines one).
 </p>
 </dd>
 <dt><code>linter</code></dt>
@@ -1743,7 +1777,7 @@ position to the end of the line.
 </p>
 </dd>
 <dt><code>spell</code></dt>
-<dd><p>The interactive spell checker Yes/no menu.
+<dd><p>The menu of the integrated spell checker where the user can edit a misspelled word.
 </p>
 </dd>
 <dt><code>linter</code></dt>
@@ -1810,7 +1844,7 @@ whereas Pico does it at screen width minus six columns. You can make
 <dd><p>By default, <code>nano</code> will scroll just one line (instead of half
 a screen) when the cursor is moved to a line that is just out of view.
 And when paging up or down, <code>nano</code> keeps the cursor in the same
-screen position as much as possible, instead always placing it on the
+screen position as much as possible, instead of always placing it on the
 first line of the viewport.  The Pico-like behavior can be obtained
 with the <samp>--jumpyscrolling</samp> option.
 </p>

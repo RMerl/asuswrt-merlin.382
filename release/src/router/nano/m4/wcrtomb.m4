@@ -1,5 +1,5 @@
-# wcrtomb.m4 serial 14
-dnl Copyright (C) 2008-2019 Free Software Foundation, Inc.
+# wcrtomb.m4 serial 16
+dnl Copyright (C) 2008-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -31,9 +31,11 @@ AC_DEFUN([gl_FUNC_WCRTOMB],
       REPLACE_WCRTOMB=1
     fi
   else
-    if test $REPLACE_MBSTATE_T = 1; then
-      REPLACE_WCRTOMB=1
-    fi
+    dnl We don't actually need to override wcrtomb when redefining the semantics
+    dnl of the mbstate_t type. Tested on 32-bit AIX.
+    dnl if test $REPLACE_MBSTATE_T = 1; then
+    dnl   REPLACE_WCRTOMB=1
+    dnl fi
     if test $REPLACE_WCRTOMB = 0; then
       dnl On Android 4.3, wcrtomb produces wrong characters in the C locale.
       dnl On AIX 4.3, OSF/1 5.1 and Solaris <= 11.3, wcrtomb (NULL, 0, NULL)
@@ -79,7 +81,9 @@ int main ()
         ])
       case "$gl_cv_func_wcrtomb_works" in
         *yes) ;;
-        *) REPLACE_WCRTOMB=1 ;;
+        *) AC_DEFINE([WCRTOMB_C_LOCALE_BUG], [1],
+             [Define if the wcrtomb function does not work in the C locale.])
+           REPLACE_WCRTOMB=1 ;;
       esac
     fi
     if test $REPLACE_WCRTOMB = 0; then
@@ -90,12 +94,10 @@ int main ()
           dnl is present.
 changequote(,)dnl
           case "$host_os" in
-                                     # Guess no on AIX 4, OSF/1 and Solaris.
-            aix4* | osf* | solaris*) gl_cv_func_wcrtomb_retval="guessing no" ;;
-                                     # Guess yes on native Windows.
-            mingw*)                  gl_cv_func_wcrtomb_retval="guessing yes" ;;
-                                     # Guess yes otherwise.
-            *)                       gl_cv_func_wcrtomb_retval="guessing yes" ;;
+            # Guess no on AIX 4, OSF/1, Solaris, native Windows.
+            aix4* | osf* | solaris* | mingw*) gl_cv_func_wcrtomb_retval="guessing no" ;;
+            # Guess yes otherwise.
+            *)                                gl_cv_func_wcrtomb_retval="guessing yes" ;;
           esac
 changequote([,])dnl
           if test $LOCALE_FR != none || test $LOCALE_FR_UTF8 != none || test $LOCALE_JA != none || test $LOCALE_ZH_CN != none; then
@@ -111,6 +113,7 @@ changequote([,])dnl
 #include <stdio.h>
 #include <time.h>
 #include <wchar.h>
+#include <stdlib.h>
 int main ()
 {
   int result = 0;
@@ -123,6 +126,12 @@ int main ()
     {
       if (wcrtomb (NULL, 0, NULL) != 1)
         result |= 2;
+      {
+        wchar_t wc = (wchar_t) 0xBADFACE;
+        if (mbtowc (&wc, "\303\274", 2) == 2)
+          if (wcrtomb (NULL, wc, NULL) != 1)
+            result |= 2;
+      }
     }
   if (setlocale (LC_ALL, "$LOCALE_JA") != NULL)
     {
@@ -143,7 +152,9 @@ int main ()
         ])
       case "$gl_cv_func_wcrtomb_retval" in
         *yes) ;;
-        *) REPLACE_WCRTOMB=1 ;;
+        *) AC_DEFINE([WCRTOMB_RETVAL_BUG], [1],
+             [Define if the wcrtomb function has an incorrect return value.])
+           REPLACE_WCRTOMB=1 ;;
       esac
     fi
   fi

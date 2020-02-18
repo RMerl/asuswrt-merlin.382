@@ -1,10 +1,11 @@
 ## Here is an example for Bourne shell scripts.
 
-syntax sh "(\.sh|\.(a|ba|c|da|k|mk|pdk|tc|z)(sh|shrc|sh_profile)|/(etc/|\.)profile)$"
+syntax sh "(\.sh|(\.|/)(a|ba|c|da|k|mk|pdk|tc|z)sh(rc|_profile)?|/(etc/|\.)profile)$"
 header "^#!.*/(((a|ba|c|da|k|mk|pdk|tc|z)?sh)|(busybox|env) +sh|openrc-run|runscript)"
 magic "(POSIX|Bourne-Again) shell script.*text"
-linter dash -n
 comment "#"
+
+linter dash -n
 
 # Function declarations.
 color brightgreen "^[A-Za-z0-9_-]+\(\)"

@@ -1,6 +1,6 @@
 /* A GNU-like <string.h>.
 
-   Copyright (C) 1995-1996, 2001-2019 Free Software Foundation, Inc.
+   Copyright (C) 1995-1996, 2001-2020 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -149,7 +149,7 @@ _GL_CXXALIAS_SYS_CAST2 (memchr,
 _GL_CXXALIASWARN1 (memchr, void *, (void *__s, int __c, size_t __n));
 _GL_CXXALIASWARN1 (memchr, void const *,
                    (void const *__s, int __c, size_t __n));
-# else
+# elif __GLIBC__ >= 2
 _GL_CXXALIASWARN (memchr);
 # endif
 #elif defined GNULIB_POSIXCHECK
@@ -417,7 +417,9 @@ _GL_CXXALIAS_RPL (strncat, char *, (char *dest, const char *src, size_t n));
 # else
 _GL_CXXALIAS_SYS (strncat, char *, (char *dest, const char *src, size_t n));
 # endif
+# if __GLIBC__ >= 2
 _GL_CXXALIASWARN (strncat);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef strncat
 # if HAVE_RAW_DECL_STRNCAT
@@ -512,7 +514,7 @@ _GL_CXXALIAS_SYS_CAST2 (strpbrk,
 _GL_CXXALIASWARN1 (strpbrk, char *, (char *__s, char const *__accept));
 _GL_CXXALIASWARN1 (strpbrk, char const *,
                    (char const *__s, char const *__accept));
-# else
+# elif __GLIBC__ >= 2
 _GL_CXXALIASWARN (strpbrk);
 # endif
 # if defined GNULIB_POSIXCHECK
@@ -614,7 +616,7 @@ _GL_CXXALIAS_SYS_CAST2 (strstr,
 _GL_CXXALIASWARN1 (strstr, char *, (char *haystack, const char *needle));
 _GL_CXXALIASWARN1 (strstr, const char *,
                    (const char *haystack, const char *needle));
-# else
+# elif __GLIBC__ >= 2
 _GL_CXXALIASWARN (strstr);
 # endif
 #elif defined GNULIB_POSIXCHECK
@@ -693,7 +695,7 @@ _GL_WARN_ON_USE (strcasestr, "strcasestr does work correctly on character "
    This is a variant of strtok() that is multithread-safe.
 
    For the POSIX documentation for this function, see:
-   http://www.opengroup.org/susv3xsh/strtok.html
+   https://pubs.opengroup.org/onlinepubs/9699919799/functions/strtok.html
 
    Caveat: It modifies the original string.
    Caveat: These functions cannot be used on constant strings.
@@ -980,7 +982,9 @@ _GL_CXXALIAS_RPL (strerror, char *, (int));
 # else
 _GL_CXXALIAS_SYS (strerror, char *, (int));
 # endif
+# if __GLIBC__ >= 2
 _GL_CXXALIASWARN (strerror);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef strerror
 /* Assume strerror is always declared.  */

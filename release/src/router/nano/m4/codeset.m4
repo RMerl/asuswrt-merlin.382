@@ -1,5 +1,5 @@
 # codeset.m4 serial 5 (gettext-0.18.2)
-dnl Copyright (C) 2000-2002, 2006, 2008-2014, 2016, 2019 Free Software
+dnl Copyright (C) 2000-2002, 2006, 2008-2014, 2016, 2019-2020 Free Software
 dnl Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,

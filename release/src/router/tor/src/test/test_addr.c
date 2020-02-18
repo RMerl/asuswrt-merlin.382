@@ -1189,6 +1189,23 @@ test_addr_make_null(void *data)
   tor_free(zeros);
 }
 
+#define TEST_ADDR_INTERNAL(a, for_listening, rv) STMT_BEGIN \
+    tor_addr_t t; \
+    tt_int_op(tor_inet_pton(AF_INET, a, &t.addr.in_addr), OP_EQ, 1); \
+    t.family = AF_INET; \
+    tt_int_op(tor_addr_is_internal(&t, for_listening), OP_EQ, rv); \
+  STMT_END;
+
+static void
+test_addr_rfc6598(void *arg)
+{
+  (void)arg;
+  TEST_ADDR_INTERNAL("100.64.0.1", 0, 1);
+  TEST_ADDR_INTERNAL("100.64.0.1", 1, 0);
+ done:
+  ;
+}
+
 #define ADDR_LEGACY(name)                                               \
   { #name, test_addr_ ## name , 0, NULL, NULL }
 
@@ -1203,5 +1220,6 @@ struct testcase_t addr_tests[] = {
   { "sockaddr_to_str", test_addr_sockaddr_to_str, 0, NULL, NULL },
   { "is_loopback", test_addr_is_loopback, 0, NULL, NULL },
   { "make_null", test_addr_make_null, 0, NULL, NULL },
+  { "rfc6598", test_addr_rfc6598, 0, NULL, NULL },
   END_OF_TESTCASES
 };

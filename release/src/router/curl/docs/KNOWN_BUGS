@@ -30,6 +30,7 @@ problems may have been fixed or changed somewhat since this was written!
  2.6 CURL_GLOBAL_SSL
  2.7 Client cert (MTLS) issues with Schannel
  2.8 Schannel disable CURLOPT_SSL_VERIFYPEER and verify hostname
+ 2.9 TLS session cache doesn't work with TFO
 
  3. Email protocols
  3.1 IMAP SEARCH ALL truncated response
@@ -102,6 +103,7 @@ problems may have been fixed or changed somewhat since this was written!
  12. LDAP and OpenLDAP
  12.1 OpenLDAP hangs after returning results
  12.2 LDAP on Windows does authentication wrong?
+ 12.3 LDAP on Windows doesn't work
 
  13. TCP/IP
  13.1 --interface for ipv6 binds to unusable IP address
@@ -255,6 +257,10 @@ problems may have been fixed or changed somewhat since this was written!
 
  https://github.com/curl/curl/issues/3284
 
+2.9 TLS session cache doesn't work with TFO
+
+ See https://github.com/curl/curl/issues/4301
+
 3. Email protocols
 
 3.1 IMAP SEARCH ALL truncated response
@@ -339,7 +345,7 @@ problems may have been fixed or changed somewhat since this was written!
 
 5.1 USE_UNIX_SOCKETS on Windows
 
- Due to incorrect CMake checks for the presense of the feature, it will never
+ Due to incorrect CMake checks for the presence of the feature, it will never
  be enabled for windows in a cmake build.
 
  See https://github.com/curl/curl/issues/4040
@@ -674,7 +680,8 @@ problems may have been fixed or changed somewhat since this was written!
  CURLINFO_LOCAL_PORT (and possibly a few other) fails when TCP Fast Open is
  enabled.
 
- See https://github.com/curl/curl/issues/1332
+ See https://github.com/curl/curl/issues/1332 and
+ https://github.com/curl/curl/issues/4296
 
 11.6 slow connect to localhost on Windows
 
@@ -727,6 +734,13 @@ problems may have been fixed or changed somewhat since this was written!
 12.2 LDAP on Windows does authentication wrong?
 
  https://github.com/curl/curl/issues/3116
+
+12.3 LDAP on Windows doesn't work
+
+ A simple curl command line getting "ldap://ldap.forumsys.com" returns an
+ error that says "no memory" !
+
+ https://github.com/curl/curl/issues/4261
 
 13. TCP/IP
 

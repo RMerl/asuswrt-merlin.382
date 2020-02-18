@@ -137,6 +137,11 @@ periodic_event_destroy(periodic_event_item_t *event)
 {
   if (!event)
     return;
+
+  /* First disable the event so we first cancel the event and set its enabled
+   * flag properly. */
+  periodic_event_disable(event);
+
   mainloop_event_free(event->ev);
   event->last_action_time = 0;
 }

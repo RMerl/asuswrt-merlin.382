@@ -150,7 +150,7 @@ my $SMBSPORT;            # SMBS server port
 my $NEGTELNETPORT;       # TELNET server port with negotiation
 
 my $srcdir = $ENV{'srcdir'} || '.';
-my $CURL="../src/curl".exe_ext(); # what curl executable to run on the tests
+my $CURL="../src/curl".exe_ext('TOOL'); # what curl executable to run on the tests
 my $VCURL=$CURL;   # what curl binary to use to verify the servers with
                    # VCURL is handy to set to the system one when the one you
                    # just built hangs or crashes and thus prevent verification
@@ -186,6 +186,7 @@ my $server_response_maxtime=13;
 my $debug_build=0;          # built debug enabled (--enable-debug)
 my $has_memory_tracking=0;  # built with memory tracking (--enable-curldebug)
 my $libtool;
+my $repeat = 0;
 
 # name of the file that the memory debugging creates:
 my $memdump="$LOGDIR/memdump";
@@ -205,6 +206,9 @@ my $valgrind_logfile="--logfile";
 my $valgrind_tool;
 my $gdb = checktestcmd("gdb");
 my $httptlssrv = find_httptlssrv();
+
+my $uname_release = `uname -r`;
+my $is_wsl = $uname_release =~ /Microsoft$/;
 
 my $has_ssl;        # set if libcurl is built with SSL support
 my $has_largefile;  # set if libcurl is built with large file support
@@ -318,13 +322,20 @@ my %runcert;      # cert file currently in use by an ssl running server
 my $torture;
 my $tortnum;
 my $tortalloc;
+my $shallow;
+my $shallowseed;
 
 #######################################################################
 # logmsg is our general message logging subroutine.
 #
 sub logmsg {
     for(@_) {
-        print "$_";
+        my $line = $_;
+        if ($is_wsl) {
+            # use \r\n for WSL shell
+            $line =~ s/\r?\n$/\r\n/g;
+        }
+        print "$line";
     }
 }
 
@@ -590,13 +601,34 @@ sub torture {
         return 0;
     }
 
-    logmsg " $count functions to make fail\n";
+    my @ttests = (1 .. $count);
+    if($shallow && ($shallow < $count)) {
+        my $discard = scalar(@ttests) - $shallow;
+        my $percent = sprintf("%.2f%%", $shallow * 100 / scalar(@ttests));;
+        logmsg " $count functions found, but only fail $shallow ($percent)\n";
+        while($discard) {
+            my $rm;
+            do {
+                # find a test to discard
+                $rm = rand(scalar(@ttests));
+            } while(!$ttests[$rm]);
+            $ttests[$rm] = undef;
+            $discard--;
+        }
+    }
+    else {
+        logmsg " $count functions to make fail\n";
+    }
 
-    for ( 1 .. $count ) {
+    for (@ttests) {
         my $limit = $_;
         my $fail;
         my $dumped_core;
 
+        if(!defined($limit)) {
+            # --shallow can undefine them
+            next;
+        }
         if($tortalloc && ($tortalloc != $limit)) {
             next;
         }
@@ -2907,7 +2939,8 @@ sub checksystem {
         # client has IPv6 support
 
         # check if the HTTP server has it!
-        my @sws = `server/sws --version`;
+        my $cmd = "server/sws".exe_ext('SRV')." --version";
+        my @sws = `$cmd`;
         if($sws[0] =~ /IPv6/) {
             # HTTP server has IPv6 support!
             $http_ipv6 = 1;
@@ -2915,7 +2948,8 @@ sub checksystem {
         }
 
         # check if the FTP server has it!
-        @sws = `server/sockfilt --version`;
+        $cmd = "server/sockfilt".exe_ext('SRV')." --version";
+        @sws = `$cmd`;
         if($sws[0] =~ /IPv6/) {
             # FTP server has IPv6 support!
             $ftp_ipv6 = 1;
@@ -2924,7 +2958,8 @@ sub checksystem {
 
     if($has_unix) {
         # client has Unix sockets support, check whether the HTTP server has it
-        my @sws = `server/sws --version`;
+        my $cmd = "server/sws".exe_ext('SRV')." --version";
+        my @sws = `$cmd`;
         $http_unix = 1 if($sws[0] =~ /unix/);
     }
 
@@ -3334,7 +3369,7 @@ sub singletest {
                 }
                 else {
                     if($var =~ /^LD_PRELOAD/) {
-                        if(exe_ext() && (exe_ext() eq '.exe')) {
+                        if(exe_ext('TOOL') && (exe_ext('TOOL') eq '.exe')) {
                             # print "Skipping LD_PRELOAD due to lack of OS support\n";
                             next;
                         }
@@ -3481,6 +3516,7 @@ sub singletest {
     if(@codepieces) {
         $tool = $codepieces[0];
         chomp $tool;
+        $tool .= exe_ext('TOOL');
     }
 
     # remove server output logfile
@@ -5010,6 +5046,18 @@ while(@ARGV) {
             $tortalloc = $1;
         }
     }
+    elsif($ARGV[0] =~ /--shallow=(\d+)(,|)(\d*)/) {
+        # Fail no more than this amount per tests when running
+        # torture.
+        my ($num, $seed)=($1,$3);
+        $shallow=$num;
+        $shallowseed=$seed?$seed:1234; # get a real seed later
+        srand($shallowseed); # make it predictable
+    }
+    elsif($ARGV[0] =~ /--repeat=(\d+)/) {
+        # Repeat-run the given tests this many times
+        $repeat = $1;
+    }
     elsif($ARGV[0] eq "-a") {
         # continue anyway, even if a test fail
         $anyway=1;
@@ -5058,6 +5106,7 @@ while(@ARGV) {
         print <<EOHELP
 Usage: runtests.pl [options] [test selection(s)]
   -a       continue even if a test fails
+  -am      automake style output PASS/FAIL: [number] [name]
   -bN      use base port number N for test servers (default $base)
   -c path  use this curl executable
   -d       display server debug info
@@ -5073,7 +5122,7 @@ Usage: runtests.pl [options] [test selection(s)]
   -r       run time statistics
   -rf      full run time statistics
   -s       short output
-  -am      automake style output PASS/FAIL: [number] [name]
+  --shallow=[num](,seed) make the torture tests thinner
   -t[N]    torture (simulate function failures); N means fail Nth function
   -v       verbose output
   -vc path use this curl only to verify the existing servers
@@ -5297,6 +5346,13 @@ else {
         exit;
     }
     $TESTCASES = $verified;
+}
+if($repeat) {
+    my $s;
+    for(1 .. $repeat) {
+        $s .= $TESTCASES;
+    }
+    $TESTCASES = $s;
 }
 
 if($scrambleorder) {

@@ -2,12 +2,12 @@
 .\"     Title: tor
 .\"    Author: [see the "AUTHORS" section]
 .\" Generator: DocBook XSL Stylesheets vsnapshot <http://docbook.sf.net/>
-.\"      Date: 02/21/2019
+.\"      Date: 10/11/2019
 .\"    Manual: Tor Manual
 .\"    Source: Tor
 .\"  Language: English
 .\"
-.TH "TOR" "1" "02/21/2019" "Tor" "Tor Manual"
+.TH "TOR" "1" "10/11/2019" "Tor" "Tor Manual"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -109,6 +109,11 @@ List all valid options\&.
 \fB\-\-list\-deprecated\-options\fR
 .RS 4
 List all valid options that are scheduled to become obsolete in a future version\&. (This is a warning, not a promise\&.)
+.RE
+.PP
+\fB\-\-list\-modules\fR
+.RS 4
+For each optional module, list whether or not it has been compiled into Tor\&. (Any module not listed is not optional in this version of Tor\&.)
 .RE
 .PP
 \fB\-\-version\fR
@@ -1638,13 +1643,13 @@ be set to a working address if you run more than one relay or bridge\&. (Really,
 .PP
 \fBExitRelay\fR \fB0\fR|\fB1\fR|\fBauto\fR
 .RS 4
-Tells Tor whether to run as an exit relay\&. If Tor is running as a non\-bridge server, and ExitRelay is set to 1, then Tor allows traffic to exit according to the ExitPolicy option (or the default ExitPolicy if none is specified)\&.
+Tells Tor whether to run as an exit relay\&. If Tor is running as a non\-bridge server, and ExitRelay is set to 1, then Tor allows traffic to exit according to the ExitPolicy option, the ReducedExitPolicy option, or the default ExitPolicy (if no other exit policy option is specified)\&.
 
 
-If ExitRelay is set to 0, no traffic is allowed to exit, and the ExitPolicy option is ignored\&.
+If ExitRelay is set to 0, no traffic is allowed to exit, and the ExitPolicy and ReducedExitPolicy options are ignored\&.
 
 
-If ExitRelay is set to "auto", then Tor behaves as if it were set to 1, but warns the user if this would cause traffic to exit\&. In a future version, the default value will be 0\&. (Default: auto)
+If ExitRelay is set to "auto", then Tor checks the ExitPolicy and ReducedExitPolicy options\&. If either is set, Tor behaves as if ExitRelay were set to 1\&. If neither exit policy option is set, Tor behaves as if ExitRelay were set to 0\&. (Default: auto)
 .RE
 .PP
 \fBExitPolicy\fR \fIpolicy\fR,\fIpolicy\fR,\fI\&...\fR
@@ -2039,7 +2044,7 @@ Relays only\&. When this option is enabled, Tor collects statistics about cell p
 .PP
 \fBPaddingStatistics\fR \fB0\fR|\fB1\fR
 .RS 4
-Relays only\&. When this option is enabled, Tor collects statistics for padding cells sent and received by this relay, in addition to total cell counts\&. These statistics are rounded, and omitted if traffic is low\&. This information is important for load balancing decisions related to padding\&. If ExtraInfoStatistics is enabled, it will be published as a part of extra\-info document\&. (Default: 1)
+Relays and bridges only\&. When this option is enabled, Tor collects statistics for padding cells sent and received by this relay, in addition to total cell counts\&. These statistics are rounded, and omitted if traffic is low\&. This information is important for load balancing decisions related to padding\&. If ExtraInfoStatistics is enabled, it will be published as a part of extra\-info document\&. (Default: 1)
 .RE
 .PP
 \fBDirReqStatistics\fR \fB0\fR|\fB1\fR

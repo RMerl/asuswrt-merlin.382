@@ -1,4 +1,4 @@
-This is nano.info, produced by makeinfo version 6.6 from nano.texi.
+This is nano.info, produced by makeinfo version 6.7 from nano.texi.
 
 INFO-DIR-SECTION Editors
 START-INFO-DIR-ENTRY
@@ -11,7 +11,7 @@ File: nano.info,  Node: Top,  Next: Introduction,  Up: (dir)
 nano
 ****
 
-This manual documents the GNU ‘nano’ editor, version 4.4.
+This manual documents the GNU ‘nano’ editor, version 4.8.
 
 * Menu:
 
@@ -67,14 +67,15 @@ The usual way to invoke ‘nano’ is:
 section), and to edit several files in a row.  Additionally, the cursor
 can be put on a specific line of a file by adding the line number with a
 plus sign before the filename, and even in a specific column by adding
-it with a comma.  The cursor can also be put on the first or last
-occurrence of a specific string by specifying that string after ‘+/’ or
-‘+?’ before the filename.  The string can be made case sensitive and/or
-caused to be interpreted as a regular expression by inserting a ‘c’
-and/or ‘r’ after the plus sign.  These search modes can be explicitly
-disabled by using the uppercase variant of those letters: ‘C’ and/or
-‘R’.  When the string contains spaces, it needs to be enclosed in
-quotes.  A more complete command synopsis thus is:
+it with a comma.  (Negative numbers count from the end of the file or
+line.)  The cursor can also be put on the first or last occurrence of a
+specific string by specifying that string after ‘+/’ or ‘+?’ before the
+filename.  The string can be made case sensitive and/or caused to be
+interpreted as a regular expression by inserting a ‘c’ and/or ‘r’ after
+the plus sign.  These search modes can be explicitly disabled by using
+the uppercase variant of those letters: ‘C’ and/or ‘R’.  When the string
+contains spaces, it needs to be enclosed in quotes.  A more complete
+command synopsis thus is:
 
      nano [OPTION]... [[+LINE[,COLUMN]|+[crCR](/|?)STRING] FILE]...
 
@@ -117,7 +118,10 @@ File: nano.info,  Node: Command-line Options,  Next: Editor Basics,  Prev: Invok
 
 ‘-D’
 ‘--boldtext’
-     Use bold text instead of reverse video text.
+     For the interface, use bold instead of reverse video.  This will be
+     overridden by setting the options ‘titlecolor’, ‘statuscolor’,
+     ‘keycolor’, ‘functioncolor’, ‘numbercolor’, and/or ‘selectedcolor’
+     in your nanorc file.  *Note set functioncolor:: for details.
 
 ‘-E’
 ‘--tabstospaces’
@@ -267,6 +271,11 @@ File: nano.info,  Node: Command-line Options,  Next: Editor Basics,  Prev: Invok
 ‘--emptyline’
      Do not use the line below the title bar, leaving it entirely blank.
 
+‘-f FILE’
+‘--rcfile=FILE’
+     Read only this FILE for setting nano’s options, instead of reading
+     both the system-wide and the user’s nanorc files.
+
 ‘-g’
 ‘--showcursor’
      Make the cursor visible in the file browser (putting it on the
@@ -332,13 +341,14 @@ File: nano.info,  Node: Command-line Options,  Next: Editor Basics,  Prev: Invok
      wrap point to vary along with the width of the screen if the screen
      is resized.  The default value is -8.
 
-‘-s "PROGRAM [ARG ...]"’
-‘--speller="PROGRAM [ARG ...]"’
+‘-s "PROGRAM [ARGUMENT ...]"’
+‘--speller="PROGRAM [ARGUMENT ...]"’
      Use the given program to do spell checking and correcting.  By
      default, ‘nano’ uses the command specified in the ‘SPELL’
      environment variable.  If ‘SPELL’ is not set, and ‘--speller’ is
      not specified either, then ‘nano’ uses its own interactive spell
-     corrector, which requires the GNU ‘spell’ program to be installed.
+     corrector, which requires either ‘hunspell’ or GNU ‘spell’ to be
+     installed.
 
 ‘-t’
 ‘--tempfile’
@@ -634,17 +644,20 @@ File: nano.info,  Node: Nanorc Files,  Next: The File Browser,  Prev: Feature To
 **************
 
 The nanorc files contain the default settings for ‘nano’.  They should
-be in Unix format, not in DOS or Mac format.  During startup, ‘nano’
-will first read the system-wide settings, from /etc/nanorc (the exact
-path might be different), and then the user-specific settings, either
+be in Unix format, not in DOS or Mac format.  During startup, if
+‘--rcfile’ is not given, ‘nano’ will read two files: first the
+system-wide settings, from ‘/etc/nanorc’ (the exact path might be
+different on your system), and then the user-specific settings, either
 from ‘~/.nanorc’ or from ‘$XDG_CONFIG_HOME/nano/nanorc’ or from
-‘.config/nano/nanorc’, whichever exists first.
+‘.config/nano/nanorc’, whichever exists first.  If ‘--rcfile’ is given,
+‘nano’ will read just the specified settings file.
 
    A nanorc file accepts a series of "set" and "unset" commands, which
 can be used to configure ‘nano’ on startup without using command-line
 options.  Additionally, there are some commands to define syntax
 highlighting and to rebind keys — *note Syntax Highlighting:: and *note
-Rebinding Keys::.  ‘nano’ will read one command per line.
+Rebinding Keys::.  ‘nano’ will read one command per line.  All commands
+and keywords should be written in lowercase.
 
    Options in nanorc files take precedence over ‘nano’’s defaults, and
 command-line options override nanorc settings.  Also, options that do
@@ -700,9 +713,8 @@ The supported settings in a nanorc file are:
 ‘set boldtext’
      Use bold instead of reverse video for the title bar, status bar,
      key combos, function tags, line numbers, and selected text.  This
-     can be overridden by setting the options ‘titlecolor’,
-     ‘statuscolor’, ‘keycolor’, ‘functioncolor’, ‘numbercolor’, and
-     ‘selectedcolor’.
+     is overridden by setting the options ‘titlecolor’, ‘statuscolor’,
+     ‘keycolor’, ‘functioncolor’, ‘numbercolor’, and/or ‘selectedcolor’.
 
 ‘set brackets "CHARACTERS"’
      Set the characters treated as closing brackets when justifying
@@ -801,8 +813,7 @@ The supported settings in a nanorc file are:
      one.  (This can cause you to save non-POSIX text files.)
 
 ‘set nopauses’
-     Don’t pause between warnings at startup.  This means that only the
-     last one will be visible (when there are multiple ones).
+     Obsolete option.  Ignored.
 
 ‘set nowrap’
      Deprecated option since it has become the default setting.  When
@@ -884,7 +895,7 @@ The supported settings in a nanorc file are:
 ‘set softwrap’
      Enable soft line wrapping for easier viewing of very long lines.
 
-‘set speller "PROGRAM [ARG ...]"’
+‘set speller "PROGRAM [ARGUMENT ...]"’
      Use the given program to do spell checking and correcting.  *Note
      --speller:: for details.
 
@@ -1000,7 +1011,13 @@ following commands in a nanorc file:
      ‘libmagic’ is installed on the system and will be silently ignored
      otherwise.)
 
-‘linter PROGRAM [ARG ...]’
+‘formatter PROGRAM [ARGUMENT ...]’
+     Run the given PROGRAM on the full contents of the current buffer.
+     (The current buffer is written out to a temporary file, the program
+     is run on it, and then the temporary file is read back in,
+     replacing the contents of the buffer.)
+
+‘linter PROGRAM [ARGUMENT ...]’
      Use the given PROGRAM to do a syntax check on the current buffer.
 
 ‘comment "STRING"’
@@ -1014,6 +1031,11 @@ following commands in a nanorc file:
      quotes are specified, the comment/uncomment functions are disabled;
      for example, "" for JSON. The default value is "#".
 
+‘tabgives "STRING"’
+     Make the <Tab> key produce the given STRING.  Useful for languages
+     like Python that want to see only spaces for indentation.  This
+     overrides the setting of the ‘tabstospaces’ option.
+
 ‘color FGCOLOR,BGCOLOR "REGEX" ...’
      Paint all pieces of text that match the extended regular expression
      "regex" with the given foreground and background colors, at least
@@ -1024,6 +1046,10 @@ following commands in a nanorc file:
      foreground color to get a stronger highlight.  If your terminal
      supports transparency, not specifying a "bgcolor" tells ‘nano’ to
      attempt to use a transparent background.
+
+     All coloring commands are applied in the order in which they are
+     specified, which means that later commands can recolor stuff that
+     was colored earlier.
 
 ‘icolor FGCOLOR,BGCOLOR "REGEX" ...’
      Same as above, except that the matching is case insensitive.
@@ -1045,27 +1071,13 @@ following commands in a nanorc file:
      "syntaxfile" may contain only the above commands, from ‘syntax’ to
      ‘icolor’.
 
-‘extendsyntax NAME COMMAND [ARG ...]’
+‘extendsyntax NAME COMMAND ARGUMENT ...’
      Extend the syntax previously defined as "NAME" with another
      COMMAND.  This allows you to add a new ‘color’, ‘icolor’, ‘header’,
-     ‘magic’, ‘comment’, or ‘linter’ command to an already defined
-     syntax — useful when you want to slightly improve a syntax defined
-     in one of the system-installed files (which normally are not
-     writable).
-
-   Note: the ‘formatter’ command has been removed.  It was superseded by
-a more general mechanism: the filtering of buffer or marked text through
-an external command.  Such filtering is done by typing ‘^R^X’ and then
-preceding your formatter command with the pipe symbol (‘|’).  It has the
-added advantage that the operation can be undone.
-
-   If you use such a formatting command regularly, you could assign the
-relevant series of keystrokes to a single key in your nanorc:
-
-        bind  M-F  "^R^X|yourformatcommand^M"  main
-
-   (Note that the <^R>, <^X>, and <^M> are each a single, literal
-control character.  You can enter them by preceding each with <M-V>.)
+     ‘magic’, ‘formatter’, ‘linter’, ‘comment’, or ‘tabgives’ command to
+     an already defined syntax — useful when you want to slightly
+     improve a syntax defined in one of the system-installed files
+     (which normally are not writable).
 
 
 File: nano.info,  Node: Rebinding Keys,  Prev: Syntax Highlighting,  Up: Nanorc Files
@@ -1078,7 +1090,7 @@ file:
 
 ‘bind key function menu’
      Rebinds ‘key’ to ‘function’ in the context of ‘menu’ (or in all
-     menus where the function exists by using ‘all’).
+     menus where the function exists when ‘all’ is used).
 
 ‘bind key "string" menu’
      Makes ‘key’ produce ‘string’ in the context of ‘menu’ (or in all
@@ -1087,21 +1099,31 @@ file:
      into the ‘string’, precede its keystroke with ‘M-V’.)
 
 ‘unbind key menu’
-     Unbinds ‘key’ from ‘menu’ (or from all menus where it exists by
-     using ‘all’).
+     Unbinds ‘key’ from ‘menu’ (or from all menus where the key exists
+     when ‘all’ is used).
 
 
    The format of ‘key’ should be one of:
 
-     ‘^’  followed by a Latin letter, by one of several ASCII characters
-     (@, ], \, ^, or _), or by the word "Space".  Example: ‘^C’.
+     ‘^X’ —— where X is a Latin letter, or one of several ASCII
+     characters (@, ], \, ^, _), or the word "Space".  Example: ‘^C’.
 
-     ‘M-’  followed by any ASCII character except [, or by the word
-     "Space".  Example: ‘M-C’.
+     ‘M-X’ —— where X is any ASCII character except [, or the word
+     "Space".  Example: ‘M-8’.
 
-     ‘F’  followed by a numeric value from 1 to 16.  Example: ‘F10’.
+     ‘Sh-M-X’ —— where X is a Latin letter.  Example: ‘Sh-M-U’.  By
+     default, each Meta+letter keystroke does the same as the
+     corresponding Shift+Meta+letter.  But when any Shift+Meta bind is
+     made, that will no longer be the case, for all letters.
 
-     the word "Ins" or the word "Del".
+     ‘FN’ —— where N is a numeric value from 1 to 24.  Example: ‘F10’.
+     (Often, ‘F13’ to ‘F24’ can be typed as ‘F1’ to ‘F12’ with Shift.)
+
+     ‘Ins’ or ‘Del’.
+
+   Rebinding ‘^M’ (Enter) or ‘^I’ (Tab) is probably not a good idea.  On
+some terminals it’s not possible to rebind ‘^H’ (unless ‘--raw’ is used)
+because its keycode is identical to that of the Backspace key.
 
 
    Valid names for the ‘function’ to be bound are:
@@ -1186,8 +1208,12 @@ file:
      buffer.
 
 ‘speller’
-     Invokes a spell-checking program, either the default one, or the
-     one defined by ‘--speller’ or ‘set speller’.
+     Invokes a spell-checking program, either the default ‘hunspell’ or
+     GNU ‘spell’, or the one defined by ‘--speller’ or ‘set speller’.
+
+‘formatter’
+     Invokes a full-buffer-processing program (if the active syntax
+     defines one).
 
 ‘linter’
      Invokes a syntax-checking program (if the active syntax defines
@@ -1479,7 +1505,8 @@ file:
      The help-viewer menu.
 
 ‘spell’
-     The interactive spell checker Yes/no menu.
+     The menu of the integrated spell checker where the user can edit a
+     misspelled word.
 
 ‘linter’
      The linter menu.
@@ -1538,9 +1565,9 @@ between the two editors:
      By default, ‘nano’ will scroll just one line (instead of half a
      screen) when the cursor is moved to a line that is just out of
      view.  And when paging up or down, ‘nano’ keeps the cursor in the
-     same screen position as much as possible, instead always placing it
-     on the first line of the viewport.  The Pico-like behavior can be
-     obtained with the ‘--jumpyscrolling’ option.
+     same screen position as much as possible, instead of always placing
+     it on the first line of the viewport.  The Pico-like behavior can
+     be obtained with the ‘--jumpyscrolling’ option.
 
 ‘Edit Area’
      Pico never uses the line directly below the title bar, leaving it
@@ -1748,29 +1775,28 @@ Tag Table:
 Node: Top199
 Node: Introduction554
 Node: Invoking1698
-Node: Command-line Options3254
-Ref: --speller11624
-Ref: Expert Mode13077
-Node: Editor Basics14114
-Node: Entering Text14398
-Node: Commands15387
-Node: The Cutbuffer16184
-Node: The Mark16905
-Node: Screen Layout17904
-Node: Search and Replace19083
-Node: Using the Mouse19818
-Node: Limitations20435
-Node: Built-in Help20760
-Node: Feature Toggles21184
-Node: Nanorc Files22984
-Node: Settings24454
-Ref: set functioncolor27539
-Ref: Whitespace34855
-Node: Syntax Highlighting35585
-Node: Rebinding Keys41809
-Node: The File Browser53969
-Node: Pico Compatibility54862
-Node: Building and Configure Options59403
+Node: Command-line Options3314
+Ref: --speller12103
+Node: Editor Basics14621
+Node: Entering Text14905
+Node: Commands15894
+Node: The Cutbuffer16691
+Node: The Mark17412
+Node: Screen Layout18411
+Node: Search and Replace19590
+Node: Using the Mouse20325
+Node: Limitations20942
+Node: Built-in Help21267
+Node: Feature Toggles21691
+Node: Nanorc Files23491
+Node: Settings25168
+Ref: set functioncolor28247
+Ref: Whitespace35464
+Node: Syntax Highlighting36194
+Node: Rebinding Keys42468
+Node: The File Browser55410
+Node: Pico Compatibility56303
+Node: Building and Configure Options60847
 
 End Tag Table
 

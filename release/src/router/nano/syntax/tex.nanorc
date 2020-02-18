@@ -2,8 +2,9 @@
 
 syntax tex "\.tex$"
 magic "(La)?TeX document"
-linter chktex -v0 -q -I
 comment "%"
+
+linter chktex -v0 -q -I
 
 color green "\\.|\\[A-Za-z]*"
 color magenta "[{}]"

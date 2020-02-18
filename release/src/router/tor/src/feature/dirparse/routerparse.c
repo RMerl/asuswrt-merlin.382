@@ -556,6 +556,9 @@ router_parse_entry_from_string(const char *s, const char *end,
   if ((tok = find_opt_by_keyword(tokens, A_PURPOSE))) {
     tor_assert(tok->n_args);
     router->purpose = router_purpose_from_string(tok->args[0]);
+    if (router->purpose == ROUTER_PURPOSE_UNKNOWN) {
+      goto err;
+    }
   } else {
     router->purpose = ROUTER_PURPOSE_GENERAL;
   }

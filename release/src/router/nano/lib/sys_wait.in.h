@@ -1,5 +1,5 @@
 /* A POSIX-like <sys/wait.h>.
-   Copyright (C) 2001-2003, 2005-2019 Free Software Foundation, Inc.
+   Copyright (C) 2001-2003, 2005-2020 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -114,7 +114,9 @@
 # if defined _WIN32 && ! defined __CYGWIN__
 _GL_FUNCDECL_SYS (waitpid, pid_t, (pid_t pid, int *statusp, int options));
 # endif
-_GL_CXXALIAS_SYS (waitpid, pid_t, (pid_t pid, int *statusp, int options));
+/* Need to cast, because on Cygwin, the second parameter is
+                                                __wait_status_ptr_t statusp.  */
+_GL_CXXALIAS_SYS_CAST (waitpid, pid_t, (pid_t pid, int *statusp, int options));
 _GL_CXXALIASWARN (waitpid);
 #elif defined GNULIB_POSIXCHECK
 # undef waitpid

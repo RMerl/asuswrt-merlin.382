@@ -46,6 +46,7 @@
 #include "connect.h"
 #include "http_proxy.h"
 #include "http2.h"
+#include "socketpair.h"
 /* The last 3 #include files should be in this order */
 #include "curl_printf.h"
 #include "curl_memory.h"
@@ -259,6 +260,7 @@ static struct Curl_sh_entry *sh_addentry(struct curl_hash *sh,
 
   /* make/add new hash entry */
   if(!Curl_hash_add(sh, (char *)&s, sizeof(curl_socket_t), check)) {
+    Curl_hash_destroy(&check->transfers);
     free(check);
     return NULL; /* major failure */
   }
@@ -367,6 +369,21 @@ struct Curl_multi *Curl_multi_handle(int hashsize, /* socket hash */
 
   /* -1 means it not set by user, use the default value */
   multi->maxconnects = -1;
+
+#ifdef ENABLE_WAKEUP
+  if(Curl_socketpair(AF_UNIX, SOCK_STREAM, 0, multi->wakeup_pair) < 0) {
+    multi->wakeup_pair[0] = CURL_SOCKET_BAD;
+    multi->wakeup_pair[1] = CURL_SOCKET_BAD;
+  }
+  else if(curlx_nonblock(multi->wakeup_pair[0], TRUE) < 0 ||
+          curlx_nonblock(multi->wakeup_pair[1], TRUE) < 0) {
+    sclose(multi->wakeup_pair[0]);
+    sclose(multi->wakeup_pair[1]);
+    multi->wakeup_pair[0] = CURL_SOCKET_BAD;
+    multi->wakeup_pair[1] = CURL_SOCKET_BAD;
+  }
+#endif
+
   return multi;
 
   error:
@@ -531,6 +548,8 @@ static CURLcode multi_done(struct Curl_easy *data,
     /* Stop if multi_done() has already been called */
     return CURLE_OK;
 
+  conn->data = data; /* ensure the connection uses this transfer now */
+
   /* Stop the resolver and free its own resources (but not dns_entry yet). */
   Curl_resolver_kill(conn);
 
@@ -567,15 +586,17 @@ static CURLcode multi_done(struct Curl_easy *data,
 
   process_pending_handles(data->multi); /* connection / multiplex */
 
+  CONN_LOCK(data);
   detach_connnection(data);
   if(CONN_INUSE(conn)) {
     /* Stop if still used. */
+    CONN_UNLOCK(data);
     DEBUGF(infof(data, "Connection still in use %zu, "
                  "no more multi_done now!\n",
                  conn->easyq.size));
     return CURLE_OK;
   }
-
+  conn->data = NULL; /* the connection now has no owner */
   data->state.done = TRUE; /* called just now! */
 
   if(conn->dns_entry) {
@@ -618,7 +639,10 @@ static CURLcode multi_done(struct Curl_easy *data,
 #endif
      ) || conn->bits.close
        || (premature && !(conn->handler->flags & PROTOPT_STREAM))) {
-    CURLcode res2 = Curl_disconnect(data, conn, premature);
+    CURLcode res2;
+    connclose(conn, "disconnecting");
+    CONN_UNLOCK(data);
+    res2 = Curl_disconnect(data, conn, premature);
 
     /* If we had an error already, make sure we return that one. But
        if we got a new error, return that. */
@@ -635,9 +659,9 @@ static CURLcode multi_done(struct Curl_easy *data,
               conn->bits.httpproxy ? conn->http_proxy.host.dispname :
               conn->bits.conn_to_host ? conn->conn_to_host.dispname :
               conn->host.dispname);
-
     /* the connection is no longer in use by this transfer */
-    if(Curl_conncache_return_conn(conn)) {
+    CONN_UNLOCK(data);
+    if(Curl_conncache_return_conn(data, conn)) {
       /* remember the most recently used connection */
       data->state.lastconnect = conn;
       infof(data, "%s\n", buffer);
@@ -695,11 +719,6 @@ CURLMcode curl_multi_remove_handle(struct Curl_multi *multi,
     easy_owns_conn = TRUE;
   }
 
-  /* The timer must be shut down before data->multi is set to NULL,
-     else the timenode will remain in the splay tree after
-     curl_easy_cleanup is called. */
-  Curl_expire_clear(data);
-
   if(data->conn) {
 
     /* we must call multi_done() here (if we still own the connection) so that
@@ -714,6 +733,11 @@ CURLMcode curl_multi_remove_handle(struct Curl_multi *multi,
       (void)multi_done(data, data->result, premature);
     }
   }
+
+  /* The timer must be shut down before data->multi is set to NULL, else the
+     timenode will remain in the splay tree after curl_easy_cleanup is
+     called. Do it after multi_done() in case that sets another time! */
+  Curl_expire_clear(data);
 
   if(data->connect_queue.ptr)
     /* the handle was in the pending list waiting for an available connection,
@@ -744,10 +768,8 @@ CURLMcode curl_multi_remove_handle(struct Curl_multi *multi,
                                 vanish with this handle */
 
   /* Remove the association between the connection and the handle */
-  if(data->conn) {
-    data->conn->data = NULL;
+  if(data->conn)
     detach_connnection(data);
-  }
 
 #ifdef USE_LIBPSL
   /* Remove the PSL association. */
@@ -1005,7 +1027,8 @@ static CURLMcode Curl_multi_wait(struct Curl_multi *multi,
                                  unsigned int extra_nfds,
                                  int timeout_ms,
                                  int *ret,
-                                 bool extrawait) /* when no socket, wait */
+                                 bool extrawait, /* when no socket, wait */
+                                 bool use_wakeup)
 {
   struct Curl_easy *data;
   curl_socket_t sockbunch[MAX_SOCKSPEREASYHANDLE];
@@ -1058,6 +1081,12 @@ static CURLMcode Curl_multi_wait(struct Curl_multi *multi,
 
   curlfds = nfds; /* number of internal file descriptors */
   nfds += extra_nfds; /* add the externally provided ones */
+
+#ifdef ENABLE_WAKEUP
+  if(use_wakeup && multi->wakeup_pair[0] != CURL_SOCKET_BAD) {
+    ++nfds;
+  }
+#endif
 
   if(nfds > NUM_POLLS_ON_STACK) {
     /* 'nfds' is a 32 bit value and 'struct pollfd' is typically 8 bytes
@@ -1117,6 +1146,14 @@ static CURLMcode Curl_multi_wait(struct Curl_multi *multi,
     ++nfds;
   }
 
+#ifdef ENABLE_WAKEUP
+  if(use_wakeup && multi->wakeup_pair[0] != CURL_SOCKET_BAD) {
+    ufds[nfds].fd = multi->wakeup_pair[0];
+    ufds[nfds].events = POLLIN;
+    ++nfds;
+  }
+#endif
+
   if(nfds) {
     int pollrc;
     /* wait... */
@@ -1140,6 +1177,29 @@ static CURLMcode Curl_multi_wait(struct Curl_multi *multi,
 
         extra_fds[i].revents = mask;
       }
+
+#ifdef ENABLE_WAKEUP
+      if(use_wakeup && multi->wakeup_pair[0] != CURL_SOCKET_BAD) {
+        if(ufds[curlfds + extra_nfds].revents & POLLIN) {
+          char buf[64];
+          while(1) {
+            /* the reading socket is non-blocking, try to read
+               data from it until it receives an error (except EINTR).
+               In normal cases it will get EAGAIN or EWOULDBLOCK
+               when there is no more data, breaking the loop. */
+            if(sread(multi->wakeup_pair[0], buf, sizeof(buf)) < 0) {
+#ifndef USE_WINSOCK
+              if(EINTR == SOCKERRNO)
+                continue;
+#endif
+              break;
+            }
+          }
+          /* do not count the wakeup socket into the returned value */
+          retcode--;
+        }
+      }
+#endif
     }
   }
 
@@ -1147,7 +1207,7 @@ static CURLMcode Curl_multi_wait(struct Curl_multi *multi,
     free(ufds);
   if(ret)
     *ret = retcode;
-  if(!extrawait || extra_fds || curlfds)
+  if(!extrawait || nfds)
     /* if any socket was checked */
     ;
   else {
@@ -1156,6 +1216,10 @@ static CURLMcode Curl_multi_wait(struct Curl_multi *multi,
     /* Avoid busy-looping when there's nothing particular to wait for */
     if(!curl_multi_timeout(multi, &sleep_ms) && sleep_ms) {
       if(sleep_ms > timeout_ms)
+        sleep_ms = timeout_ms;
+      /* when there are no easy handles in the multi, this holds a -1
+         timeout */
+      else if((sleep_ms < 0) && extrawait)
         sleep_ms = timeout_ms;
       Curl_wait_ms((int)sleep_ms);
     }
@@ -1170,7 +1234,8 @@ CURLMcode curl_multi_wait(struct Curl_multi *multi,
                           int timeout_ms,
                           int *ret)
 {
-  return Curl_multi_wait(multi, extra_fds, extra_nfds, timeout_ms, ret, FALSE);
+  return Curl_multi_wait(multi, extra_fds, extra_nfds, timeout_ms, ret, FALSE,
+                         FALSE);
 }
 
 CURLMcode curl_multi_poll(struct Curl_multi *multi,
@@ -1179,7 +1244,55 @@ CURLMcode curl_multi_poll(struct Curl_multi *multi,
                           int timeout_ms,
                           int *ret)
 {
-  return Curl_multi_wait(multi, extra_fds, extra_nfds, timeout_ms, ret, TRUE);
+  return Curl_multi_wait(multi, extra_fds, extra_nfds, timeout_ms, ret, TRUE,
+                         TRUE);
+}
+
+CURLMcode curl_multi_wakeup(struct Curl_multi *multi)
+{
+  /* this function is usually called from another thread,
+     it has to be careful only to access parts of the
+     Curl_multi struct that are constant */
+
+  /* GOOD_MULTI_HANDLE can be safely called */
+  if(!GOOD_MULTI_HANDLE(multi))
+    return CURLM_BAD_HANDLE;
+
+#ifdef ENABLE_WAKEUP
+  /* the wakeup_pair variable is only written during init and cleanup,
+     making it safe to access from another thread after the init part
+     and before cleanup */
+  if(multi->wakeup_pair[1] != CURL_SOCKET_BAD) {
+    char buf[1];
+    buf[0] = 1;
+    while(1) {
+      /* swrite() is not thread-safe in general, because concurrent calls
+         can have their messages interleaved, but in this case the content
+         of the messages does not matter, which makes it ok to call.
+
+         The write socket is set to non-blocking, this way this function
+         cannot block, making it safe to call even from the same thread
+         that will call Curl_multi_wait(). If swrite() returns that it
+         would block, it's considered successful because it means that
+         previous calls to this function will wake up the poll(). */
+      if(swrite(multi->wakeup_pair[1], buf, sizeof(buf)) < 0) {
+        int err = SOCKERRNO;
+        int return_success;
+#ifdef USE_WINSOCK
+        return_success = WSAEWOULDBLOCK == err;
+#else
+        if(EINTR == err)
+          continue;
+        return_success = EWOULDBLOCK == err || EAGAIN == err;
+#endif
+        if(!return_success)
+          return CURLM_WAKEUP_FAILURE;
+      }
+      return CURLM_OK;
+    }
+  }
+#endif
+  return CURLM_WAKEUP_FAILURE;
 }
 
 /*
@@ -1242,6 +1355,7 @@ static CURLcode multi_do(struct Curl_easy *data, bool *done)
 
   DEBUGASSERT(conn);
   DEBUGASSERT(conn->handler);
+  DEBUGASSERT(conn->data == data);
 
   if(conn->handler->do_it) {
     /* generic protocol-specific function pointer set in curl_connect() */
@@ -2305,6 +2419,11 @@ CURLMcode curl_multi_cleanup(struct Curl_multi *multi)
 
     Curl_hash_destroy(&multi->hostcache);
     Curl_psl_destroy(&multi->psl);
+
+#ifdef ENABLE_WAKEUP
+    sclose(multi->wakeup_pair[0]);
+    sclose(multi->wakeup_pair[1]);
+#endif
     free(multi);
 
     return CURLM_OK;

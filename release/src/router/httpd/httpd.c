@@ -95,13 +95,14 @@ typedef union {
 } usockaddr;
 
 #include "queue.h"
-#define MAX_CONN_ACCEPT 64
-#define MAX_CONN_TIMEOUT 60
+#define MAX_CONN_ACCEPT 128
+#define MAX_CONN_TIMEOUT 5
 
 typedef struct conn_item {
 	TAILQ_ENTRY(conn_item) entry;
 	int fd;
 	usockaddr usa;
+	time_t deadline;
 } conn_item_t;
 
 typedef struct conn_list {
@@ -279,6 +280,7 @@ int temp_turn_off_auth = 0;	// for QISxxx.htm pages
 
 /* Const vars */
 const int int_1 = 1;
+const struct linger linger = { 1, 0 };
 
 void http_login(unsigned int ip, char *url);
 void http_login_timeout(unsigned int ip, char *cookies, int fromapp_flag);
@@ -290,26 +292,32 @@ static int check_if_inviteCode(const char *dirpath){
 	return 1;
 }
 #endif
+
 void sethost(char *host)
 {
-	char *cp;
+	size_t len;
 
-	if(!host) return;
+	host_name[0] = '\0';
 
-	memset(host_name, 0, sizeof(host_name));
-	strlcpy(host_name, host, sizeof(host_name));
+	if (!host || host[0] == '\0')
+		return;
 
-	cp = host_name;
-	for ( cp = cp + 7; *cp && *cp != '\r' && *cp != '\n'; cp++ );
-	*cp = '\0';
+	while (*host == '.') host++;
+
+	len = strcspn(host, "\r\n");
+	while (len > 0 && host[len - 1] == '.')
+		len--;
+	if (len > sizeof(host_name) - 1)
+		return;
+
+	strlcpy(host_name, host, len + 1);
+	if (host_name[0] && !is_valid_domainname(host_name))
+		host_name[0] = '\0';
 }
 
 char *gethost(void)
 {
-	if(strlen(host_name)) {
-		return host_name;
-	}
-	else return(nvram_safe_get("lan_ipaddr"));
+	return host_name[0] ? host_name : nvram_safe_get("lan_ipaddr");
 }
 
 #include <sys/sysinfo.h>
@@ -357,7 +365,7 @@ initialize_listen_socket(usockaddr* usa, const char *ifname)
 		perror("bind");
 		goto error;
 	}
-	if (listen(fd, 1024) < 0) {
+	if (listen(fd, MAX_CONN_ACCEPT) < 0) {
 		perror( "listen" );
 		goto error;
 	}
@@ -853,7 +861,7 @@ handle_request(void)
 
 	/* Initialize the request variables. */
 	authorization = boundary = cookies = referer = useragent = NULL;
-	host_name[0] = 0;
+	host_name[0] = '\0';
 	bzero( line, sizeof line );
 
 	/* Parse the first line of the request. */
@@ -1340,10 +1348,10 @@ handle_request(void)
 			}
 			if(nvram_match("x_Setting", "0") && (strcmp(url, "QIS_default.cgi")==0 || strcmp(url, "page_default.cgi")==0 || !strcmp(websGetVar(file, "x_Setting", ""), "1"))){
 				if(!fromapp) set_referer_host();
-				send_token_headers( 200, "Ok", handler->extra_header, handler->mime_type, fromapp);
+				send_token_headers( 200, "OK", handler->extra_header, handler->mime_type, fromapp);
 
 			}else if(strncmp(url, "login.cgi", strlen(url))!=0){
-				send_headers( 200, "Ok", handler->extra_header, handler->mime_type, fromapp);
+				send_headers( 200, "OK", handler->extra_header, handler->mime_type, fromapp);
 			}
 			if (strcasecmp(method, "head") != 0 && handler->output) {
 				handler->output(file, conn_fp);
@@ -2072,11 +2080,15 @@ int main(int argc, char **argv)
 			return errno;
 		}
 
+		/* Reuse timestamp */
+		tv.tv_sec = uptime();
+
 		/* Check and accept new connection */
-		item = NULL;
 		for (i = 0; count && i < ARRAY_SIZE(listen_fd); i++) {
 			if (listen_fd[i] < 0 || !FD_ISSET(listen_fd[i], &rfds))
 				continue;
+
+			count--;
 
 			item = malloc(sizeof(*item));
 			if (item == NULL) {
@@ -2094,6 +2106,7 @@ int main(int argc, char **argv)
 
 			/* Set the KEEPALIVE option to cull dead connections */
 			setsockopt(item->fd, SOL_SOCKET, SO_KEEPALIVE, &int_1, sizeof(int_1));
+			item->deadline = tv.tv_sec + MAX_CONN_TIMEOUT;
 
 			/* Add to active connections */
 			FD_SET(item->fd, &active_rfds);
@@ -2101,12 +2114,12 @@ int main(int argc, char **argv)
 			pool.count++;
 		}
 		/* Continue waiting over again */
-		if (count && item)
+		if (count == 0)
 			continue;
 
 		/* Check and process pending or expired requests */
 		TAILQ_FOREACH_SAFE(item, &pool.head, entry, next) {
-			if (count && !FD_ISSET(item->fd, &rfds))
+			if (item->deadline > tv.tv_sec && !FD_ISSET(item->fd, &rfds))
 				continue;
 
 			/* Delete from active connections */
@@ -2115,19 +2128,19 @@ int main(int argc, char **argv)
 			pool.count--;
 
 			/* Process request if any */
-			if (count) {
+			if (FD_ISSET(item->fd, &rfds)) {
 #ifdef RTCONFIG_HTTPS
 				if (do_ssl) {
 					ssl_stream_fd = item->fd;
 					if (!(conn_fp = ssl_server_fopen(item->fd))) {
 						perror("fdopen(ssl)");
-						goto skip;
+						goto reset;
 					}
 				} else
 #endif
 				if (!(conn_fp = fdopen(item->fd, "r+"))) {
 					perror("fdopen");
-					goto skip;
+					goto reset;
 				}
 
 				http_login_cache(&item->usa);
@@ -2141,19 +2154,20 @@ int main(int argc, char **argv)
 #ifdef RTCONFIG_HTTPS
 				if (!do_ssl)
 #endif
-				shutdown(item->fd, 2), item->fd = -1;
+				{
+					shutdown(item->fd, SHUT_RDWR);
+					item->fd = -1;
+				}
 				fclose(conn_fp);
-
-			skip:
-				/* Skip the rest of */
-				if (--count == 0)
-					next = NULL;
-
+			} else {
+			/* Reset connection */
+			reset:
+				setsockopt(item->fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
 			}
 
 			/* Close timed out and/or still alive */
 			if (item->fd >= 0) {
-				shutdown(item->fd, 2);
+				shutdown(item->fd, SHUT_RDWR);
 				close(item->fd);
 			}
 

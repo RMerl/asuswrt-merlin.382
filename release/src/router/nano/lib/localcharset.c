@@ -1,6 +1,6 @@
 /* Determine a canonical name for the current locale's character encoding.
 
-   Copyright (C) 2000-2006, 2008-2019 Free Software Foundation, Inc.
+   Copyright (C) 2000-2006, 2008-2020 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -58,6 +58,9 @@
 #elif defined WINDOWS_NATIVE
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
+  /* For the use of setlocale() below, the Gnulib override in setlocale.c is
+     not needed; see the platform lists in setlocale_null.m4.  */
+# undef setlocale
 #endif
 #if defined OS2
 # define INCL_DOS
@@ -150,7 +153,8 @@ static const struct table_entry alias_table[] =
     { "ISO8859-2",  "ISO-8859-2" },
     { "ISO8859-4",  "ISO-8859-4" },
     { "ISO8859-5",  "ISO-8859-5" },
-    { "ISO8859-7",  "ISO-8859-7" }
+    { "ISO8859-7",  "ISO-8859-7" },
+    { "US-ASCII",   "ASCII" }
 #   define alias_table_defined
 #  endif
 #  if defined __APPLE__ && defined __MACH__                 /* Mac OS X */
@@ -378,8 +382,6 @@ static const struct table_entry alias_table[] =
        by Alex Taylor:
        <http://altsan.org/os2/toolkits/uls/index.html#codepages>.
        See also "__convcp() of kLIBC":
-       <http://trac.netlabs.org/libc/browser/branches/libc-0.6/src/emx/src/lib/locale/__convcp.c>,
-       or:
        <https://github.com/bitwiseworks/libc/blob/master/src/emx/src/lib/locale/__convcp.c>.  */
     { "CP1004",        "CP1252" },
   /*{ "CP1041",        "CP943" },*/
@@ -814,8 +816,11 @@ static const struct table_entry locale_table[] =
 
 
 /* Determine the current locale's character encoding, and canonicalize it
-   into one of the canonical names listed in localcharset.h.
-   The result must not be freed; it is statically allocated.
+   into one of the canonical names listed below.
+   The result must not be freed; it is statically allocated.  The result
+   becomes invalid when setlocale() is used to change the global locale, or
+   when the value of one of the environment variables LC_ALL, LC_CTYPE, LANG
+   is changed; threads in multithreaded programs should not do this.
    If the canonical name cannot be determined, the result is a non-canonical
    name.  */
 
@@ -826,6 +831,13 @@ const char *
 locale_charset (void)
 {
   const char *codeset;
+
+  /* This function must be multithread-safe.  To achieve this without using
+     thread-local storage, we use a simple strcpy or memcpy to fill this static
+     buffer.  Filling it through, for example, strcpy + strcat would not be
+     guaranteed to leave the buffer's contents intact if another thread is
+     currently accessing it.  If necessary, the contents is first assembled in
+     a stack-allocated buffer.  */
 
 #if HAVE_LANGINFO_CODESET || defined WINDOWS_NATIVE || defined OS2
 
@@ -841,7 +853,7 @@ locale_charset (void)
   if (codeset != NULL && strcmp (codeset, "US-ASCII") == 0)
     {
       const char *locale;
-      static char buf[2 + 10 + 1];
+      static char resultbuf[2 + 10 + 1];
 
       locale = getenv ("LC_ALL");
       if (locale == NULL || locale[0] == '\0')
@@ -865,11 +877,12 @@ locale_charset (void)
               modifier = strchr (dot, '@');
               if (modifier == NULL)
                 return dot;
-              if (modifier - dot < sizeof (buf))
+              if (modifier - dot < sizeof (resultbuf))
                 {
-                  memcpy (buf, dot, modifier - dot);
-                  buf [modifier - dot] = '\0';
-                  return buf;
+                  /* This way of filling resultbuf is multithread-safe.  */
+                  memcpy (resultbuf, dot, modifier - dot);
+                  resultbuf [modifier - dot] = '\0';
+                  return resultbuf;
                 }
             }
         }
@@ -885,8 +898,13 @@ locale_charset (void)
          converting to GetConsoleOutputCP().  This leads to correct results,
          except when SetConsoleOutputCP has been called and a raster font is
          in use.  */
-      sprintf (buf, "CP%u", GetACP ());
-      codeset = buf;
+      {
+        char buf[2 + 10 + 1];
+
+        sprintf (buf, "CP%u", GetACP ());
+        strcpy (resultbuf, buf);
+        codeset = resultbuf;
+      }
     }
 #  endif
 
@@ -896,34 +914,28 @@ locale_charset (void)
 
 # elif defined WINDOWS_NATIVE
 
-  static char buf[2 + 10 + 1];
+  char buf[2 + 10 + 1];
+  static char resultbuf[2 + 10 + 1];
 
   /* The Windows API has a function returning the locale's codepage as
      a number, but the value doesn't change according to what the
      'setlocale' call specified.  So we use it as a last resort, in
      case the string returned by 'setlocale' doesn't specify the
      codepage.  */
-  char *current_locale = setlocale (LC_ALL, NULL);
-  char *pdot;
+  char *current_locale = setlocale (LC_CTYPE, NULL);
+  char *pdot = strrchr (current_locale, '.');
 
-  /* If they set different locales for different categories,
-     'setlocale' will return a semi-colon separated list of locale
-     values.  To make sure we use the correct one, we choose LC_CTYPE.  */
-  if (strchr (current_locale, ';'))
-    current_locale = setlocale (LC_CTYPE, NULL);
-
-  pdot = strrchr (current_locale, '.');
   if (pdot && 2 + strlen (pdot + 1) + 1 <= sizeof (buf))
     sprintf (buf, "CP%s", pdot + 1);
   else
     {
       /* The Windows API has a function returning the locale's codepage as a
-        number: GetACP().
-        When the output goes to a console window, it needs to be provided in
-        GetOEMCP() encoding if the console is using a raster font, or in
-        GetConsoleOutputCP() encoding if it is using a TrueType font.
-        But in GUI programs and for output sent to files and pipes, GetACP()
-        encoding is the best bet.  */
+         number: GetACP().
+         When the output goes to a console window, it needs to be provided in
+         GetOEMCP() encoding if the console is using a raster font, or in
+         GetConsoleOutputCP() encoding if it is using a TrueType font.
+         But in GUI programs and for output sent to files and pipes, GetACP()
+         encoding is the best bet.  */
       sprintf (buf, "CP%u", GetACP ());
     }
   /* For a locale name such as "French_France.65001", in Windows 10,
@@ -931,12 +943,15 @@ locale_charset (void)
   if (strcmp (buf + 2, "65001") == 0 || strcmp (buf + 2, "utf8") == 0)
     codeset = "UTF-8";
   else
-    codeset = buf;
+    {
+      strcpy (resultbuf, buf);
+      codeset = resultbuf;
+    }
 
 # elif defined OS2
 
   const char *locale;
-  static char buf[2 + 10 + 1];
+  static char resultbuf[2 + 10 + 1];
   ULONG cp[3];
   ULONG cplen;
 
@@ -965,11 +980,12 @@ locale_charset (void)
           modifier = strchr (dot, '@');
           if (modifier == NULL)
             return dot;
-          if (modifier - dot < sizeof (buf))
+          if (modifier - dot < sizeof (resultbuf))
             {
-              memcpy (buf, dot, modifier - dot);
-              buf [modifier - dot] = '\0';
-              return buf;
+              /* This way of filling resultbuf is multithread-safe.  */
+              memcpy (resultbuf, dot, modifier - dot);
+              resultbuf [modifier - dot] = '\0';
+              return resultbuf;
             }
         }
 
@@ -985,8 +1001,11 @@ locale_charset (void)
         codeset = "";
       else
         {
+          char buf[2 + 10 + 1];
+
           sprintf (buf, "CP%u", cp[0]);
-          codeset = buf;
+          strcpy (resultbuf, buf);
+          codeset = resultbuf;
         }
     }
 

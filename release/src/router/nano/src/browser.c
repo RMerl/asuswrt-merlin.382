@@ -1,7 +1,7 @@
 /**************************************************************************
  *   browser.c  --  This file is part of GNU nano.                        *
  *                                                                        *
- *   Copyright (C) 2001-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2001-2011, 2013-2020 Free Software Foundation, Inc.    *
  *   Copyright (C) 2015-2016 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
@@ -21,12 +21,12 @@
 
 #include "proto.h"
 
+#ifdef ENABLE_BROWSER
+
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
-
-#ifdef ENABLE_BROWSER
 
 static char **filelist = NULL;
 		/* The list of files to display in the file browser. */
@@ -138,14 +138,20 @@ char *do_browser(char *path)
 				/* If we selected the same filename as last time, fake a
 				 * press of the Enter key so that the file is read in. */
 				if (old_selected == selected)
-					unget_kbinput(KEY_ENTER, FALSE);
+					kbinput = KEY_ENTER;
 			}
 
-			continue;
+			if (kbinput == KEY_MOUSE)
+				continue;
 		}
 #endif /* ENABLE_MOUSE */
-
-		func = parse_browser_input(&kbinput);
+#ifndef NANO_TINY
+		if (bracketed_paste || kbinput == BRACKETED_PASTE_MARKER) {
+			beep();
+			continue;
+		}
+#endif
+		func = interpret(&kbinput);
 
 		if (func == total_refresh) {
 			total_redraw();
@@ -153,9 +159,9 @@ char *do_browser(char *path)
 			/* Simulate a window resize to force a directory reread. */
 			kbinput = KEY_WINCH;
 #endif
-		} else if (func == do_help_void) {
+		} else if (func == do_help) {
 #ifdef ENABLE_HELP
-			do_help_void();
+			do_help();
 #ifndef NANO_TINY
 			/* The window dimensions might have changed, so act as if. */
 			kbinput = KEY_WINCH;
@@ -219,9 +225,9 @@ char *do_browser(char *path)
 			selected = 0;
 		} else if (func == to_last_file) {
 			selected = filelist_len - 1;
-		} else if (func == goto_dir_void) {
+		} else if (func == goto_dir) {
 			/* Ask for the directory to go to. */
-			if (do_prompt(TRUE, FALSE, MGOTODIR, NULL, NULL,
+			if (do_prompt(TRUE, FALSE, MGOTODIR, "", NULL,
 							/* TRANSLATORS: This is a prompt. */
 							browser_refresh, _("Go To Directory")) < 0) {
 				statusbar(_("Cancelled"));
@@ -285,7 +291,7 @@ char *do_browser(char *path)
 
 			/* If it isn't a directory, a file was selected -- we're done. */
 			if (!S_ISDIR(st.st_mode)) {
-				retval = mallocstrcpy(NULL, filelist[selected]);
+				retval = copy_of(filelist[selected]);
 				break;
 			}
 
@@ -314,7 +320,7 @@ char *do_browser(char *path)
 		/* If the window resized, refresh the file list. */
 		if (kbinput == KEY_WINCH) {
 			/* Remember the selected file, to be able to reselect it. */
-			present_name = mallocstrcpy(NULL, filelist[selected]);
+			present_name = copy_of(filelist[selected]);
 			/* Reread the contents of the current directory. */
 			goto read_directory_contents;
 		}
@@ -447,50 +453,10 @@ void read_the_list(const char *path, DIR *dir)
 	width = (COLS + 2) / (longest + 2);
 }
 
-/* Return the function that is bound to the given key, accepting certain
- * plain characters too, for compatibility with Pico. */
-functionptrtype parse_browser_input(int *kbinput)
-{
-	if (!meta_key) {
-		switch (*kbinput) {
-			case BS_CODE:
-			case '-':
-				return do_page_up;
-			case ' ':
-				return do_page_down;
-			case '?':
-				return do_help_void;
-			case 'E':
-			case 'e':
-			case 'Q':
-			case 'q':
-			case 'X':
-			case 'x':
-				return do_exit;
-			case 'G':
-			case 'g':
-				return goto_dir_void;
-			case 'S':
-			case 's':
-				return do_enter;
-			case 'W':
-			case 'w':
-			case '/':
-				return do_search_forward;
-			case 'N':
-				return do_findprevious;
-			case 'n':
-				return do_findnext;
-		}
-	}
-	return func_from_key(kbinput);
-}
-
 /* Set width to the number of files that we can display per screen row,
  * if necessary, and display the list of files. */
 void browser_refresh(void)
 {
-	size_t i;
 	int row = 0, col = 0;
 		/* The current row and column while the list is getting displayed. */
 	int the_row = 0, the_column = 0;
@@ -503,11 +469,10 @@ void browser_refresh(void)
 
 	wmove(edit, 0, 0);
 
-	i = selected - selected % (editwinrows * width);
-
-	for (; i < filelist_len && row < editwinrows; i++) {
+	for (size_t index = selected - selected % (editwinrows * width);
+					index < filelist_len && row < editwinrows; index++) {
 		struct stat st;
-		const char *thename = tail(filelist[i]);
+		const char *thename = tail(filelist[index]);
 				/* The filename we display, minus the path. */
 		size_t namelen = breadth(thename);
 				/* The length of the filename in columns. */
@@ -526,7 +491,7 @@ void browser_refresh(void)
 
 		/* If this is the selected item, draw its highlighted bar upfront, and
 		 * remember its location to be able to place the cursor on it. */
-		if (i == selected) {
+		if (index == selected) {
 			wattron(edit, interface_color_pair[SELECTED_TEXT]);
 			mvwprintw(edit, row, col, "%*s", longest, " ");
 			the_row = row;
@@ -545,19 +510,19 @@ void browser_refresh(void)
 		/* Show information about the file: "--" for symlinks (except when
 		 * they point to a directory) and for files that have disappeared,
 		 * "(dir)" for directories, and the file size for normal files. */
-		if (lstat(filelist[i], &st) == -1 || S_ISLNK(st.st_mode)) {
-			if (stat(filelist[i], &st) == -1 || !S_ISDIR(st.st_mode))
-				info = mallocstrcpy(NULL, "--");
+		if (lstat(filelist[index], &st) == -1 || S_ISLNK(st.st_mode)) {
+			if (stat(filelist[index], &st) == -1 || !S_ISDIR(st.st_mode))
+				info = copy_of("--");
 			else
 				/* TRANSLATORS: Try to keep this at most 7 characters. */
-				info = mallocstrcpy(NULL, _("(dir)"));
+				info = copy_of(_("(dir)"));
 		} else if (S_ISDIR(st.st_mode)) {
 			if (strcmp(thename, "..") == 0) {
 				/* TRANSLATORS: Try to keep this at most 12 characters. */
-				info = mallocstrcpy(NULL, _("(parent dir)"));
+				info = copy_of(_("(parent dir)"));
 				infomaxlen = 12;
 			} else
-				info = mallocstrcpy(NULL, _("(dir)"));
+				info = copy_of(_("(dir)"));
 		} else {
 			off_t result = st.st_size;
 			char modifier;
@@ -597,7 +562,7 @@ void browser_refresh(void)
 		mvwaddstr(edit, row, col - infolen, info);
 
 		/* If this is the selected item, finish its highlighting. */
-		if (i == selected)
+		if (index == selected)
 			wattroff(edit, interface_color_pair[SELECTED_TEXT]);
 
 		free(info);
@@ -665,11 +630,12 @@ int filesearch_init(bool forwards)
 				(breadth(last_search) > COLS / 3) ? "..." : "");
 		free(disp);
 	} else
-		thedefault = mallocstrcpy(NULL, "");
+		thedefault = copy_of("");
 
 	/* Now ask what to search for. */
-	response = do_prompt(FALSE, FALSE, MWHEREISFILE, NULL, &search_history,
+	response = do_prompt(FALSE, FALSE, MWHEREISFILE, "", &search_history,
 						browser_refresh, "%s%s%s", _("Search"),
+						/* TRANSLATORS: A modifier of the Search prompt. */
 						!forwards ? _(" [Backwards]") : "", thedefault);
 	free(thedefault);
 
@@ -792,7 +758,7 @@ void to_last_file(void)
  * The returned string is dynamically allocated, and should be freed. */
 char *strip_last_component(const char *path)
 {
-	char *copy = mallocstrcpy(NULL, path);
+	char *copy = copy_of(path);
 	char *last_slash = strrchr(copy, '/');
 
 	if (last_slash != NULL)

@@ -1,6 +1,6 @@
 /* intprops.h -- properties of integer types
 
-   Copyright (C) 2001-2019 Free Software Foundation, Inc.
+   Copyright (C) 2001-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published
@@ -220,14 +220,26 @@
    ? (a) < (min) >> (b)                                 \
    : (max) >> (b) < (a))
 
-/* True if __builtin_add_overflow (A, B, P) works when P is non-null.  */
+/* True if __builtin_add_overflow (A, B, P) and __builtin_sub_overflow
+   (A, B, P) work when P is non-null.  */
 #if 5 <= __GNUC__ && !defined __ICC
-# define _GL_HAS_BUILTIN_OVERFLOW 1
+# define _GL_HAS_BUILTIN_ADD_OVERFLOW 1
+#elif defined __has_builtin
+# define _GL_HAS_BUILTIN_ADD_OVERFLOW __has_builtin (__builtin_add_overflow)
 #else
-# define _GL_HAS_BUILTIN_OVERFLOW 0
+# define _GL_HAS_BUILTIN_ADD_OVERFLOW 0
 #endif
 
-/* True if __builtin_add_overflow_p (A, B, C) works.  */
+/* True if __builtin_mul_overflow (A, B, P) works when P is non-null.  */
+#ifdef __clang__
+/* Work around Clang bug <https://bugs.llvm.org/show_bug.cgi?id=16404>.  */
+# define _GL_HAS_BUILTIN_MUL_OVERFLOW 0
+#else
+# define _GL_HAS_BUILTIN_MUL_OVERFLOW _GL_HAS_BUILTIN_ADD_OVERFLOW
+#endif
+
+/* True if __builtin_add_overflow_p (A, B, C) works, and similarly for
+   __builtin_mul_overflow_p and __builtin_mul_overflow_p.  */
 #define _GL_HAS_BUILTIN_OVERFLOW_P (7 <= __GNUC__)
 
 /* The _GL*_OVERFLOW macros have the same restrictions as the
@@ -351,29 +363,38 @@
 
 /* Store the low-order bits of A + B, A - B, A * B, respectively, into *R.
    Return 1 if the result overflows.  See above for restrictions.  */
-#define INT_ADD_WRAPV(a, b, r) \
-  _GL_INT_OP_WRAPV (a, b, r, +, __builtin_add_overflow, \
-                    _GL_INT_ADD_RANGE_OVERFLOW)
-#define INT_SUBTRACT_WRAPV(a, b, r) \
-  _GL_INT_OP_WRAPV (a, b, r, -, __builtin_sub_overflow, \
-                    _GL_INT_SUBTRACT_RANGE_OVERFLOW)
-#define INT_MULTIPLY_WRAPV(a, b, r) \
-   _GL_INT_OP_WRAPV (a, b, r, *, _GL_BUILTIN_MUL_OVERFLOW, \
-                     _GL_INT_MULTIPLY_RANGE_OVERFLOW)
-
-/* Like __builtin_mul_overflow, but work around GCC bug 91450.  */
-#define _GL_BUILTIN_MUL_OVERFLOW(a, b, r) \
-  ((!_GL_SIGNED_TYPE_OR_EXPR (*(r)) && EXPR_SIGNED (a) && EXPR_SIGNED (b) \
-    && _GL_INT_MULTIPLY_RANGE_OVERFLOW (a, b, 0, (__typeof__ (*(r))) -1)) \
-   ? ((void) __builtin_mul_overflow (a, b, r), 1) \
-   : __builtin_mul_overflow (a, b, r))
+#if _GL_HAS_BUILTIN_ADD_OVERFLOW
+# define INT_ADD_WRAPV(a, b, r) __builtin_add_overflow (a, b, r)
+# define INT_SUBTRACT_WRAPV(a, b, r) __builtin_sub_overflow (a, b, r)
+#else
+# define INT_ADD_WRAPV(a, b, r) \
+   _GL_INT_OP_WRAPV (a, b, r, +, _GL_INT_ADD_RANGE_OVERFLOW)
+# define INT_SUBTRACT_WRAPV(a, b, r) \
+   _GL_INT_OP_WRAPV (a, b, r, -, _GL_INT_SUBTRACT_RANGE_OVERFLOW)
+#endif
+#if _GL_HAS_BUILTIN_MUL_OVERFLOW
+# if (9 < __GNUC__ + (3 <= __GNUC_MINOR__) \
+      || (__GNUC__ == 8 && 4 <= __GNUC_MINOR__))
+#  define INT_MULTIPLY_WRAPV(a, b, r) __builtin_mul_overflow (a, b, r)
+# else
+   /* Work around GCC bug 91450.  */
+#  define INT_MULTIPLY_WRAPV(a, b, r) \
+    ((!_GL_SIGNED_TYPE_OR_EXPR (*(r)) && EXPR_SIGNED (a) && EXPR_SIGNED (b) \
+      && _GL_INT_MULTIPLY_RANGE_OVERFLOW (a, b, 0, (__typeof__ (*(r))) -1)) \
+     ? ((void) __builtin_mul_overflow (a, b, r), 1) \
+     : __builtin_mul_overflow (a, b, r))
+# endif
+#else
+# define INT_MULTIPLY_WRAPV(a, b, r) \
+   _GL_INT_OP_WRAPV (a, b, r, *, _GL_INT_MULTIPLY_RANGE_OVERFLOW)
+#endif
 
 /* Nonzero if this compiler has GCC bug 68193 or Clang bug 25390.  See:
    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=68193
    https://llvm.org/bugs/show_bug.cgi?id=25390
    For now, assume all versions of GCC-like compilers generate bogus
-   warnings for _Generic.  This matters only for older compilers that
-   lack __builtin_add_overflow.  */
+   warnings for _Generic.  This matters only for compilers that
+   lack relevant builtins.  */
 #if __GNUC__
 # define _GL__GENERIC_BOGUS 1
 #else
@@ -381,13 +402,10 @@
 #endif
 
 /* Store the low-order bits of A <op> B into *R, where OP specifies
-   the operation.  BUILTIN is the builtin operation, and OVERFLOW the
-   overflow predicate.  Return 1 if the result overflows.  See above
-   for restrictions.  */
-#if _GL_HAS_BUILTIN_OVERFLOW
-# define _GL_INT_OP_WRAPV(a, b, r, op, builtin, overflow) builtin (a, b, r)
-#elif 201112 <= __STDC_VERSION__ && !_GL__GENERIC_BOGUS
-# define _GL_INT_OP_WRAPV(a, b, r, op, builtin, overflow) \
+   the operation and OVERFLOW the overflow predicate.  Return 1 if the
+   result overflows.  See above for restrictions.  */
+#if 201112 <= __STDC_VERSION__ && !_GL__GENERIC_BOGUS
+# define _GL_INT_OP_WRAPV(a, b, r, op, overflow) \
    (_Generic \
     (*(r), \
      signed char: \
@@ -442,7 +460,7 @@
         : (*(r) = _GL_INT_OP_WRAPV_VIA_UNSIGNED (a,b,op,unsigned,st), 0)))
 # endif
 
-# define _GL_INT_OP_WRAPV(a, b, r, op, builtin, overflow) \
+# define _GL_INT_OP_WRAPV(a, b, r, op, overflow) \
    (sizeof *(r) == sizeof (signed char) \
     ? _GL_INT_OP_WRAPV_SMALLISH (a, b, r, op, overflow, \
                                  signed char, SCHAR_MIN, SCHAR_MAX, \

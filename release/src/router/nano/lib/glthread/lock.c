@@ -1,5 +1,5 @@
 /* Locking in multithreaded situations.
-   Copyright (C) 2005-2019 Free Software Foundation, Inc.
+   Copyright (C) 2005-2020 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,229 @@
 
 /* ========================================================================= */
 
+#if USE_ISOC_THREADS || USE_ISOC_AND_POSIX_THREADS
+
+/* -------------------------- gl_lock_t datatype -------------------------- */
+
+int
+glthread_lock_init (gl_lock_t *lock)
+{
+  if (mtx_init (&lock->mutex, mtx_plain) != thrd_success)
+    return ENOMEM;
+  lock->init_needed = 0;
+  return 0;
+}
+
+int
+glthread_lock_lock (gl_lock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  if (mtx_lock (&lock->mutex) != thrd_success)
+    return EAGAIN;
+  return 0;
+}
+
+int
+glthread_lock_unlock (gl_lock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  if (mtx_unlock (&lock->mutex) != thrd_success)
+    return EINVAL;
+  return 0;
+}
+
+int
+glthread_lock_destroy (gl_lock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  mtx_destroy (&lock->mutex);
+  return 0;
+}
+
+/* ------------------------- gl_rwlock_t datatype ------------------------- */
+
+int
+glthread_rwlock_init (gl_rwlock_t *lock)
+{
+  if (mtx_init (&lock->lock, mtx_plain) != thrd_success
+      || cnd_init (&lock->waiting_readers) != thrd_success
+      || cnd_init (&lock->waiting_writers) != thrd_success)
+    return ENOMEM;
+  lock->waiting_writers_count = 0;
+  lock->runcount = 0;
+  lock->init_needed = 0;
+  return 0;
+}
+
+int
+glthread_rwlock_rdlock (gl_rwlock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  if (mtx_lock (&lock->lock) != thrd_success)
+    return EAGAIN;
+  /* Test whether only readers are currently running, and whether the runcount
+     field will not overflow, and whether no writer is waiting.  The latter
+     condition is because POSIX recommends that "write locks shall take
+     precedence over read locks", to avoid "writer starvation".  */
+  while (!(lock->runcount + 1 > 0 && lock->waiting_writers_count == 0))
+    {
+      /* This thread has to wait for a while.  Enqueue it among the
+         waiting_readers.  */
+      if (cnd_wait (&lock->waiting_readers, &lock->lock) != thrd_success)
+        {
+          mtx_unlock (&lock->lock);
+          return EINVAL;
+        }
+    }
+  lock->runcount++;
+  if (mtx_unlock (&lock->lock) != thrd_success)
+    return EINVAL;
+  return 0;
+}
+
+int
+glthread_rwlock_wrlock (gl_rwlock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  if (mtx_lock (&lock->lock) != thrd_success)
+    return EAGAIN;
+  /* Test whether no readers or writers are currently running.  */
+  while (!(lock->runcount == 0))
+    {
+      /* This thread has to wait for a while.  Enqueue it among the
+         waiting_writers.  */
+      lock->waiting_writers_count++;
+      if (cnd_wait (&lock->waiting_writers, &lock->lock) != thrd_success)
+        {
+          lock->waiting_writers_count--;
+          mtx_unlock (&lock->lock);
+          return EINVAL;
+        }
+      lock->waiting_writers_count--;
+    }
+  lock->runcount--; /* runcount becomes -1 */
+  if (mtx_unlock (&lock->lock) != thrd_success)
+    return EINVAL;
+  return 0;
+}
+
+int
+glthread_rwlock_unlock (gl_rwlock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  if (mtx_lock (&lock->lock) != thrd_success)
+    return EAGAIN;
+  if (lock->runcount < 0)
+    {
+      /* Drop a writer lock.  */
+      if (!(lock->runcount == -1))
+        {
+          mtx_unlock (&lock->lock);
+          return EINVAL;
+        }
+      lock->runcount = 0;
+    }
+  else
+    {
+      /* Drop a reader lock.  */
+      if (!(lock->runcount > 0))
+        {
+          mtx_unlock (&lock->lock);
+          return EINVAL;
+        }
+      lock->runcount--;
+    }
+  if (lock->runcount == 0)
+    {
+      /* POSIX recommends that "write locks shall take precedence over read
+         locks", to avoid "writer starvation".  */
+      if (lock->waiting_writers_count > 0)
+        {
+          /* Wake up one of the waiting writers.  */
+          if (cnd_signal (&lock->waiting_writers) != thrd_success)
+            {
+              mtx_unlock (&lock->lock);
+              return EINVAL;
+            }
+        }
+      else
+        {
+          /* Wake up all waiting readers.  */
+          if (cnd_broadcast (&lock->waiting_readers) != thrd_success)
+            {
+              mtx_unlock (&lock->lock);
+              return EINVAL;
+            }
+        }
+    }
+  if (mtx_unlock (&lock->lock) != thrd_success)
+    return EINVAL;
+  return 0;
+}
+
+int
+glthread_rwlock_destroy (gl_rwlock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  mtx_destroy (&lock->lock);
+  cnd_destroy (&lock->waiting_readers);
+  cnd_destroy (&lock->waiting_writers);
+  return 0;
+}
+
+/* --------------------- gl_recursive_lock_t datatype --------------------- */
+
+int
+glthread_recursive_lock_init (gl_recursive_lock_t *lock)
+{
+  if (mtx_init (&lock->mutex, mtx_plain | mtx_recursive) != thrd_success)
+    return ENOMEM;
+  lock->init_needed = 0;
+  return 0;
+}
+
+int
+glthread_recursive_lock_lock (gl_recursive_lock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  if (mtx_lock (&lock->mutex) != thrd_success)
+    return EAGAIN;
+  return 0;
+}
+
+int
+glthread_recursive_lock_unlock (gl_recursive_lock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  if (mtx_unlock (&lock->mutex) != thrd_success)
+    return EINVAL;
+  return 0;
+}
+
+int
+glthread_recursive_lock_destroy (gl_recursive_lock_t *lock)
+{
+  if (lock->init_needed)
+    call_once (&lock->init_once, lock->init_func);
+  mtx_destroy (&lock->mutex);
+  return 0;
+}
+
+/* -------------------------- gl_once_t datatype -------------------------- */
+
+#endif
+
+/* ========================================================================= */
+
 #if USE_POSIX_THREADS
 
 /* -------------------------- gl_lock_t datatype -------------------------- */
@@ -31,7 +254,7 @@
 
 # if HAVE_PTHREAD_RWLOCK && (HAVE_PTHREAD_RWLOCK_RDLOCK_PREFER_WRITER || (defined PTHREAD_RWLOCK_WRITER_NONRECURSIVE_INITIALIZER_NP && (__GNU_LIBRARY__ > 1)))
 
-#  ifdef PTHREAD_RWLOCK_INITIALIZER
+#  if defined PTHREAD_RWLOCK_INITIALIZER || defined PTHREAD_RWLOCK_INITIALIZER_NP
 
 #   if !HAVE_PTHREAD_RWLOCK_RDLOCK_PREFER_WRITER
      /* glibc with bug https://sourceware.org/bugzilla/show_bug.cgi?id=13701 */
@@ -494,6 +717,26 @@ glthread_once_singlethreaded (pthread_once_t *once_control)
   else
     return 0;
 }
+
+# if !(PTHREAD_IN_USE_DETECTION_HARD || USE_POSIX_THREADS_WEAK)
+
+int
+glthread_once_multithreaded (pthread_once_t *once_control,
+                             void (*init_function) (void))
+{
+  int err = pthread_once (once_control, init_function);
+  if (err == ENOSYS)
+    {
+      /* This happens on FreeBSD 11: The pthread_once function in libc returns
+         ENOSYS.  */
+      if (glthread_once_singlethreaded (once_control))
+        init_function ();
+      return 0;
+    }
+  return err;
+}
+
+# endif
 
 #endif
 

@@ -545,6 +545,8 @@ circuit_expire_building(void)
 
   SMARTLIST_FOREACH_BEGIN(circuit_get_global_list(), circuit_t *,victim) {
     struct timeval cutoff;
+    bool fixed_time = circuit_build_times_disabled(get_options());
+
     if (!CIRCUIT_IS_ORIGIN(victim) || /* didn't originate here */
         victim->marked_for_close)     /* don't mess with marked circs */
       continue;
@@ -599,17 +601,19 @@ circuit_expire_building(void)
         if (!TO_ORIGIN_CIRCUIT(victim)->relaxed_timeout) {
           int first_hop_succeeded = TO_ORIGIN_CIRCUIT(victim)->cpath->state
                                       == CPATH_STATE_OPEN;
-          log_info(LD_CIRC,
-                 "No circuits are opened. Relaxing timeout for circuit %d "
-                 "(a %s %d-hop circuit in state %s with channel state %s).",
-                 TO_ORIGIN_CIRCUIT(victim)->global_identifier,
-                 circuit_purpose_to_string(victim->purpose),
-                 TO_ORIGIN_CIRCUIT(victim)->build_state ?
-                   TO_ORIGIN_CIRCUIT(victim)->build_state->desired_path_len :
-                   -1,
-                 circuit_state_to_string(victim->state),
-                 victim->n_chan ?
-                    channel_state_to_string(victim->n_chan->state) : "none");
+          if (!fixed_time) {
+            log_info(LD_CIRC,
+                "No circuits are opened. Relaxing timeout for circuit %d "
+                "(a %s %d-hop circuit in state %s with channel state %s).",
+                TO_ORIGIN_CIRCUIT(victim)->global_identifier,
+                circuit_purpose_to_string(victim->purpose),
+                TO_ORIGIN_CIRCUIT(victim)->build_state ?
+                  TO_ORIGIN_CIRCUIT(victim)->build_state->desired_path_len :
+                  -1,
+                circuit_state_to_string(victim->state),
+                victim->n_chan ?
+                   channel_state_to_string(victim->n_chan->state) : "none");
+          }
 
           /* We count the timeout here for CBT, because technically this
            * was a timeout, and the timeout value needs to reset if we
@@ -623,7 +627,8 @@ circuit_expire_building(void)
       } else {
         static ratelim_t relax_timeout_limit = RATELIM_INIT(3600);
         const double build_close_ms = get_circuit_build_close_time_ms();
-        log_fn_ratelim(&relax_timeout_limit, LOG_NOTICE, LD_CIRC,
+        if (!fixed_time) {
+          log_fn_ratelim(&relax_timeout_limit, LOG_NOTICE, LD_CIRC,
                  "No circuits are opened. Relaxed timeout for circuit %d "
                  "(a %s %d-hop circuit in state %s with channel state %s) to "
                  "%ldms. However, it appears the circuit has timed out "
@@ -637,6 +642,7 @@ circuit_expire_building(void)
                  victim->n_chan ?
                     channel_state_to_string(victim->n_chan->state) : "none",
                  (long)build_close_ms);
+        }
       }
     }
 
@@ -1564,10 +1570,14 @@ circuit_expire_old_circuits_serverside(time_t now)
     or_circ = TO_OR_CIRCUIT(circ);
     /* If the circuit has been idle for too long, and there are no streams
      * on it, and it ends here, and it used a create_fast, mark it for close.
+     *
+     * Also if there is a rend_splice on it, it's a single onion service
+     * circuit and we should not close it.
      */
     if (or_circ->p_chan && channel_is_client(or_circ->p_chan) &&
         !circ->n_chan &&
         !or_circ->n_streams && !or_circ->resolving_streams &&
+        !or_circ->rend_splice &&
         channel_when_last_xmit(or_circ->p_chan) <= cutoff) {
       log_info(LD_CIRC, "Closing circ_id %u (empty %d secs ago)",
                (unsigned)or_circ->p_circ_id,
@@ -3056,6 +3066,12 @@ circuit_change_purpose(circuit_t *circ, uint8_t new_purpose)
               circ->purpose,
               circuit_purpose_to_string(new_purpose),
               new_purpose);
+
+    /* Take specific actions if we are repurposing a hidden service circuit. */
+    if (circuit_purpose_is_hidden_service(circ->purpose) &&
+        !circuit_purpose_is_hidden_service(new_purpose)) {
+      hs_circ_cleanup(circ);
+    }
   }
 
   old_purpose = circ->purpose;

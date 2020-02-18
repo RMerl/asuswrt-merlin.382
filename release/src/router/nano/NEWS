@@ -1,3 +1,40 @@
+2020.02.07 - GNU nano 4.8 "Jaška"
+• When something is pasted into nano, auto-indentation is suppressed,
+  and the paste can be undone as a whole with a single M-U.
+• When a lock file is encountered during startup, pressing ^C/Cancel
+  quits nano.  (Pressing 'No' just skips the file and continues.)
+• Shift+Meta+letter key combos can be bound with 'bind Sh-M-letter'.
+  Making any such binding dismisses the default behavior of ignoring
+  Shift for all Meta+letter keystrokes.
+• The configuration option --with-slang (to be avoided when possible)
+  can now be used only together with --enable-tiny.
+• A custom nanorc file can be specified on the command line, with
+  -f filename or --rcfile=filename.
+
+2019.12.23 - GNU nano 4.7 "Havikskruid"
+• A <Tab> will indent a marked region only when mark and cursor are
+  on different lines.
+• Two indentations (any mix of tabs and spaces) are considered the
+  same when they look the same (that is: indent to the same level).
+• When using --breaklonglines or ^J, a line will never be broken in
+  its leading whitespace or quoting.
+• The keywords in nanorc files must be in lowercase.
+
+2019.11.29 - GNU nano 4.6 "And don't you eat that yellow snow"
+• The 'formatter' command has returned, bound by default to M-F.
+  It allows running a syntax-specific command on the contents of
+  the buffer.
+• ^T will try to run 'hunspell' before 'spell', because it checks
+  spellling for the locale's language and understands UTF-8.
+• Multiple errors or warnings on startup will no longer slow nano
+  down but will be indicated on the status bar with trailing dots.
+
+2019.10.04 - GNU nano 4.5 "Košice"
+• The new 'tabgives' command allows you to specify per syntax what
+  the <Tab> key should produce: some spaces, a hard TAB, ...
+• The output of --help is properly aligned again for all languages.
+• <Tab> will indent a marked region also when M-} has been rebound.
+
 2019.08.25 - GNU nano 4.4 "Hagelslag"
 • At startup, the cursor can be put on the first or last occurrence
   of a string by preceding the filename with +/string or +?string.

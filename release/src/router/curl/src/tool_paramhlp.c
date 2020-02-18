@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -65,7 +65,7 @@ ParameterError file2string(char **bufp, FILE *file)
     size_t alloc_needed;
     char buffer[256];
     size_t stringlen = 0;
-    string = malloc(alloc);
+    string = calloc(1, alloc);
     if(!string)
       return PARAM_NO_MEM;
 
@@ -560,7 +560,7 @@ int ftpcccmethod(struct OperationConfig *config, const char *str)
   return CURLFTPSSL_CCC_PASSIVE;
 }
 
-long delegation(struct OperationConfig *config, char *str)
+long delegation(struct OperationConfig *config, const char *str)
 {
   if(curl_strequal("none", str))
     return CURLGSSAPI_DELEGATION_NONE;
@@ -606,7 +606,7 @@ CURLcode get_args(struct OperationConfig *config, const size_t i)
   if(!config->useragent) {
     config->useragent = my_useragent();
     if(!config->useragent) {
-      helpf(config->global->errors, "out of memory\n");
+      errorf(config->global, "out of memory\n");
       result = CURLE_OUT_OF_MEMORY;
     }
   }

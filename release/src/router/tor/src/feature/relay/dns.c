@@ -2130,7 +2130,8 @@ dns_cache_handle_oom(time_t now, size_t min_remove_bytes)
     current_size -= bytes_removed;
     total_bytes_removed += bytes_removed;
 
-    time_inc += 3600; /* Increase time_inc by 1 hour. */
+    /* Increase time_inc by a reasonable fraction. */
+    time_inc += (MAX_DNS_TTL_AT_EXIT / 4);
   } while (total_bytes_removed < min_remove_bytes);
 
   return total_bytes_removed;

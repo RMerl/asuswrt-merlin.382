@@ -954,20 +954,18 @@ routerlist_free_(routerlist_t *rl)
   smartlist_free(rl->routers);
   smartlist_free(rl->old_routers);
   if (rl->desc_store.mmap) {
-    int res = tor_munmap_file(routerlist->desc_store.mmap);
+    int res = tor_munmap_file(rl->desc_store.mmap);
     if (res != 0) {
       log_warn(LD_FS, "Failed to munmap routerlist->desc_store.mmap");
     }
   }
   if (rl->extrainfo_store.mmap) {
-    int res = tor_munmap_file(routerlist->extrainfo_store.mmap);
+    int res = tor_munmap_file(rl->extrainfo_store.mmap);
     if (res != 0) {
       log_warn(LD_FS, "Failed to munmap routerlist->extrainfo_store.mmap");
     }
   }
   tor_free(rl);
-
-  router_dir_info_changed();
 }
 
 /** Log information about how much memory is being used for routerlist,
@@ -1426,8 +1424,10 @@ routerlist_reparse_old(routerlist_t *rl, signed_descriptor_t *sd)
 void
 routerlist_free_all(void)
 {
-  routerlist_free(routerlist);
-  routerlist = NULL;
+  routerlist_t *rl = routerlist;
+  routerlist = NULL; // Prevent internals of routerlist_free() from using
+                     // routerlist.
+  routerlist_free(rl);
   dirlist_free_all();
   if (warned_nicknames) {
     SMARTLIST_FOREACH(warned_nicknames, char *, cp, tor_free(cp));
@@ -2856,7 +2856,7 @@ int
 router_differences_are_cosmetic(const routerinfo_t *r1, const routerinfo_t *r2)
 {
   time_t r1pub, r2pub;
-  long time_difference;
+  time_t time_difference;
   tor_assert(r1 && r2);
 
   /* r1 should be the one that was published first. */
@@ -2920,7 +2920,9 @@ router_differences_are_cosmetic(const routerinfo_t *r1, const routerinfo_t *r2)
    * give or take some slop? */
   r1pub = r1->cache_info.published_on;
   r2pub = r2->cache_info.published_on;
-  time_difference = labs(r2->uptime - (r1->uptime + (r2pub - r1pub)));
+  time_difference = r2->uptime - (r1->uptime + (r2pub - r1pub));
+  if (time_difference < 0)
+    time_difference = - time_difference;
   if (time_difference > ROUTER_ALLOW_UPTIME_DRIFT &&
       time_difference > r1->uptime * .05 &&
       time_difference > r2->uptime * .05)

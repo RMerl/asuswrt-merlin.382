@@ -14,13 +14,13 @@ packages:
 - autoconf    (version >= 2.69)
 - automake    (version >= 1.14)
 - autopoint   (version >= 0.18.3)
+- gcc         (version >= 5.0)
 - gettext     (version >= 0.18.3)
 - git         (version >= 2.7.4)
 - groff       (version >= 1.12)
+- make        (any version)
 - pkg-config  (version >= 0.22)
 - texinfo     (version >= 4.0)
-- gcc         (any version)
-- make        (any version)
 
 If you want UTF-8 support, you will also need libncursesw5-dev installed
 (version >= 5.7), or libslang2-dev (version >= 2.0) if you use --with-slang.

@@ -1531,7 +1531,7 @@ void check_servers(void)
 #endif
 	      if (!(serv->flags & SERV_HAS_DOMAIN))
 		s1 = _("unqualified"), s2 = _("names");
-	      else if (serv->domain == NULL || strlen(serv->domain) == 0)
+	      else if (strlen(serv->domain) == 0)
 		s1 = _("default"), s2 = "";
 	      else
 		s1 = _("domain"), s2 = serv->domain;

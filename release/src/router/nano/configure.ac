@@ -1,6 +1,6 @@
 # Configuration for GNU nano - a small and user-friendly text editor
 #
-# Copyright (C) 1999-2011, 2013-2019 Free Software Foundation, Inc.
+# Copyright (C) 1999-2011, 2013-2020 Free Software Foundation, Inc.
 # Copyright (C) 2014, 2017 Mike Frysinger
 #
 # GNU nano is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see https://www.gnu.org/licenses/.
 
-AC_INIT([GNU nano], [4.4], [nano-devel@gnu.org], [nano])
+AC_INIT([GNU nano], [4.8], [nano-devel@gnu.org], [nano])
 AC_CONFIG_SRCDIR([src/nano.c])
 AC_CANONICAL_HOST
 AM_INIT_AUTOMAKE([1.14])
@@ -88,6 +88,12 @@ dnl Checks for header files.
 AC_CHECK_HEADERS(libintl.h limits.h pwd.h termios.h sys/param.h)
 
 dnl Checks for options.
+
+if test "x$with_slang" = xyes; then
+	if test "x$enable_tiny" != xyes; then
+		AC_MSG_ERROR([--with-slang is supported only together with --enable-tiny])
+	fi
+fi
 
 AC_ARG_ENABLE(browser,
 AS_HELP_STRING([--disable-browser], [Disable the built-in file browser]))
@@ -515,7 +521,6 @@ int main(void)
 		fi
 		;;
 	esac], [AC_MSG_RESULT(no)])
-
 
 dnl Checks for functions.
 

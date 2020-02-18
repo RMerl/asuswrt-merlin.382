@@ -1,6 +1,6 @@
-# getline.m4 serial 29
+# getline.m4 serial 30
 
-dnl Copyright (C) 1998-2003, 2005-2007, 2009-2019 Free Software Foundation,
+dnl Copyright (C) 1998-2003, 2005-2007, 2009-2020 Free Software Foundation,
 dnl Inc.
 dnl
 dnl This file is free software; the Free Software Foundation
@@ -80,7 +80,7 @@ AC_DEFUN([gl_FUNC_GETLINE],
             [am_cv_func_working_getline="guessing yes"],
             [case "$host_os" in
                *-musl*) am_cv_func_working_getline="guessing yes" ;;
-               *)       am_cv_func_working_getline="guessing no" ;;
+               *)       am_cv_func_working_getline="$gl_cross_guess_normal" ;;
              esac
             ])
          ])

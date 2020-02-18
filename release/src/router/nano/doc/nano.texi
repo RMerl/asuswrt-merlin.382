@@ -8,8 +8,8 @@
 
 @smallbook
 @set EDITION 0.5
-@set VERSION 4.4
-@set UPDATED August 2019
+@set VERSION 4.8
+@set UPDATED February 2020
 
 @dircategory Editors
 @direntry
@@ -23,7 +23,7 @@
 @titlepage
 @title GNU @command{nano}
 @subtitle a small and friendly text editor
-@subtitle version 4.4
+@subtitle version 4.8
 
 @author Chris Allegretta
 @page
@@ -33,7 +33,7 @@ This manual documents the GNU @command{nano} editor.
 This manual is part of the GNU @command{nano} distribution.@*
 
 @sp 4
-Copyright @copyright{} 1999-2009, 2014-2019 Free Software Foundation, Inc.
+Copyright @copyright{} 1999-2009, 2014-2020 Free Software Foundation, Inc.
 
 @sp 1
 This document is dual-licensed.  You may distribute and/or modify it
@@ -57,13 +57,13 @@ You may contact the author by
 e-mail: @email{chrisa@@asty.org}@*
 @end titlepage
 
-
 @ifnottex
+
 
 @node Top
 @top
 
-This manual documents the GNU @command{nano} editor, version 4.4.
+This manual documents the GNU @command{nano} editor, version 4.8.
 
 @menu
 * Introduction::
@@ -128,6 +128,7 @@ section), and to edit several files in a row.  Additionally, the cursor
 can be put on a specific line of a file by adding the line number
 with a plus sign before the filename, and even in a specific column by
 adding it with a comma.
+(Negative numbers count from the end of the file or line.)
 The cursor can also be put on the first or last occurrence of a specific string
 by specifying that string after @code{+/} or @code{+?} before the filename.
 The string can be made case sensitive and/or caused to be interpreted as a
@@ -155,6 +156,7 @@ you will rarely need to specify a line number.
 As a special case: when instead of a filename a dash is given, @command{nano}
 will read data from standard input.  This means you can pipe the output of
 a command straight into a buffer, and then edit it.
+
 
 @node Command-line Options
 @chapter Command-line Options
@@ -184,7 +186,10 @@ The uniquely numbered files are stored in the specified directory.
 
 @item -D
 @itemx --boldtext
-Use bold text instead of reverse video text.
+For the interface, use bold instead of reverse video.  This will be overridden
+by setting the options @code{titlecolor}, @code{statuscolor}, @code{keycolor},
+@code{functioncolor}, @code{numbercolor}, and/or @code{selectedcolor} in your
+nanorc file.  @xref{@code{set functioncolor}} for details.
 
 @item -E
 @itemx --tabstospaces
@@ -332,6 +337,11 @@ system either Backspace acts like Delete or Delete acts like Backspace.
 @itemx --emptyline
 Do not use the line below the title bar, leaving it entirely blank.
 
+@item -f @var{file}
+@itemx --rcfile=@var{file}
+Read only this @var{file} for setting nano's options, instead of reading
+both the system-wide and the user's nanorc files.
+
 @item -g
 @itemx --showcursor
 Make the cursor visible in the file browser (putting it on the
@@ -396,13 +406,14 @@ point to vary along with the width of the screen if the screen is resized.
 The default value is @t{-8}.
 
 @anchor{@option{--speller}}
-@item -s "@var{program} [@var{arg} @dots{}]"
-@itemx --speller="@var{program} [@var{arg} @dots{}]"
+@item -s "@var{program} [@var{argument} @dots{}]"
+@itemx --speller="@var{program} [@var{argument} @dots{}]"
 Use the given program to do spell checking and correcting.  By default,
 @command{nano} uses the command specified in the @env{SPELL} environment
 variable.  If @env{SPELL} is not set, and @option{--speller} is
 not specified either, then @command{nano} uses its own interactive spell
-corrector, which requires the GNU @command{spell} program to be installed.
+corrector, which requires either @command{hunspell} or GNU @command{spell}
+to be installed.
 
 @item -t
 @itemx --tempfile
@@ -431,7 +442,6 @@ This is the default.  (This option is the opposite of @option{-b}
 (@option{--breaklonglines}) --- the last one given takes effect.)
 
 
-@anchor{Expert Mode}
 @item -x
 @itemx --nohelp
 Expert Mode: don't show the Shortcut List at the bottom of the screen.
@@ -614,6 +624,7 @@ The recording and playback of keyboard macros works correctly only on a
 terminal emulator, not on a Linux console (VT), because the latter does
 not by default distinguish modified from unmodified arrow keys.
 
+
 @node Built-in Help
 @chapter Built-in Help
 
@@ -681,16 +692,20 @@ The following global toggles are available:
 
 The nanorc files contain the default settings for @command{nano}.  They
 should be in Unix format, not in DOS or Mac format.  During startup,
-@command{nano} will first read the system-wide settings, from /etc/nanorc
-(the exact path might be different), and then the user-specific settings,
+if @option{--rcfile} is not given, @command{nano} will read two files:
+first the system-wide settings, from @file{/etc/nanorc} (the exact path
+might be different on your system), and then the user-specific settings,
 either from @file{~/.nanorc} or from @file{$XDG_CONFIG_HOME/nano/nanorc}
 or from @file{.config/nano/nanorc}, whichever exists first.
+If @option{--rcfile} is given, @command{nano} will read just the
+specified settings file.
 
 A nanorc file accepts a series of "set" and "unset" commands, which can
 be used to configure @command{nano} on startup without using command-line
 options.  Additionally, there are some commands to define syntax highlighting
 and to rebind keys --- @pxref{Syntax Highlighting} and @ref{Rebinding Keys}.
 @command{nano} will read one command per line.
+All commands and keywords should be written in lowercase.
 
 Options in nanorc files take precedence over @command{nano}'s defaults, and
 command-line options override nanorc settings.  Also, options that do not
@@ -743,9 +758,9 @@ The uniquely numbered files are stored in the specified directory.
 
 @item set boldtext
 Use bold instead of reverse video for the title bar, status bar, key combos,
-function tags, line numbers, and selected text.  This can be overridden by
+function tags, line numbers, and selected text.  This is overridden by
 setting the options @code{titlecolor}, @code{statuscolor}, @code{keycolor},
-@code{functioncolor}, @code{numbercolor}, and @code{selectedcolor}.
+@code{functioncolor}, @code{numbercolor}, and/or @code{selectedcolor}.
 
 @item set brackets "@var{characters}"
 Set the characters treated as closing brackets when justifying
@@ -843,8 +858,7 @@ Don't automatically add a newline when a text does not end with one.
 (This can cause you to save non-POSIX text files.)
 
 @item set nopauses
-Don't pause between warnings at startup.  This means that only
-the last one will be visible (when there are multiple ones).
+Obsolete option.  Ignored.
 
 @item set nowrap
 Deprecated option since it has become the default setting.
@@ -923,7 +937,7 @@ When needed, use @code{unset jumpyscrolling} instead.
 @item set softwrap
 Enable soft line wrapping for easier viewing of very long lines.
 
-@item set speller "@var{program} [@var{arg} @dots{}]"
+@item set speller "@var{program} [@var{argument} @dots{}]"
 Use the given program to do spell checking and correcting.
 @xref{@option{--speller}} for details.
 
@@ -1046,7 +1060,13 @@ file, to determine whether this syntax should be used for it.
 (This functionality only works when @code{libmagic} is installed
 on the system and will be silently ignored otherwise.)
 
-@item linter @var{program} [@var{arg} @dots{}]
+@item formatter @var{program} [@var{argument} @dots{}]
+Run the given @var{program} on the full contents of the current buffer.
+(The current buffer is written out to a temporary file, the program is
+run on it, and then the temporary file is read back in, replacing the
+contents of the buffer.)
+
+@item linter @var{program} [@var{argument} @dots{}]
 Use the given @var{program} to do a syntax check on the current buffer.
 
 @item comment "@var{string}"
@@ -1060,6 +1080,11 @@ Python files.  If empty double quotes are specified, the comment/uncomment
 functions are disabled; for example, @t{""} for JSON.
 The default value is @t{"#"}.
 
+@item tabgives "@var{string}"
+Make the <Tab> key produce the given @var{string}.  Useful for languages like
+Python that want to see only spaces for indentation.
+This overrides the setting of the @code{tabstospaces} option.
+
 @item color @var{fgcolor},@var{bgcolor} "@var{regex}" @dots{}
 Paint all pieces of text that match the extended regular expression "regex"
 with the given foreground and background colors, at least one of which must
@@ -1071,6 +1096,9 @@ You may use the prefix @code{bright} for the foreground color to get a
 stronger highlight.
 If your terminal supports transparency, not specifying a "bgcolor"
 tells @command{nano} to attempt to use a transparent background.
+
+All coloring commands are applied in the order in which they are specified,
+which means that later commands can recolor stuff that was colored earlier.
 
 @item icolor @var{fgcolor},@var{bgcolor} "@var{regex}" @dots{}
 Same as above, except that the matching is case insensitive.
@@ -1091,30 +1119,15 @@ Read in self-contained color syntaxes from "syntaxfile".  Note that
 "syntaxfile" may contain only the above commands, from @code{syntax}
 to @code{icolor}.
 
-@item extendsyntax @var{name} @var{command} [@var{arg} @dots{}]
+@item extendsyntax @var{name} @var{command} @var{argument} @dots{}
 Extend the syntax previously defined as "@var{name}" with another @var{command}.
 This allows you to add a new @code{color}, @code{icolor}, @code{header},
-@code{magic}, @code{comment}, or @code{linter} command to an already
+@code{magic}, @code{formatter}, @code{linter}, @code{comment},
+or @code{tabgives} command to an already
 defined syntax --- useful when you want to slightly improve a syntax defined
 in one of the system-installed files (which normally are not writable).
 
 @end table
-
-Note: the @code{formatter} command has been removed.  It was superseded by
-a more general mechanism: the filtering of buffer or marked text through
-an external command.  Such filtering is done by typing @code{^R^X} and then
-preceding your formatter command with the pipe symbol (@code{|}).  It has
-the added advantage that the operation can be undone.
-
-If you use such a formatting command regularly, you could assign the relevant
-series of keystrokes to a single key in your nanorc:
-
-@example
-   bind  M-F  "^R^X|yourformatcommand^M"  main
-@end example
-
-(Note that the @key{^R}, @key{^X}, and @key{^M} are each a single, literal
-control character.  You can enter them by preceding each with @key{M-V}.)
 
 @node Rebinding Keys
 @section Rebinding Keys
@@ -1126,7 +1139,7 @@ nanorc file:
 
 @item bind key function menu
 Rebinds @code{key} to @code{function} in the context of @code{menu}
-(or in all menus where the function exists by using @code{all}).
+(or in all menus where the function exists when @code{all} is used).
 
 @item bind key "string" menu
 Makes @code{key} produce @code{string} in the context of @code{menu}
@@ -1137,7 +1150,7 @@ with @kbd{M-V}.)
 
 @item unbind key menu
 Unbinds @code{key} from @code{menu}
-(or from all menus where it exists by using @code{all}).
+(or from all menus where the key exists when @code{all} is used).
 
 @end table
 
@@ -1146,21 +1159,35 @@ The format of @code{key} should be one of:
 
 @itemize @w{}
 @item
-@code{^}@  followed by a Latin letter, by one of several ASCII characters
-(@@, ], \, ^, or _), or by the word "Space".
+@code{^@var{X}} ------ where @var{X} is a Latin letter, or one of several
+ASCII characters (@@, ], \, ^, _), or the word "Space".
 Example: @code{^C}.
 
 @item
-@code{M-}@  followed by any ASCII character except [, or by the word "Space".
-Example: @code{M-C}.
+@code{M-@var{X}} ------ where @var{X} is any ASCII character except [,
+or the word "Space".
+Example: @code{M-8}.
 
 @item
-@code{F}@  followed by a numeric value from 1 to 16.
+@code{Sh-M-@var{X}} ------ where @var{X} is a Latin letter.
+Example: @code{Sh-M-U}.
+By default, each Meta+letter keystroke does the same as the corresponding
+Shift+Meta+letter.  But when any Shift+Meta bind is made, that will
+no longer be the case, for all letters.
+
+@item
+@code{F@var{n}} ------ where @var{n} is a numeric value from 1 to 24.
 Example: @code{F10}.
+(Often, @code{F13} to @code{F24} can be typed as @code{F1} to @code{F12}
+with Shift.)
 
 @item
-the word "Ins" or the word "Del".
+@code{Ins} or @code{Del}.
 @end itemize
+
+Rebinding @code{^M} (Enter) or @code{^I} (Tab) is probably not a good idea.
+On some terminals it's not possible to rebind @code{^H} (unless @code{--raw}
+is used) because its keycode is identical to that of the Backspace key.
 
 @sp 1
 Valid names for the @code{function} to be bound are:
@@ -1241,8 +1268,12 @@ Shows the current cursor position: the line, column, and character positions.
 Counts the number of words, lines and characters in the current buffer.
 
 @item speller
-Invokes a spell-checking program, either the default one, or the one
-defined by @option{--speller} or @code{set speller}.
+Invokes a spell-checking program, either the default @command{hunspell}
+or GNU @command{spell}, or the one defined by @option{--speller} or
+@code{set speller}.
+
+@item formatter
+Invokes a full-buffer-processing program (if the active syntax defines one).
 
 @item linter
 Invokes a syntax-checking program (if the active syntax defines one).
@@ -1526,7 +1557,7 @@ The menu for inserting output from an external command, reached from the insert 
 The help-viewer menu.
 
 @item spell
-The interactive spell checker Yes/no menu.
+The menu of the integrated spell checker where the user can edit a misspelled word.
 
 @item linter
 The linter menu.
@@ -1587,7 +1618,7 @@ whereas Pico does it at screen width minus six columns. You can make
 By default, @command{nano} will scroll just one line (instead of half
 a screen) when the cursor is moved to a line that is just out of view.
 And when paging up or down, @command{nano} keeps the cursor in the same
-screen position as much as possible, instead always placing it on the
+screen position as much as possible, instead of always placing it on the
 first line of the viewport.  The Pico-like behavior can be obtained
 with the @option{--jumpyscrolling} option.
 

@@ -47,6 +47,8 @@
  * public key to hs_client_service_authorization_t *. */
 static digest256map_t *client_auths = NULL;
 
+#include "trunnel/hs/cell_introduce1.h"
+
 /* Return a human-readable string for the client fetch status code. */
 static const char *
 fetch_status_to_string(hs_client_fetch_status_t status)
@@ -670,8 +672,12 @@ setup_intro_circ_auth_key(origin_circuit_t *circ)
   tor_assert(circ);
 
   desc = hs_cache_lookup_as_client(&circ->hs_ident->identity_pk);
-  if (BUG(desc == NULL)) {
-    /* Opening intro circuit without the descriptor is no good... */
+  if (desc == NULL) {
+    /* There is a very small race window between the opening of this circuit
+     * and the client descriptor cache that gets purged (NEWNYM) or the
+     * cleaned up because it expired. Mark the circuit for close so a new
+     * descriptor fetch can occur. */
+    circuit_mark_for_close(TO_CIRCUIT(circ), END_CIRC_REASON_INTERNAL);
     goto end;
   }
 
@@ -1067,22 +1073,20 @@ handle_introduce_ack(origin_circuit_t *circ, const uint8_t *payload,
 
   status = hs_cell_parse_introduce_ack(payload, payload_len);
   switch (status) {
-  case HS_CELL_INTRO_ACK_SUCCESS:
+  case TRUNNEL_HS_INTRO_ACK_STATUS_SUCCESS:
     ret = 0;
     handle_introduce_ack_success(circ);
     goto end;
-  case HS_CELL_INTRO_ACK_FAILURE:
-  case HS_CELL_INTRO_ACK_BADFMT:
-  case HS_CELL_INTRO_ACK_NORELAY:
+  case TRUNNEL_HS_INTRO_ACK_STATUS_UNKNOWN_ID:
+  case TRUNNEL_HS_INTRO_ACK_STATUS_BAD_FORMAT:
+  /* It is possible that the intro point can send us an unknown status code
+   * for the NACK that we do not know about like a new code for instance.
+   * Just fallthrough so we can note down the NACK and re-extend. */
+  default:
     handle_introduce_ack_bad(circ, status);
     /* We are going to see if we have to close the circuits (IP and RP) or we
      * can re-extend to a new intro point. */
     ret = close_or_reextend_intro_circ(circ);
-    break;
-  default:
-    log_info(LD_PROTOCOL, "Unknown INTRODUCE_ACK status code %u from %s",
-        status,
-        safe_str_client(extend_info_describe(circ->build_state->chosen_exit)));
     break;
   }
 

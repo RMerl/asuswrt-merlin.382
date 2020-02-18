@@ -275,7 +275,7 @@ need-stem-path:
 	fi
 
 test-stem: need-stem-path $(TESTING_TOR_BINARY)
-	@$(PYTHON) "$$STEM_SOURCE_DIR"/run_tests.py --tor "$(TESTING_TOR_BINARY)" --integ --log notice --target RUN_ALL;
+	@$(PYTHON) "$$STEM_SOURCE_DIR"/run_tests.py --tor "$(TESTING_TOR_BINARY)" --integ --test control.controller --test control.base_controller --test process --log notice;
 
 test-stem-full: need-stem-path $(TESTING_TOR_BINARY)
 	@$(PYTHON) "$$STEM_SOURCE_DIR"/run_tests.py --tor "$(TESTING_TOR_BINARY)" --all --log notice --target RUN_ALL,ONLINE -v;
@@ -284,8 +284,10 @@ test-full: need-stem-path need-chutney-path check test-network test-stem
 
 test-full-online: need-stem-path need-chutney-path check test-network test-stem-full
 
+# We can't delete the gcno files, because they are created when tor is compiled
 reset-gcov:
-	rm -f $(top_builddir)/src/*/*.gcda $(top_builddir)/src/*/*/*.gcda
+	rm -f $(top_builddir)/src/*/*.gcda $(top_builddir)/src/*/*/*.gcda \
+	      $(top_builddir)/src/*/*.gcov $(top_builddir)/src/*/*/*.gcov
 
 HTML_COVER_DIR=$(top_builddir)/coverage_html
 coverage-html: all

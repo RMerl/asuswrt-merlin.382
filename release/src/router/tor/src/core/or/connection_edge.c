@@ -1598,8 +1598,10 @@ connection_ap_handshake_rewrite(entry_connection_t *conn,
    * disallowed when they're coming straight from the client, but you're
    * allowed to have them in MapAddress commands and so forth. */
   if (!strcmpend(socks->address, ".exit")) {
-    log_warn(LD_APP, "The  \".exit\" notation is disabled in Tor due to "
-             "security risks.");
+    static ratelim_t exit_warning_limit = RATELIM_INIT(60*15);
+    log_fn_ratelim(&exit_warning_limit, LOG_WARN, LD_APP,
+                   "The  \".exit\" notation is disabled in Tor due to "
+                   "security risks.");
     control_event_client_status(LOG_WARN, "SOCKS_BAD_HOSTNAME HOSTNAME=%s",
                                 escaped(socks->address));
     out->end_reason = END_STREAM_REASON_TORPROTOCOL;
@@ -2547,8 +2549,11 @@ destination_from_pf(entry_connection_t *conn, socks_request_t *req)
   } else if (proxy_sa->sa_family == AF_INET6) {
     struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)proxy_sa;
     pnl.af = AF_INET6;
-    memcpy(&pnl.saddr.v6, tor_addr_to_in6(&ENTRY_TO_CONN(conn)->addr),
-           sizeof(struct in6_addr));
+    const struct in6_addr *dest_in6 =
+      tor_addr_to_in6(&ENTRY_TO_CONN(conn)->addr);
+    if (BUG(!dest_in6))
+      return -1;
+    memcpy(&pnl.saddr.v6, dest_in6, sizeof(struct in6_addr));
     pnl.sport = htons(ENTRY_TO_CONN(conn)->port);
     memcpy(&pnl.daddr.v6, &sin6->sin6_addr, sizeof(struct in6_addr));
     pnl.dport = sin6->sin6_port;

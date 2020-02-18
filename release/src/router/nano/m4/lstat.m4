@@ -1,6 +1,6 @@
-# serial 32
+# serial 33
 
-# Copyright (C) 1997-2001, 2003-2019 Free Software Foundation, Inc.
+# Copyright (C) 1997-2001, 2003-2020 Free Software Foundation, Inc.
 #
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
@@ -63,8 +63,8 @@ AC_DEFUN([gl_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK],
             # Guess no on native Windows.
             gl_cv_func_lstat_dereferences_slashed_symlink="guessing no" ;;
           *)
-            # If we don't know, assume the worst.
-            gl_cv_func_lstat_dereferences_slashed_symlink="guessing no" ;;
+            # If we don't know, obey --enable-cross-guesses.
+            gl_cv_func_lstat_dereferences_slashed_symlink="$gl_cross_guess_normal" ;;
         esac
        ])
      rm -f conftest.sym conftest.file

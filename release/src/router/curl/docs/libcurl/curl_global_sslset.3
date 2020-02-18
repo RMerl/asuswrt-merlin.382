@@ -19,7 +19,7 @@
 .\" * KIND, either express or implied.
 .\" *
 .\" **************************************************************************
-.TH curl_global_sslset 3 "October 30, 2018" "libcurl 7.67.0" "libcurl Manual"
+.TH curl_global_sslset 3 "November 07, 2019" "libcurl 7.68.0" "libcurl Manual"
 
 .SH NAME
 curl_global_sslset - Select SSL backend to use with libcurl
@@ -44,7 +44,8 @@ typedef enum {
   CURLSSLBACKEND_DARWINSSL = 9,
   CURLSSLBACKEND_AXTLS = 10, /* deprecated */
   CURLSSLBACKEND_MBEDTLS = 11,
-  CURLSSLBACKEND_MESALINK = 12
+  CURLSSLBACKEND_MESALINK = 12,
+  CURLSSLBACKEND_BEARSSL = 13
 } curl_sslbackend;
 
 .B "CURLsslset curl_global_sslset(curl_sslbackend " id,

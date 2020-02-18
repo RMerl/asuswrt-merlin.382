@@ -1,7 +1,7 @@
 /**************************************************************************
  *   winio.c  --  This file is part of GNU nano.                          *
  *                                                                        *
- *   Copyright (C) 1999-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 1999-2011, 2013-2020 Free Software Foundation, Inc.    *
  *   Copyright (C) 2014-2019 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
@@ -47,15 +47,21 @@ static int digit_count = 0;
 		/* How many digits of a three-digit character code we've eaten. */
 static bool waiting_mode = TRUE;
 		/* Whether getting a character will wait for a key to be pressed. */
+static bool reveal_cursor = FALSE;
+		/* Whether the cursor should be shown when waiting for input. */
 static int statusblank = 0;
-		/* The number of keystrokes left before we blank the statusbar. */
+		/* The number of keystrokes left before we blank the status bar. */
 #ifdef USING_OLD_NCURSES
 static bool seen_wide = FALSE;
 		/* Whether we've seen a multicolumn character in the current line. */
 #endif
-static bool reveal_cursor = FALSE;
-		/* Whether the cursor should be shown when waiting for input. */
+static bool has_more = FALSE;
+		/* Whether the current line has more text after the displayed part. */
+static bool is_shorter = TRUE;
+		/* Whether a row's text is narrower than the screen's width. */
 #ifndef NANO_TINY
+static size_t sequel_column = 0;
+		/* The starting column of the next chunk when softwrapping. */
 static bool recording = FALSE;
 		/* Whether we are in the process of recording a macro. */
 static int *macro_buffer = NULL;
@@ -97,8 +103,6 @@ void record_macro(void)
  * so they will be "executed" again. */
 void run_macro(void)
 {
-	size_t i;
-
 	if (recording) {
 		statusbar(_("Cannot run macro while recording"));
 		snip_last_keystroke();
@@ -113,8 +117,10 @@ void run_macro(void)
 	key_buffer = (int *)nrealloc(key_buffer, macro_length * sizeof(int));
 	key_buffer_len = macro_length;
 
-	for (i = 0; i < macro_length; i++)
+	for (size_t i = 0; i < macro_length; i++)
 		key_buffer[i] = macro_buffer[i];
+
+	mute_modifiers = TRUE;
 }
 #endif /* !NANO_TINY */
 
@@ -128,21 +134,20 @@ void run_macro(void)
  * - Ctrl-? is Delete under ASCII, ANSI, VT100, and VT220,
  *          but is Backspace under VT320.
  *
- * Note: VT220 and VT320 also generate Esc [ 3 ~ for Delete.  By default,
- * xterm assumes it's running on a VT320 and generates Ctrl-?
- * for Backspace and Esc [ 3 ~ for Delete.  This causes problems for
- * VT100-derived terminals such as the FreeBSD console, which expect
- * Ctrl-H for Backspace and Ctrl-? for Delete, and on which the
- * VT320 sequences are translated by the keypad to KEY_DC and [nothing].
- * We work around this conflict via the REBIND_DELETE flag: if it's not set,
- * we assume VT320 compatibility, and if it is, we assume VT100 compatibility.
+ * Note: the VT220 and VT320 also generate Esc [ 3 ~ for Delete.  By default,
+ * xterm assumes it's running on a VT320 and generates Ctrl-? for Backspace
+ * and Esc [ 3 ~ for Delete.  This causes problems for VT100-derived terminals
+ * such as the FreeBSD console, which expect Ctrl-H for Backspace and Ctrl-?
+ * for Delete, and on which ncurses translates the VT320 sequences to KEY_DC
+ * and [nothing].  We work around this conflict via the REBIND_DELETE flag:
+ * if it's set, we assume VT100 compatibility, and VT320 otherwise.
  *
  * Escape sequence compatibility:
  *
  * We support escape sequences for ANSI, VT100, VT220, VT320, the Linux
- * console, the FreeBSD console, the Mach console, xterm, rxvt, Eterm,
- * and Terminal, and some for iTerm2.  Among these, there are several
- * conflicts and omissions, outlined as follows:
+ * console, the FreeBSD console, the Mach console, xterm, and Terminal,
+ * and some for Konsole, rxvt, Eterm, and iTerm2.  Among these sequences,
+ * there are several conflicts and omissions:
  *
  * - Tab on ANSI == PageUp on FreeBSD console; the former is omitted.
  *   (Ctrl-I is also Tab on ANSI, which we already support.)
@@ -156,8 +161,8 @@ void run_macro(void)
  *   instead of the escape sequence.)
  * - F9 on FreeBSD console == PageDown on Mach console; the former is
  *   omitted.  (The editing keypad is more important to have working
- *   than the function keys, because the functions of the former are not
- *   arbitrary and the functions of the latter are.)
+ *   than the function keys, because the functions of the former are
+ *   not arbitrary and the functions of the latter are.)
  * - F10 on FreeBSD console == PageUp on Mach console; the former is
  *   omitted.  (Same as above.)
  * - F13 on FreeBSD console == End on Mach console; the former is
@@ -279,22 +284,14 @@ void put_back(int keycode)
 	*key_buffer = keycode;
 }
 
-/* Put the character given in kbinput back into the input stream.  If it
- * is a Meta key, also insert an Escape character in front of it. */
-void unget_kbinput(int kbinput, bool metakey)
-{
-	put_back(kbinput);
-
-	if (metakey)
-		put_back(ESC_CODE);
-}
-
 #ifdef ENABLE_NANORC
 /* Insert the given string into the keyboard buffer. */
 void implant(const char *string)
 {
 	for (int i = strlen(string); i > 0; i--)
 		put_back((unsigned char)string[i - 1]);
+
+	mute_modifiers = TRUE;
 }
 #endif
 
@@ -323,28 +320,566 @@ int *get_input(WINDOW *win, size_t input_len)
 
 	/* If the buffer still contains keystrokes, move them to the front. */
 	if (key_buffer_len > 0)
-		memmove(key_buffer, key_buffer + input_len, key_buffer_len *
-				sizeof(int));
+		memmove(key_buffer, key_buffer + input_len, key_buffer_len * sizeof(int));
 
 	return input;
 }
 
-/* Read in a single keystroke, ignoring any that are invalid. */
-int get_kbinput(WINDOW *win, bool showcursor)
+/* Return the arrow-key code that corresponds to the given letter.
+ * (This mapping is common to a handful of escape sequences.) */
+int arrow_from_ABCD(int letter)
 {
-	int kbinput = ERR;
+	if (letter < 'C')
+		return (letter == 'A' ? KEY_UP : KEY_DOWN);
+	else
+		return (letter == 'D' ? KEY_LEFT : KEY_RIGHT);
+}
 
-	reveal_cursor = showcursor;
+/* Translate escape sequences, most of which correspond to extended
+ * keypad values, into their corresponding key values.  These sequences
+ * are generated when the keypad doesn't support the needed keys.
+ * Assume that Escape has already been read in. */
+int convert_sequence(const int *seq, size_t length, int *consumed)
+{
+	if (length > 1) {
+		*consumed = 2;
+		switch (seq[0]) {
+			case 'O':
+				switch (seq[1]) {
+					case '1':
+						if (length > 4  && seq[2] == ';') {
+		/* <-<-<-<-<-<-<- */
+		*consumed = 5;
+		switch (seq[3]) {
+			case '2':
+				switch (seq[4]) {
+					case 'A': /* Esc O 1 ; 2 A == Shift-Up on Terminal. */
+					case 'B': /* Esc O 1 ; 2 B == Shift-Down on Terminal. */
+					case 'C': /* Esc O 1 ; 2 C == Shift-Right on Terminal. */
+					case 'D': /* Esc O 1 ; 2 D == Shift-Left on Terminal. */
+						shift_held = TRUE;
+						return arrow_from_ABCD(seq[4]);
+#ifdef ENABLE_NANORC
+					case 'P': /* Esc O 1 ; 2 P == F13 on old xterm. */
+					case 'Q': /* Esc O 1 ; 2 Q == F14 on old xterm. */
+					case 'R': /* Esc O 1 ; 2 R == F15 on old xterm. */
+					case 'S': /* Esc O 1 ; 2 S == F16 on old xterm. */
+						return KEY_F(13 + seq[4] - 'P');
+#endif
+				}
+				break;
+			case '5':
+				switch (seq[4]) {
+					case 'A': /* Esc O 1 ; 5 A == Ctrl-Up on Terminal. */
+						return CONTROL_UP;
+					case 'B': /* Esc O 1 ; 5 B == Ctrl-Down on Terminal. */
+						return CONTROL_DOWN;
+					case 'C': /* Esc O 1 ; 5 C == Ctrl-Right on Terminal. */
+						return CONTROL_RIGHT;
+					case 'D': /* Esc O 1 ; 5 D == Ctrl-Left on Terminal. */
+						return CONTROL_LEFT;
+				}
+				break;
+		}
+		/* ->->->->->->-> */
+						}
+						break;
+					case '2':
+						if (length > 2) {
+							*consumed = 3;
+#ifdef ENABLE_NANORC
+							if ('O' < seq[2] && seq[2] < 'T')
+								/* Esc O 2 P == F13 on Konsole. */
+								/* Esc O 2 Q == F14 on Konsole. */
+								/* Esc O 2 R == F15 on Konsole. */
+								/* Esc O 2 S == F16 on Konsole. */
+								return KEY_F(13 + seq[2] - 'P');
+#endif
+						}
+						break;
+#ifndef NANO_TINY
+					case '5':
+						if (length > 2) {
+							*consumed = 3;
+							switch (seq[2]) {
+								case 'A': /* Esc O 5 A == Ctrl-Up on Haiku. */
+									return CONTROL_UP;
+								case 'B': /* Esc O 5 B == Ctrl-Down on Haiku. */
+									return CONTROL_DOWN;
+								case 'C': /* Esc O 5 C == Ctrl-Right on Haiku. */
+									return CONTROL_RIGHT;
+								case 'D': /* Esc O 5 D == Ctrl-Left on Haiku. */
+									return CONTROL_LEFT;
+							}
+						}
+						break;
+#endif
+					case 'A': /* Esc O A == Up on VT100/VT320. */
+					case 'B': /* Esc O B == Down on VT100/VT320. */
+					case 'C': /* Esc O C == Right on VT100/VT320. */
+					case 'D': /* Esc O D == Left on VT100/VT320. */
+						return arrow_from_ABCD(seq[1]);
+					case 'F': /* Esc O F == End on old xterm. */
+						return KEY_END;
+					case 'H': /* Esc O H == Home on old xterm. */
+						return KEY_HOME;
+					case 'M': /* Esc O M == Enter on numeric keypad with
+							   * NumLock off on VT100/VT220/VT320/xterm/
+							   * rxvt/Eterm. */
+						return KEY_ENTER;
+					case 'P': /* Esc O P == F1 on VT100/VT220/VT320/Mach console. */
+					case 'Q': /* Esc O Q == F2 on VT100/VT220/VT320/Mach console. */
+					case 'R': /* Esc O R == F3 on VT100/VT220/VT320/Mach console. */
+					case 'S': /* Esc O S == F4 on VT100/VT220/VT320/Mach console. */
+					case 'T': /* Esc O T == F5 on Mach console. */
+					case 'U': /* Esc O U == F6 on Mach console. */
+					case 'V': /* Esc O V == F7 on Mach console. */
+					case 'W': /* Esc O W == F8 on Mach console. */
+					case 'X': /* Esc O X == F9 on Mach console. */
+					case 'Y': /* Esc O Y == F10 on Mach console. */
+						return KEY_F(seq[1] - 'O');
+					case 'a': /* Esc O a == Ctrl-Up on rxvt/Eterm. */
+						return CONTROL_UP;
+					case 'b': /* Esc O b == Ctrl-Down on rxvt/Eterm. */
+						return CONTROL_DOWN;
+					case 'c': /* Esc O c == Ctrl-Right on rxvt/Eterm. */
+						return CONTROL_RIGHT;
+					case 'd': /* Esc O d == Ctrl-Left on rxvt/Eterm. */
+						return CONTROL_LEFT;
+					case 'j': /* Esc O j == '*' on numeric keypad with
+							   * NumLock off on VT100/VT220/VT320/xterm/
+							   * rxvt/Eterm/Terminal. */
+						return '*';
+					case 'k': /* Esc O k == '+' on the same. */
+						return '+';
+					case 'l': /* Esc O l == ',' on the same. */
+						return ',';
+					case 'm': /* Esc O m == '-' on the same. */
+						return '-';
+					case 'n': /* Esc O n == Delete (.) on the same. */
+						return KEY_DC;
+					case 'o': /* Esc O o == '/' on the same. */
+						return '/';
+					case 'p': /* Esc O p == Insert (0) on numeric keypad
+							   * with NumLock off on VT100/VT220/VT320/
+							   * rxvt/Eterm/Terminal. */
+						return KEY_IC;
+					case 'q': /* Esc O q == End (1) on the same. */
+						return KEY_END;
+					case 'r': /* Esc O r == Down (2) on the same. */
+						return KEY_DOWN;
+					case 's': /* Esc O s == PageDown (3) on the same. */
+						return KEY_NPAGE;
+					case 't': /* Esc O t == Left (4) on the same. */
+						return KEY_LEFT;
+					case 'v': /* Esc O v == Right (6) on numeric keypad
+							   * with NumLock off on VT100/VT220/VT320/
+							   * rxvt/Eterm/Terminal. */
+						return KEY_RIGHT;
+					case 'w': /* Esc O w == Home (7) on the same. */
+						return KEY_HOME;
+					case 'x': /* Esc O x == Up (8) on the same. */
+						return KEY_UP;
+					case 'y': /* Esc O y == PageUp (9) on the same. */
+						return KEY_PPAGE;
+				}
+				break;
+			case '[':
+				if (seq[1] < '9')
+					*consumed = 3;
+				switch (seq[1]) {
+					case '1':
+						if (length > 2 && seq[2] == '~')
+							/* Esc [ 1 ~ == Home on VT320/Linux console. */
+							return KEY_HOME;
+						else if (length > 3 && seq[3] == '~') {
+							*consumed = 4;
+							switch (seq[2]) {
+								case '1': /* Esc [ 1 1 ~ == F1 on rxvt/Eterm. */
+								case '2': /* Esc [ 1 2 ~ == F2 on rxvt/Eterm. */
+								case '3': /* Esc [ 1 3 ~ == F3 on rxvt/Eterm. */
+								case '4': /* Esc [ 1 4 ~ == F4 on rxvt/Eterm. */
+								case '5': /* Esc [ 1 5 ~ == F5 on xterm/rxvt/Eterm. */
+									return KEY_F(seq[2] - '0');
+								case '7': /* Esc [ 1 7 ~ == F6 on VT220/VT320/
+										   * Linux console/xterm/rxvt/Eterm. */
+								case '8': /* Esc [ 1 8 ~ == F7 on the same. */
+								case '9': /* Esc [ 1 9 ~ == F8 on the same. */
+									return KEY_F(seq[2] - '1');
+							}
+						} else if (length > 4 && seq[2] == ';') {
+		/* <-<-<-<-<-<-<- */
+		*consumed = 5;
+		switch (seq[3]) {
+			case '2':
+				switch (seq[4]) {
+					case 'A': /* Esc [ 1 ; 2 A == Shift-Up on xterm. */
+					case 'B': /* Esc [ 1 ; 2 B == Shift-Down on xterm. */
+					case 'C': /* Esc [ 1 ; 2 C == Shift-Right on xterm. */
+					case 'D': /* Esc [ 1 ; 2 D == Shift-Left on xterm. */
+						shift_held = TRUE;
+						return arrow_from_ABCD(seq[4]);
+#ifndef NANO_TINY
+					case 'F': /* Esc [ 1 ; 2 F == Shift-End on xterm. */
+						return SHIFT_END;
+					case 'H': /* Esc [ 1 ; 2 H == Shift-Home on xterm. */
+						return SHIFT_HOME;
+#endif
+#ifdef ENABLE_NANORC
+					case 'P': /* Esc [ 1 ; 2 P == F13 on xterm. */
+					case 'Q': /* Esc [ 1 ; 2 Q == F14 on xterm. */
+					case 'R': /* Esc [ 1 ; 2 R == F15 on xterm. */
+					case 'S': /* Esc [ 1 ; 2 S == F16 on xterm. */
+						return KEY_F(13 + seq[4] - 'P');
+#endif
+				}
+				break;
+#ifndef NANO_TINY
+			case '9': /* To accommodate iTerm2 in "xterm mode". */
+			case '3':
+				switch (seq[4]) {
+					case 'A': /* Esc [ 1 ; 3 A == Alt-Up on xterm. */
+						return ALT_UP;
+					case 'B': /* Esc [ 1 ; 3 B == Alt-Down on xterm. */
+						return ALT_DOWN;
+					case 'C': /* Esc [ 1 ; 3 C == Alt-Right on xterm. */
+						return ALT_RIGHT;
+					case 'D': /* Esc [ 1 ; 3 D == Alt-Left on xterm. */
+						return ALT_LEFT;
+				}
+				break;
+			case '4':
+				/* When the arrow keys are held together with Shift+Meta,
+				 * act as if they are Home/End/PgUp/PgDown with Shift. */
+				switch (seq[4]) {
+					case 'A': /* Esc [ 1 ; 4 A == Shift-Alt-Up on xterm. */
+						return SHIFT_PAGEUP;
+					case 'B': /* Esc [ 1 ; 4 B == Shift-Alt-Down on xterm. */
+						return SHIFT_PAGEDOWN;
+					case 'C': /* Esc [ 1 ; 4 C == Shift-Alt-Right on xterm. */
+						return SHIFT_END;
+					case 'D': /* Esc [ 1 ; 4 D == Shift-Alt-Left on xterm. */
+						return SHIFT_HOME;
+				}
+				break;
+#endif
+			case '5':
+				switch (seq[4]) {
+					case 'A': /* Esc [ 1 ; 5 A == Ctrl-Up on xterm. */
+						return CONTROL_UP;
+					case 'B': /* Esc [ 1 ; 5 B == Ctrl-Down on xterm. */
+						return CONTROL_DOWN;
+					case 'C': /* Esc [ 1 ; 5 C == Ctrl-Right on xterm. */
+						return CONTROL_RIGHT;
+					case 'D': /* Esc [ 1 ; 5 D == Ctrl-Left on xterm. */
+						return CONTROL_LEFT;
+					case 'F': /* Esc [ 1 ; 5 F == Ctrl-End on xterm. */
+						return CONTROL_END;
+					case 'H': /* Esc [ 1 ; 5 H == Ctrl-Home on xterm. */
+						return CONTROL_HOME;
+				}
+				break;
+#ifndef NANO_TINY
+			case '6':
+				switch (seq[4]) {
+					case 'A': /* Esc [ 1 ; 6 A == Shift-Ctrl-Up on xterm. */
+						return shiftcontrolup;
+					case 'B': /* Esc [ 1 ; 6 B == Shift-Ctrl-Down on xterm. */
+						return shiftcontroldown;
+					case 'C': /* Esc [ 1 ; 6 C == Shift-Ctrl-Right on xterm. */
+						return shiftcontrolright;
+					case 'D': /* Esc [ 1 ; 6 D == Shift-Ctrl-Left on xterm. */
+						return shiftcontrolleft;
+					case 'F': /* Esc [ 1 ; 6 F == Shift-Ctrl-End on xterm. */
+						return shiftcontrolend;
+					case 'H': /* Esc [ 1 ; 6 H == Shift-Ctrl-Home on xterm. */
+						return shiftcontrolhome;
+				}
+				break;
+#endif
+		}
+		/* ->->->->->->-> */
+						} else if (length > 5 && seq[3] == ';' && seq[5] == '~')
+							/* Esc [ 1 n ; 2 ~ == F17...F20 on some terminals. */
+							*consumed = 6;
+#ifdef USE_SLANG
+						else if (length == 4 && seq[3] == ';')
+							/* Discard broken sequences that Slang produces. */
+							*consumed = 4;
+#endif
+						break;
+					case '2':
+						if (length > 3 && seq[3] == '~') {
+							*consumed = 4;
+							switch (seq[2]) {
+								case '0': /* Esc [ 2 0 ~ == F9 on VT220/VT320/
+										   * Linux console/xterm/rxvt/Eterm. */
+									return KEY_F(9);
+								case '1': /* Esc [ 2 1 ~ == F10 on the same. */
+									return KEY_F(10);
+								case '3': /* Esc [ 2 3 ~ == F11 on the same. */
+									return KEY_F(11);
+								case '4': /* Esc [ 2 4 ~ == F12 on the same. */
+									return KEY_F(12);
+#ifdef ENABLE_NANORC
+								case '5': /* Esc [ 2 5 ~ == F13 on VT220/VT320/
+										   * Linux console/rxvt/Eterm. */
+									return KEY_F(13);
+								case '6': /* Esc [ 2 6 ~ == F14 on the same. */
+									return KEY_F(14);
+								case '8': /* Esc [ 2 8 ~ == F15 on the same. */
+									return KEY_F(15);
+								case '9': /* Esc [ 2 9 ~ == F16 on the same. */
+									return KEY_F(16);
+#endif
+							}
+						} else if (length > 2 && seq[2] == '~')
+							/* Esc [ 2 ~ == Insert on VT220/VT320/
+							 * Linux console/xterm/Terminal. */
+							return KEY_IC;
+						else if (length > 4 && seq[2] == ';' && seq[4] == '~')
+							/* Esc [ 2 ; x ~ == modified Insert on xterm. */
+							*consumed = 5;
+						else if (length > 5 && seq[3] == ';' && seq[5] == '~')
+							/* Esc [ 2 n ; 2 ~ == F21...F24 on some terminals. */
+							*consumed = 6;
+#ifdef USE_SLANG
+						else if (length == 4 && seq[3] == ';')
+							/* Discard broken sequences that Slang produces. */
+							*consumed = 4;
+#endif
+#ifndef NANO_TINY
+						else if (length > 4 && seq[2] == '0' && seq[4] == '~') {
+							/* Esc [ 2 0 0 ~ == start of a bracketed paste,
+							 * Esc [ 2 0 1 ~ == end of a bracketed paste. */
+							*consumed = 5;
+							if (seq[3] == '0') {
+								bracketed_paste = TRUE;
+								return BRACKETED_PASTE_MARKER;
+							} else if (seq[3] == '1') {
+								bracketed_paste = FALSE;
+								return BRACKETED_PASTE_MARKER;
+							}
+						}
+#endif
+						break;
+					case '3': /* Esc [ 3 ~ == Delete on VT220/VT320/
+							   * Linux console/xterm/Terminal. */
+						if (length > 2 && seq[2] == '~')
+							return KEY_DC;
+						if (length > 4 && seq[2] == ';' && seq[4] == '~') {
+							*consumed = 5;
+#ifndef NANO_TINY
+							if (seq[3] == '2')
+								/* Esc [ 3 ; 2 ~ == Shift-Delete on xterm/Terminal. */
+								return SHIFT_DELETE;
+							if (seq[3] == '3')
+								/* Esc [ 3 ; 3 ~ == Alt-Delete on xterm/rxvt/Eterm/Terminal. */
+								return ALT_DELETE;
+							if (seq[3] == '5')
+								/* Esc [ 3 ; 5 ~ == Ctrl-Delete on xterm. */
+								return CONTROL_DELETE;
+							if (seq[3] == '6')
+								/* Esc [ 3 ; 6 ~ == Ctrl-Shift-Delete on xterm. */
+								return controlshiftdelete;
+#endif
+						}
+#ifndef NANO_TINY
+						if (length > 2 && seq[2] == '$')
+							/* Esc [ 3 $ == Shift-Delete on urxvt. */
+							return SHIFT_DELETE;
+						if (length > 2 && seq[2] == '^')
+							/* Esc [ 3 ^ == Ctrl-Delete on urxvt. */
+							return CONTROL_DELETE;
+						if (length > 2 && seq[2] == '@')
+							/* Esc [ 3 @ == Ctrl-Shift-Delete on urxvt. */
+							return controlshiftdelete;
+						if (length > 3 && seq[3] == '~')
+							/* Esc [ 3 n ~ == F17...F20 on some terminals. */
+							*consumed = 4;
+#endif
+						break;
+					case '4': /* Esc [ 4 ~ == End on VT220/VT320/
+							   * Linux console/xterm. */
+						if (length > 2 && seq[2] == '~')
+							return KEY_END;
+						break;
+					case '5': /* Esc [ 5 ~ == PageUp on VT220/VT320/
+							   * Linux console/xterm/Eterm/urxvt/Terminal */
+						if (length > 2 && seq[2] == '~')
+							return KEY_PPAGE;
+						else if (length > 4 && seq[2] == ';' && seq[4] == '~') {
+							*consumed = 5;
+#ifndef NANO_TINY
+							if (seq[3] == '2')
+								return shiftaltup;
+#endif
+						}
+						break;
+					case '6': /* Esc [ 6 ~ == PageDown on VT220/VT320/
+							   * Linux console/xterm/Eterm/urxvt/Terminal */
+						if (length > 2 && seq[2] == '~')
+							return KEY_NPAGE;
+						else if (length > 4 && seq[2] == ';' && seq[4] == '~') {
+							*consumed = 5;
+#ifndef NANO_TINY
+							if (seq[3] == '2')
+								return shiftaltdown;
+#endif
+						}
+						break;
+					case '7': /* Esc [ 7 ~ == Home on Eterm/rxvt;
+							   * Esc [ 7 $ == Shift-Home on Eterm/rxvt;
+							   * Esc [ 7 ^ == Control-Home on Eterm/rxvt;
+							   * Esc [ 7 @ == Shift-Control-Home on same. */
+						if (length > 2 && seq[2] == '~')
+							return KEY_HOME;
+						else if (length > 2 && seq[2] == '$')
+							return SHIFT_HOME;
+						else if (length > 2 && seq[2] == '^')
+							return CONTROL_HOME;
+#ifndef NANO_TINY
+						else if (length > 2 && seq[2] == '@')
+							return shiftcontrolhome;
+#endif
+						break;
+					case '8': /* Esc [ 8 ~ == End on Eterm/rxvt;
+							   * Esc [ 8 $ == Shift-End on Eterm/rxvt;
+							   * Esc [ 8 ^ == Control-End on Eterm/rxvt;
+							   * Esc [ 8 @ == Shift-Control-End on same. */
+						if (length > 2 && seq[2] == '~')
+							return KEY_END;
+						else if (length > 2 && seq[2] == '$')
+							return SHIFT_END;
+						else if (length > 2 && seq[2] == '^')
+							return CONTROL_END;
+#ifndef NANO_TINY
+						else if (length > 2 && seq[2] == '@')
+							return shiftcontrolend;
+#endif
+						break;
+					case '9': /* Esc [ 9 == Delete on Mach console. */
+						return KEY_DC;
+					case '@': /* Esc [ @ == Insert on Mach console. */
+						return KEY_IC;
+					case 'A': /* Esc [ A == Up on ANSI/VT220/Linux console/
+							   * FreeBSD console/Mach console/xterm/Eterm/
+							   * urxvt/Gnome and Xfce Terminal. */
+					case 'B': /* Esc [ B == Down on the same. */
+					case 'C': /* Esc [ C == Right on the same. */
+					case 'D': /* Esc [ D == Left on the same. */
+						return arrow_from_ABCD(seq[1]);
+					case 'F': /* Esc [ F == End on FreeBSD console/Eterm. */
+						return KEY_END;
+					case 'G': /* Esc [ G == PageDown on FreeBSD console. */
+						return KEY_NPAGE;
+					case 'H': /* Esc [ H == Home on ANSI/VT220/FreeBSD
+							   * console/Mach console/Eterm. */
+						return KEY_HOME;
+					case 'I': /* Esc [ I == PageUp on FreeBSD console. */
+						return KEY_PPAGE;
+					case 'L': /* Esc [ L == Insert on ANSI/FreeBSD console. */
+						return KEY_IC;
+					case 'M': /* Esc [ M == F1 on FreeBSD console. */
+						return KEY_F(1);
+					case 'N': /* Esc [ N == F2 on FreeBSD console. */
+						return KEY_F(2);
+					case 'O':
+						if (length > 2) {
+							*consumed = 3;
+							if ('O' < seq[2] && seq[2] < 'T')
+								/* Esc [ O P == F1 on xterm. */
+								/* Esc [ O Q == F2 on xterm. */
+								/* Esc [ O R == F3 on xterm. */
+								/* Esc [ O S == F4 on xterm. */
+								return KEY_F(seq[2] - 'O');
+						} else
+							/* Esc [ O == F3 on FreeBSD console. */
+							return KEY_F(3);
+						break;
+					case 'P': /* Esc [ P == F4 on FreeBSD console. */
+					case 'Q': /* Esc [ Q == F5 on FreeBSD console. */
+					case 'R': /* Esc [ R == F6 on FreeBSD console. */
+					case 'S': /* Esc [ S == F7 on FreeBSD console. */
+					case 'T': /* Esc [ T == F8 on FreeBSD console. */
+						return KEY_F(4 + seq[1] - 'P');
+					case 'U': /* Esc [ U == PageDown on Mach console. */
+						return KEY_NPAGE;
+					case 'V': /* Esc [ V == PageUp on Mach console. */
+						return KEY_PPAGE;
+					case 'W': /* Esc [ W == F11 on FreeBSD console. */
+						return KEY_F(11);
+					case 'X': /* Esc [ X == F12 on FreeBSD console. */
+						return KEY_F(12);
+					case 'Y': /* Esc [ Y == End on Mach console. */
+						return KEY_END;
+					case 'Z': /* Esc [ Z == Shift-Tab on ANSI/Linux console/
+							   * FreeBSD console/xterm/rxvt/Terminal. */
+						return SHIFT_TAB;
+					case 'a': /* Esc [ a == Shift-Up on rxvt/Eterm. */
+					case 'b': /* Esc [ b == Shift-Down on rxvt/Eterm. */
+					case 'c': /* Esc [ c == Shift-Right on rxvt/Eterm. */
+					case 'd': /* Esc [ d == Shift-Left on rxvt/Eterm. */
+						shift_held = TRUE;
+						return arrow_from_ABCD(seq[1] - 0x20);
+					case '[':
+						if (length > 2) {
+							*consumed = 3;
+							if ('@' < seq[2] && seq[2] < 'F')
+								/* Esc [ [ A == F1 on Linux console. */
+								/* Esc [ [ B == F2 on Linux console. */
+								/* Esc [ [ C == F3 on Linux console. */
+								/* Esc [ [ D == F4 on Linux console. */
+								/* Esc [ [ E == F5 on Linux console. */
+								return KEY_F(seq[2] - '@');
+						}
+						break;
+				}
+				break;
+		}
+	}
 
-	/* Extract one keystroke from the input stream. */
-	while (kbinput == ERR)
-		kbinput = parse_kbinput(win);
+	return ERR;
+}
 
-	/* If we read from the edit window, blank the statusbar if needed. */
-	if (win == edit)
-		check_statusblank();
+/* Interpret the escape sequence in the keystroke buffer, the first
+ * character of which is kbinput.  Assume that the keystroke buffer
+ * isn't empty, and that the initial escape has already been read in. */
+int parse_escape_sequence(WINDOW *win, int kbinput)
+{
+	int retval, *sequence, length, consumed;
 
-	return kbinput;
+	/* Put back the non-escape code, then grab at most six integers
+	 * (the longest possible escape sequence) from the keybuffer and
+	 * translate the sequence into its corresponding keycode. */
+	put_back(kbinput);
+	length = (key_buffer_len < 6 ? key_buffer_len : 6);
+	sequence = get_input(NULL, length);
+	retval = convert_sequence(sequence, length, &consumed);
+
+	/* If not all grabbed integers were consumed, put the leftovers back. */
+	for (int i = length - 1; i >= consumed; i--)
+		put_back(sequence[i]);
+
+	free(sequence);
+
+	/* If we got an unrecognized escape sequence, notify the user. */
+	if (retval == ERR && win == edit) {
+		/* TRANSLATORS: This refers to a sequence of escape codes
+		 * (from the keyboard) that nano does not recognize. */
+		statusline(ALERT, _("Unknown sequence"));
+		suppress_cursorpos = FALSE;
+		lastmessage = HUSH;
+		if (currmenu == MMAIN) {
+			place_the_cursor();
+#ifdef __NetBSD__
+			wnoutrefresh(edit);  /* Needed for correct placement on NetBSD. */
+#endif
+			curs_set(1);
+		}
+	}
+
+	return retval;
 }
 
 /* Extract a single keystroke from the input stream.  Translate escape
@@ -401,9 +936,9 @@ int parse_kbinput(WINDOW *win)
 						key_buffer_len == 0 || *key_buffer == ESC_CODE) {
 				/* One escape followed by a single non-escape:
 				 * meta key sequence mode. */
-				if (!solitary || (keycode >= 0x20 && keycode < 0x7F))
+				if (!solitary || (0x20 <= keycode && keycode <= 0x7E))
 					meta_key = TRUE;
-				retval = tolower(keycode);
+				retval = (shifted_metas) ? keycode : tolower(keycode);
 			} else
 				/* One escape followed by a non-escape, and there
 				 * are more codes waiting: escape sequence mode. */
@@ -478,7 +1013,7 @@ int parse_kbinput(WINDOW *win)
 						 * or control character sequence mode. */
 						if (!solitary) {
 							meta_key = TRUE;
-							retval = tolower(keycode);
+							retval = (shifted_metas) ? keycode : tolower(keycode);
 						} else
 							retval = get_control_kbinput(keycode);
 					else {
@@ -507,7 +1042,7 @@ int parse_kbinput(WINDOW *win)
 			if (key_buffer_len == 0) {
 				if (!solitary) {
 					meta_key = TRUE;
-					retval = tolower(keycode);
+					retval = (shifted_metas) ? keycode : tolower(keycode);
 				} else
 					/* Three escapes followed by a non-escape, and no
 					 * other codes are waiting: normal input mode. */
@@ -598,7 +1133,7 @@ int parse_kbinput(WINDOW *win)
 	unsigned char modifiers = 6;
 
 	/* Modifiers are: Alt (8), Ctrl (4), Shift (1). */
-	if (on_a_vt && ioctl(0, TIOCLINUX, &modifiers) >= 0) {
+	if (on_a_vt && !mute_modifiers && ioctl(0, TIOCLINUX, &modifiers) >= 0) {
 #ifndef NANO_TINY
 		/* Is Delete pressed together with Shift or Shift+Ctrl? */
 		if (retval == KEY_DC) {
@@ -611,7 +1146,8 @@ int parse_kbinput(WINDOW *win)
 		if (modifiers & 0x01) {
 			if (retval == TAB_CODE)
 				return SHIFT_TAB;
-			shift_held = TRUE;
+			if (!meta_key)
+				shift_held = TRUE;
 		}
 		/* Is Alt being held? */
 		if (modifiers == 0x08) {
@@ -658,12 +1194,9 @@ int parse_kbinput(WINDOW *win)
 
 #ifndef NANO_TINY
 	/* When <Tab> is pressed while the mark is on, do an indent. */
-	if (retval == TAB_CODE && openfile->mark && currmenu == MMAIN) {
-		const keystruct *command = first_sc_for(MMAIN, do_indent);
-
-		meta_key = command->meta;
-		return command->keycode;
-	}
+	if (retval == TAB_CODE && openfile->mark && currmenu == MMAIN &&
+				!bracketed_paste && openfile->mark != openfile->current)
+		return INDENT_KEY;
 #endif
 
 	switch (retval) {
@@ -743,14 +1276,6 @@ int parse_kbinput(WINDOW *win)
 		case KEY_SIC:
 			return the_code_for(do_insertfile_void, KEY_IC);
 #endif
-#ifdef KEY_SBEG  /* Slang doesn't support KEY_SBEG. */
-		case KEY_SBEG:
-#endif
-#ifdef KEY_BEG  /* Slang doesn't support KEY_BEG. */
-		case KEY_BEG:
-#endif
-		case KEY_B2:    /* Center (5) on keypad with NumLock off. */
-			return ERR;
 #ifdef KEY_CANCEL  /* Slang doesn't support KEY_CANCEL. */
 #ifdef KEY_SCANCEL  /* Slang doesn't support KEY_SCANCEL. */
 		case KEY_SCANCEL:
@@ -769,6 +1294,13 @@ int parse_kbinput(WINDOW *win)
 		case KEY_BTAB:
 			return SHIFT_TAB;
 #endif
+#ifdef KEY_SBEG  /* Slang doesn't support KEY_SBEG. */
+		case KEY_SBEG:
+#endif
+#ifdef KEY_BEG  /* Slang doesn't support KEY_BEG. */
+		case KEY_BEG:
+#endif
+		case KEY_B2:    /* Center (5) on keypad with NumLock off. */
 #ifdef PDCURSES
 		case KEY_SHIFT_L:
 		case KEY_SHIFT_R:
@@ -776,7 +1308,6 @@ int parse_kbinput(WINDOW *win)
 		case KEY_CONTROL_R:
 		case KEY_ALT_L:
 		case KEY_ALT_R:
-			return ERR;
 #endif
 #ifdef KEY_RESIZE  /* Slang and SunOS 5.7-5.9 don't support KEY_RESIZE. */
 		case KEY_RESIZE:
@@ -785,586 +1316,28 @@ int parse_kbinput(WINDOW *win)
 		case KEY_BAD:
 #endif
 		case KEY_FLUSH:
-			return ERR;
+			return ERR;    /* Ignore this keystroke. */
 	}
 
 	return retval;
 }
 
-/* Translate escape sequences, most of which correspond to extended
- * keypad values, into their corresponding key values.  These sequences
- * are generated when the keypad doesn't support the needed keys.
- * Assume that Escape has already been read in. */
-int convert_sequence(const int *seq, size_t length, int *consumed)
+/* Read in a single keystroke, ignoring any that are invalid. */
+int get_kbinput(WINDOW *win, bool showcursor)
 {
-	if (length > 1) {
-		*consumed = 2;
-		switch (seq[0]) {
-			case 'O':
-				switch (seq[1]) {
-					case '1':
-						if (length > 4  && seq[2] == ';') {
-		/* <-<-<-<-<-<-<- */
-		*consumed = 5;
-		switch (seq[3]) {
-			case '2':
-				switch (seq[4]) {
-					case 'A': /* Esc O 1 ; 2 A == Shift-Up on Terminal. */
-					case 'B': /* Esc O 1 ; 2 B == Shift-Down on Terminal. */
-					case 'C': /* Esc O 1 ; 2 C == Shift-Right on Terminal. */
-					case 'D': /* Esc O 1 ; 2 D == Shift-Left on Terminal. */
-						shift_held = TRUE;
-						return arrow_from_abcd(seq[4]);
-					case 'P': /* Esc O 1 ; 2 P == F13 on Terminal. */
-						return KEY_F(13);
-					case 'Q': /* Esc O 1 ; 2 Q == F14 on Terminal. */
-						return KEY_F(14);
-					case 'R': /* Esc O 1 ; 2 R == F15 on Terminal. */
-						return KEY_F(15);
-					case 'S': /* Esc O 1 ; 2 S == F16 on Terminal. */
-						return KEY_F(16);
-				}
-				break;
-			case '5':
-				switch (seq[4]) {
-					case 'A': /* Esc O 1 ; 5 A == Ctrl-Up on Terminal. */
-						return CONTROL_UP;
-					case 'B': /* Esc O 1 ; 5 B == Ctrl-Down on Terminal. */
-						return CONTROL_DOWN;
-					case 'C': /* Esc O 1 ; 5 C == Ctrl-Right on Terminal. */
-						return CONTROL_RIGHT;
-					case 'D': /* Esc O 1 ; 5 D == Ctrl-Left on Terminal. */
-						return CONTROL_LEFT;
-				}
-				break;
-		}
-		/* ->->->->->->-> */
-						}
-						break;
-					case '2':
-						if (length > 2) {
-							*consumed = 3;
-							switch (seq[2]) {
-								case 'P': /* Esc O 2 P == F13 on xterm. */
-									return KEY_F(13);
-								case 'Q': /* Esc O 2 Q == F14 on xterm. */
-									return KEY_F(14);
-								case 'R': /* Esc O 2 R == F15 on xterm. */
-									return KEY_F(15);
-								case 'S': /* Esc O 2 S == F16 on xterm. */
-									return KEY_F(16);
-							}
-						}
-						break;
-					case '5':
-						if (length > 2) {
-							*consumed = 3;
-							switch (seq[2]) {
-								case 'A': /* Esc O 5 A == Ctrl-Up on Haiku. */
-									return CONTROL_UP;
-								case 'B': /* Esc O 5 B == Ctrl-Down on Haiku. */
-									return CONTROL_DOWN;
-								case 'C': /* Esc O 5 C == Ctrl-Right on Haiku. */
-									return CONTROL_RIGHT;
-								case 'D': /* Esc O 5 D == Ctrl-Left on Haiku. */
-									return CONTROL_LEFT;
-							}
-						}
-						break;
-					case 'A': /* Esc O A == Up on VT100/VT320/xterm. */
-					case 'B': /* Esc O B == Down on VT100/VT320/xterm. */
-					case 'C': /* Esc O C == Right on VT100/VT320/xterm. */
-					case 'D': /* Esc O D == Left on VT100/VT320/xterm. */
-						return arrow_from_abcd(seq[1]);
-					case 'E': /* Esc O E == Center (5) on numeric keypad
-							   * with NumLock off on xterm. */
-						return KEY_B2;
-					case 'F': /* Esc O F == End on xterm/Terminal. */
-						return KEY_END;
-					case 'H': /* Esc O H == Home on xterm/Terminal. */
-						return KEY_HOME;
-					case 'M': /* Esc O M == Enter on numeric keypad with
-							   * NumLock off on VT100/VT220/VT320/xterm/
-							   * rxvt/Eterm. */
-						return KEY_ENTER;
-					case 'P': /* Esc O P == F1 on VT100/VT220/VT320/Mach console. */
-						return KEY_F(1);
-					case 'Q': /* Esc O Q == F2 on VT100/VT220/VT320/Mach console. */
-						return KEY_F(2);
-					case 'R': /* Esc O R == F3 on VT100/VT220/VT320/Mach console. */
-						return KEY_F(3);
-					case 'S': /* Esc O S == F4 on VT100/VT220/VT320/Mach console. */
-						return KEY_F(4);
-					case 'T': /* Esc O T == F5 on Mach console. */
-						return KEY_F(5);
-					case 'U': /* Esc O U == F6 on Mach console. */
-						return KEY_F(6);
-					case 'V': /* Esc O V == F7 on Mach console. */
-						return KEY_F(7);
-					case 'W': /* Esc O W == F8 on Mach console. */
-						return KEY_F(8);
-					case 'X': /* Esc O X == F9 on Mach console. */
-						return KEY_F(9);
-					case 'Y': /* Esc O Y == F10 on Mach console. */
-						return KEY_F(10);
-					case 'a': /* Esc O a == Ctrl-Up on rxvt. */
-						return CONTROL_UP;
-					case 'b': /* Esc O b == Ctrl-Down on rxvt. */
-						return CONTROL_DOWN;
-					case 'c': /* Esc O c == Ctrl-Right on rxvt. */
-						return CONTROL_RIGHT;
-					case 'd': /* Esc O d == Ctrl-Left on rxvt. */
-						return CONTROL_LEFT;
-					case 'j': /* Esc O j == '*' on numeric keypad with
-							   * NumLock off on VT100/VT220/VT320/xterm/
-							   * rxvt/Eterm/Terminal. */
-						return '*';
-					case 'k': /* Esc O k == '+' on the same. */
-						return '+';
-					case 'l': /* Esc O l == ',' on the same. */
-						return ',';
-					case 'm': /* Esc O m == '-' on the same. */
-						return '-';
-					case 'n': /* Esc O n == Delete (.) on the same. */
-						return KEY_DC;
-					case 'o': /* Esc O o == '/' on the same. */
-						return '/';
-					case 'p': /* Esc O p == Insert (0) on numeric keypad
-							   * with NumLock off on VT100/VT220/VT320/
-							   * rxvt/Eterm/Terminal. */
-						return KEY_IC;
-					case 'q': /* Esc O q == End (1) on the same. */
-						return KEY_END;
-					case 'r': /* Esc O r == Down (2) on the same. */
-						return KEY_DOWN;
-					case 's': /* Esc O s == PageDown (3) on the same. */
-						return KEY_NPAGE;
-					case 't': /* Esc O t == Left (4) on the same. */
-						return KEY_LEFT;
-					case 'u': /* Esc O u == Center (5) on numeric keypad
-							   * with NumLock off on VT100/VT220/VT320/
-							   * rxvt/Eterm. */
-						return KEY_B2;
-					case 'v': /* Esc O v == Right (6) on numeric keypad
-							   * with NumLock off on VT100/VT220/VT320/
-							   * rxvt/Eterm/Terminal. */
-						return KEY_RIGHT;
-					case 'w': /* Esc O w == Home (7) on the same. */
-						return KEY_HOME;
-					case 'x': /* Esc O x == Up (8) on the same. */
-						return KEY_UP;
-					case 'y': /* Esc O y == PageUp (9) on the same. */
-						return KEY_PPAGE;
-				}
-				break;
-			case 'o':
-				switch (seq[1]) {
-					case 'a': /* Esc o a == Ctrl-Up on Eterm. */
-						return CONTROL_UP;
-					case 'b': /* Esc o b == Ctrl-Down on Eterm. */
-						return CONTROL_DOWN;
-					case 'c': /* Esc o c == Ctrl-Right on Eterm. */
-						return CONTROL_RIGHT;
-					case 'd': /* Esc o d == Ctrl-Left on Eterm. */
-						return CONTROL_LEFT;
-				}
-				break;
-			case '[':
-				if (seq[1] < '9')
-					*consumed = 3;
-				switch (seq[1]) {
-					case '1':
-						if (length > 2 && seq[2] == '~')
-							/* Esc [ 1 ~ == Home on VT320/Linux console. */
-							return KEY_HOME;
-						else if (length > 3 && seq[3] == '~') {
-							*consumed = 4;
-							switch (seq[2]) {
-								case '1': /* Esc [ 1 1 ~ == F1 on rxvt/Eterm. */
-									return KEY_F(1);
-								case '2': /* Esc [ 1 2 ~ == F2 on rxvt/Eterm. */
-									return KEY_F(2);
-								case '3': /* Esc [ 1 3 ~ == F3 on rxvt/Eterm. */
-									return KEY_F(3);
-								case '4': /* Esc [ 1 4 ~ == F4 on rxvt/Eterm. */
-									return KEY_F(4);
-								case '5': /* Esc [ 1 5 ~ == F5 on xterm/rxvt/Eterm. */
-									return KEY_F(5);
-								case '7': /* Esc [ 1 7 ~ == F6 on VT220/VT320/
-										   * Linux console/xterm/rxvt/Eterm. */
-									return KEY_F(6);
-								case '8': /* Esc [ 1 8 ~ == F7 on the same. */
-									return KEY_F(7);
-								case '9': /* Esc [ 1 9 ~ == F8 on the same. */
-									return KEY_F(8);
-							}
-						} else if (length > 4 && seq[2] == ';') {
-		/* <-<-<-<-<-<-<- */
-		*consumed = 5;
-		switch (seq[3]) {
-			case '2':
-				switch (seq[4]) {
-					case 'A': /* Esc [ 1 ; 2 A == Shift-Up on xterm. */
-					case 'B': /* Esc [ 1 ; 2 B == Shift-Down on xterm. */
-					case 'C': /* Esc [ 1 ; 2 C == Shift-Right on xterm. */
-					case 'D': /* Esc [ 1 ; 2 D == Shift-Left on xterm. */
-						shift_held = TRUE;
-						return arrow_from_abcd(seq[4]);
-#ifndef NANO_TINY
-					case 'F': /* Esc [ 1 ; 2 F == Shift-End on xterm. */
-						return SHIFT_END;
-					case 'H': /* Esc [ 1 ; 2 H == Shift-Home on xterm. */
-						return SHIFT_HOME;
-#endif
-				}
-				break;
-#ifndef NANO_TINY
-			case '9': /* To accommodate iTerm2 in "xterm mode". */
-			case '3':
-				switch (seq[4]) {
-					case 'A': /* Esc [ 1 ; 3 A == Alt-Up on xterm. */
-						return ALT_UP;
-					case 'B': /* Esc [ 1 ; 3 B == Alt-Down on xterm. */
-						return ALT_DOWN;
-					case 'C': /* Esc [ 1 ; 3 C == Alt-Right on xterm. */
-						return ALT_RIGHT;
-					case 'D': /* Esc [ 1 ; 3 D == Alt-Left on xterm. */
-						return ALT_LEFT;
-				}
-				break;
-			case '4':
-				/* When the arrow keys are held together with Shift+Meta,
-				 * act as if they are Home/End/PgUp/PgDown with Shift. */
-				switch (seq[4]) {
-					case 'A': /* Esc [ 1 ; 4 A == Shift-Alt-Up on xterm. */
-						return SHIFT_PAGEUP;
-					case 'B': /* Esc [ 1 ; 4 B == Shift-Alt-Down on xterm. */
-						return SHIFT_PAGEDOWN;
-					case 'C': /* Esc [ 1 ; 4 C == Shift-Alt-Right on xterm. */
-						return SHIFT_END;
-					case 'D': /* Esc [ 1 ; 4 D == Shift-Alt-Left on xterm. */
-						return SHIFT_HOME;
-				}
-				break;
-#endif
-			case '5':
-				switch (seq[4]) {
-					case 'A': /* Esc [ 1 ; 5 A == Ctrl-Up on xterm. */
-						return CONTROL_UP;
-					case 'B': /* Esc [ 1 ; 5 B == Ctrl-Down on xterm. */
-						return CONTROL_DOWN;
-					case 'C': /* Esc [ 1 ; 5 C == Ctrl-Right on xterm. */
-						return CONTROL_RIGHT;
-					case 'D': /* Esc [ 1 ; 5 D == Ctrl-Left on xterm. */
-						return CONTROL_LEFT;
-					case 'F': /* Esc [ 1 ; 5 F == Ctrl-End on xterm. */
-						return CONTROL_END;
-					case 'H': /* Esc [ 1 ; 5 H == Ctrl-Home on xterm. */
-						return CONTROL_HOME;
-				}
-				break;
-#ifndef NANO_TINY
-			case '6':
-				switch (seq[4]) {
-					case 'A': /* Esc [ 1 ; 6 A == Shift-Ctrl-Up on xterm. */
-						return shiftcontrolup;
-					case 'B': /* Esc [ 1 ; 6 B == Shift-Ctrl-Down on xterm. */
-						return shiftcontroldown;
-					case 'C': /* Esc [ 1 ; 6 C == Shift-Ctrl-Right on xterm. */
-						return shiftcontrolright;
-					case 'D': /* Esc [ 1 ; 6 D == Shift-Ctrl-Left on xterm. */
-						return shiftcontrolleft;
-					case 'F': /* Esc [ 1 ; 6 F == Shift-Ctrl-End on xterm. */
-						return shiftcontrolend;
-					case 'H': /* Esc [ 1 ; 6 H == Shift-Ctrl-Home on xterm. */
-						return shiftcontrolhome;
-				}
-				break;
-#endif
-		}
-		/* ->->->->->->-> */
-						}
-						break;
-					case '2':
-						if (length > 3 && seq[3] == '~') {
-							*consumed = 4;
-							switch (seq[2]) {
-								case '0': /* Esc [ 2 0 ~ == F9 on VT220/VT320/
-										   * Linux console/xterm/rxvt/Eterm. */
-									return KEY_F(9);
-								case '1': /* Esc [ 2 1 ~ == F10 on the same. */
-									return KEY_F(10);
-								case '3': /* Esc [ 2 3 ~ == F11 on the same. */
-									return KEY_F(11);
-								case '4': /* Esc [ 2 4 ~ == F12 on the same. */
-									return KEY_F(12);
-								case '5': /* Esc [ 2 5 ~ == F13 on VT220/VT320/
-										   * Linux console/rxvt/Eterm. */
-									return KEY_F(13);
-								case '6': /* Esc [ 2 6 ~ == F14 on the same. */
-									return KEY_F(14);
-								case '8': /* Esc [ 2 8 ~ == F15 on the same. */
-									return KEY_F(15);
-								case '9': /* Esc [ 2 9 ~ == F16 on the same. */
-									return KEY_F(16);
-							}
-						} else if (length > 2 && seq[2] == '~')
-							/* Esc [ 2 ~ == Insert on VT220/VT320/
-							 * Linux console/xterm/Terminal. */
-							return KEY_IC;
-						else if (length > 4 && seq[2] == ';' && seq[4] == '~')
-							/* Esc [ 2 ; x ~ == modified Insert on xterm. */
-							*consumed = 5;
-						break;
-					case '3': /* Esc [ 3 ~ == Delete on VT220/VT320/
-							   * Linux console/xterm/Terminal. */
-						if (length > 2 && seq[2] == '~')
-							return KEY_DC;
-						if (length > 4 && seq[2] == ';' && seq[4] == '~') {
-							*consumed = 5;
-#ifndef NANO_TINY
-							if (seq[3] == '2')
-								/* Esc [ 3 ; 2 ~ == Shift-Delete on xterm/Terminal. */
-								return SHIFT_DELETE;
-							if (seq[3] == '3')
-								/* Esc [ 3 ; 3 ~ == Alt-Delete on xterm/rxvt/Eterm/Terminal. */
-								return ALT_DELETE;
-							if (seq[3] == '5')
-								/* Esc [ 3 ; 5 ~ == Ctrl-Delete on xterm. */
-								return CONTROL_DELETE;
-							if (seq[3] == '6')
-								/* Esc [ 3 ; 6 ~ == Ctrl-Shift-Delete on xterm. */
-								return controlshiftdelete;
-#endif
-						}
-#ifndef NANO_TINY
-						if (length > 2 && seq[2] == '$')
-							/* Esc [ 3 $ == Shift-Delete on urxvt. */
-							return SHIFT_DELETE;
-						if (length > 2 && seq[2] == '^')
-							/* Esc [ 3 ^ == Ctrl-Delete on urxvt. */
-							return CONTROL_DELETE;
-						if (length > 2 && seq[2] == '@')
-							/* Esc [ 3 @ == Ctrl-Shift-Delete on urxvt. */
-							return controlshiftdelete;
-#endif
-						break;
-					case '4': /* Esc [ 4 ~ == End on VT220/VT320/
-							   * Linux console/xterm. */
-						if (length > 2 && seq[2] == '~')
-							return KEY_END;
-						break;
-					case '5': /* Esc [ 5 ~ == PageUp on VT220/VT320/
-							   * Linux console/xterm/Terminal;
-							   * Esc [ 5 ^ == PageUp on Eterm. */
-						if (length > 2 && (seq[2] == '~' || seq[2] == '^'))
-							return KEY_PPAGE;
-						else if (length > 4 && seq[2] == ';' && seq[4] == '~') {
-							*consumed = 5;
-#ifndef NANO_TINY
-							if (seq[3] == '2')
-								return shiftaltup;
-#endif
-						}
-						break;
-					case '6': /* Esc [ 6 ~ == PageDown on VT220/VT320/
-							   * Linux console/xterm/Terminal;
-							   * Esc [ 6 ^ == PageDown on Eterm. */
-						if (length > 2 && (seq[2] == '~' || seq[2] == '^'))
-							return KEY_NPAGE;
-						else if (length > 4 && seq[2] == ';' && seq[4] == '~') {
-							*consumed = 5;
-#ifndef NANO_TINY
-							if (seq[3] == '2')
-								return shiftaltdown;
-#endif
-						}
-						break;
-					case '7': /* Esc [ 7 ~ == Home on Eterm/rxvt;
-							   * Esc [ 7 $ == Shift-Home on Eterm/rxvt;
-							   * Esc [ 7 ^ == Control-Home on Eterm/rxvt;
-							   * Esc [ 7 @ == Shift-Control-Home on same. */
-						if (length > 2 && seq[2] == '~')
-							return KEY_HOME;
-						else if (length > 2 && seq[2] == '$')
-							return SHIFT_HOME;
-						else if (length > 2 && seq[2] == '^')
-							return CONTROL_HOME;
-#ifndef NANO_TINY
-						else if (length > 2 && seq[2] == '@')
-							return shiftcontrolhome;
-#endif
-						break;
-					case '8': /* Esc [ 8 ~ == End on Eterm/rxvt;
-							   * Esc [ 8 $ == Shift-End on Eterm/rxvt;
-							   * Esc [ 8 ^ == Control-End on Eterm/rxvt;
-							   * Esc [ 8 @ == Shift-Control-End on same. */
-						if (length > 2 && seq[2] == '~')
-							return KEY_END;
-						else if (length > 2 && seq[2] == '$')
-							return SHIFT_END;
-						else if (length > 2 && seq[2] == '^')
-							return CONTROL_END;
-#ifndef NANO_TINY
-						else if (length > 2 && seq[2] == '@')
-							return shiftcontrolend;
-#endif
-						break;
-					case '9': /* Esc [ 9 == Delete on Mach console. */
-						return KEY_DC;
-					case '@': /* Esc [ @ == Insert on Mach console. */
-						return KEY_IC;
-					case 'A': /* Esc [ A == Up on ANSI/VT220/Linux console/rxvt/
-							   * FreeBSD console/Mach console/Eterm/Terminal. */
-					case 'B': /* Esc [ B == Down on the same. */
-					case 'C': /* Esc [ C == Right on the same. */
-					case 'D': /* Esc [ D == Left on the same. */
-						return arrow_from_abcd(seq[1]);
-					case 'E': /* Esc [ E == Center (5) on numeric keypad with
-							   * NumLock off on FreeBSD console/Terminal. */
-						return KEY_B2;
-					case 'F': /* Esc [ F == End on FreeBSD console/Eterm. */
-						return KEY_END;
-					case 'G': /* Esc [ G == PageDown on FreeBSD console. */
-						return KEY_NPAGE;
-					case 'H': /* Esc [ H == Home on ANSI/VT220/FreeBSD
-							   * console/Mach console/Eterm. */
-						return KEY_HOME;
-					case 'I': /* Esc [ I == PageUp on FreeBSD console. */
-						return KEY_PPAGE;
-					case 'L': /* Esc [ L == Insert on ANSI/FreeBSD console. */
-						return KEY_IC;
-					case 'M': /* Esc [ M == F1 on FreeBSD console. */
-						return KEY_F(1);
-					case 'N': /* Esc [ N == F2 on FreeBSD console. */
-						return KEY_F(2);
-					case 'O':
-						if (length > 2) {
-							*consumed = 3;
-							switch (seq[2]) {
-								case 'P': /* Esc [ O P == F1 on xterm. */
-									return KEY_F(1);
-								case 'Q': /* Esc [ O Q == F2 on xterm. */
-									return KEY_F(2);
-								case 'R': /* Esc [ O R == F3 on xterm. */
-									return KEY_F(3);
-								case 'S': /* Esc [ O S == F4 on xterm. */
-									return KEY_F(4);
-							}
-						} else
-							/* Esc [ O == F3 on FreeBSD console. */
-							return KEY_F(3);
-						break;
-					case 'P': /* Esc [ P == F4 on FreeBSD console. */
-						return KEY_F(4);
-					case 'Q': /* Esc [ Q == F5 on FreeBSD console. */
-						return KEY_F(5);
-					case 'R': /* Esc [ R == F6 on FreeBSD console. */
-						return KEY_F(6);
-					case 'S': /* Esc [ S == F7 on FreeBSD console. */
-						return KEY_F(7);
-					case 'T': /* Esc [ T == F8 on FreeBSD console. */
-						return KEY_F(8);
-					case 'U': /* Esc [ U == PageDown on Mach console. */
-						return KEY_NPAGE;
-					case 'V': /* Esc [ V == PageUp on Mach console. */
-						return KEY_PPAGE;
-					case 'W': /* Esc [ W == F11 on FreeBSD console. */
-						return KEY_F(11);
-					case 'X': /* Esc [ X == F12 on FreeBSD console. */
-						return KEY_F(12);
-					case 'Y': /* Esc [ Y == End on Mach console. */
-						return KEY_END;
-					case 'Z': /* Esc [ Z == Shift-Tab on ANSI/Linux console/
-							   * FreeBSD console/xterm/rxvt/Terminal. */
-						return SHIFT_TAB;
-					case 'a': /* Esc [ a == Shift-Up on rxvt/Eterm. */
-					case 'b': /* Esc [ b == Shift-Down on rxvt/Eterm. */
-					case 'c': /* Esc [ c == Shift-Right on rxvt/Eterm. */
-					case 'd': /* Esc [ d == Shift-Left on rxvt/Eterm. */
-						shift_held = TRUE;
-						return arrow_from_abcd(seq[1]);
-					case '[':
-						if (length > 2) {
-							*consumed = 3;
-							switch (seq[2]) {
-								case 'A': /* Esc [ [ A == F1 on Linux console. */
-									return KEY_F(1);
-								case 'B': /* Esc [ [ B == F2 on Linux console. */
-									return KEY_F(2);
-								case 'C': /* Esc [ [ C == F3 on Linux console. */
-									return KEY_F(3);
-								case 'D': /* Esc [ [ D == F4 on Linux console. */
-									return KEY_F(4);
-								case 'E': /* Esc [ [ E == F5 on Linux console. */
-									return KEY_F(5);
-							}
-						}
-						break;
-				}
-				break;
-		}
-	}
+	int kbinput = ERR;
 
-	return ERR;
-}
+	reveal_cursor = showcursor;
 
-/* Return the equivalent arrow-key value for the first four letters
- * in the alphabet, common to many escape sequences. */
-int arrow_from_abcd(int kbinput)
-{
-	switch (tolower(kbinput)) {
-		case 'a':
-			return KEY_UP;
-		case 'b':
-			return KEY_DOWN;
-		case 'c':
-			return KEY_RIGHT;
-		case 'd':
-			return KEY_LEFT;
-		default:
-			return ERR;
-	}
-}
+	/* Extract one keystroke from the input stream. */
+	while (kbinput == ERR)
+		kbinput = parse_kbinput(win);
 
-/* Interpret the escape sequence in the keystroke buffer, the first
- * character of which is kbinput.  Assume that the keystroke buffer
- * isn't empty, and that the initial escape has already been read in. */
-int parse_escape_sequence(WINDOW *win, int kbinput)
-{
-	int retval, *sequence, length, consumed;
+	/* If we read from the edit window, blank the status bar if needed. */
+	if (win == edit)
+		check_statusblank();
 
-	/* Put back the non-escape code, then grab at most five integers
-	 * (the longest possible escape sequence) from the keybuffer and
-	 * translate the sequence into its corresponding keycode. */
-	put_back(kbinput);
-	length = (key_buffer_len < 5 ? key_buffer_len : 5);
-	sequence = get_input(NULL, length);
-	retval = convert_sequence(sequence, length, &consumed);
-
-	/* If not all grabbed integers were consumed, put the leftovers back. */
-	for (int i = length - 1; i >= consumed; i--)
-		put_back(sequence[i]);
-
-	free(sequence);
-
-	/* If we got an unrecognized escape sequence, notify the user. */
-	if (retval == ERR && win == edit) {
-		/* TRANSLATORS: This refers to a sequence of escape codes
-		 * (from the keyboard) that nano does not recognize. */
-		statusline(ALERT, _("Unknown sequence"));
-		suppress_cursorpos = FALSE;
-		lastmessage = HUSH;
-		if (currmenu == MMAIN) {
-			place_the_cursor();
-#ifdef __NetBSD__
-			wnoutrefresh(edit);  /* Needed for correct placement on NetBSD. */
-#endif
-			curs_set(1);
-		}
-	}
-
-	return retval;
+	return kbinput;
 }
 
 /* Turn a three-digit decimal number (from 000 to 255) into its corresponding
@@ -1573,13 +1546,13 @@ int *get_verbatim_kbinput(WINDOW *win, size_t *kbinput_len)
  * multibyte sequence), or 2 (for an iTerm/Eterm/rxvt double Escape). */
 int *parse_verbatim_kbinput(WINDOW *win, size_t *count)
 {
-	int *kbinput;
+	int *kbinput = NULL;
 
 	reveal_cursor = TRUE;
 
 	/* Read in the first code. */
-	while ((kbinput = get_input(win, 1)) == NULL)
-		;
+	while (kbinput == NULL)
+		kbinput = get_input(win, 1);
 
 #ifndef NANO_TINY
 	/* When the window was resized, abort and return nothing. */
@@ -1657,7 +1630,6 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 {
 	MEVENT mevent;
 	bool in_bottomwin;
-	funcstruct *f;
 
 	/* First, get the actual mouse event. */
 	if (getmouse(&mevent) == ERR)
@@ -1695,17 +1667,14 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 				return 0;
 			}
 
-			/* Determine how many shortcuts will be shown. */
-			number = length_of_list(currmenu);
-			if (number > MAIN_VISIBLE)
-				number = MAIN_VISIBLE;
+			/* Determine how many shortcuts are being shown. */
+			number = shown_entries_for(currmenu);
 
-			/* Calculate the width of each non-rightmost shortcut item;
-			 * the rightmost ones will "absorb" any remaining slack. */
-			if (number < 2)
-				width = COLS / (MAIN_VISIBLE / 2);
+			/* Calculate the clickable width of each menu item. */
+			if (number < 5)
+				width = COLS / 2;
 			else
-				width = COLS / ((number / 2) + (number % 2));
+				width = COLS / ((number + 1) / 2);
 
 			/* Calculate the one-based index in the shortcut list. */
 			index = (*mouse_x / width) * 2 + *mouse_y;
@@ -1718,23 +1687,24 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 			if (index > number)
 				return 2;
 
-			/* Go through the list of functions to determine which
-			 * shortcut in the current menu we clicked/released on. */
-			for (f = allfuncs; f != NULL; f = f->next) {
+			/* Search through the list of functions to determine which
+			 * shortcut in the current menu the user clicked on; then
+			 * put the corresponding keystroke into the keyboard buffer. */
+			for (funcstruct *f = allfuncs; f != NULL; f = f->next) {
 				if ((f->menus & currmenu) == 0)
 					continue;
 				if (first_sc_for(currmenu, f->func) == NULL)
 					continue;
-				/* Tick off an actually shown shortcut. */
-				if (--index == 0)
+				if (--index == 0) {
+					const keystruct *shortcut = first_sc_for(currmenu, f->func);
+
+					put_back(shortcut->keycode);
+					if (0x20 <= shortcut->keycode && shortcut->keycode <= 0x7E)
+						put_back(ESC_CODE);
 					break;
+				}
 			}
 
-			/* And put the corresponding key into the keyboard buffer. */
-			if (f != NULL) {
-				const keystruct *s = first_sc_for(currmenu, f->func);
-				unget_kbinput(s->keycode, s->meta);
-			}
 			return 1;
 		} else
 			/* Clicks outside of bottomwin are handled elsewhere. */
@@ -1752,10 +1722,12 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 			wmouse_trafo(bottomwin, mouse_y, mouse_x, FALSE);
 
 		if (in_edit || (in_bottomwin && *mouse_y == 0)) {
+			int keycode = (mevent.bstate & BUTTON4_PRESSED) ? KEY_UP : KEY_DOWN;
+
 			/* One roll of the mouse wheel should move three lines. */
-			for (int count = 1; count <= 3; count++)
-				unget_kbinput((mevent.bstate & BUTTON4_PRESSED) ?
-								KEY_UP : KEY_DOWN, FALSE);
+			for (int count = 3; count > 0; count--)
+				put_back(keycode);
+
 			return 1;
 		} else
 			/* Ignore presses of the fourth and fifth mouse buttons
@@ -1767,28 +1739,6 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 	return 2;
 }
 #endif /* ENABLE_MOUSE */
-
-/* Return the shortcut that corresponds to the values of kbinput (the
- * key itself) and meta_key (whether the key is a meta sequence).  The
- * returned shortcut will be the first in the list that corresponds to
- * the given sequence. */
-const keystruct *get_shortcut(int *kbinput)
-{
-	keystruct *s;
-
-	/* Plain characters cannot be shortcuts, so just skip those. */
-	if (!meta_key && ((*kbinput >= 0x20 && *kbinput < 0x7F) ||
-						(*kbinput >= 0xA0 && *kbinput <= 0xFF)))
-		return NULL;
-
-	for (s = sclist; s != NULL; s = s->next) {
-		if ((s->menus & currmenu) && *kbinput == s->keycode &&
-										meta_key == s->meta)
-			return s;
-	}
-
-	return NULL;
-}
 
 /* Move (in the given window) to the given row and wipe it clean. */
 void blank_row(WINDOW *window, int row)
@@ -1832,8 +1782,8 @@ void blank_bottombars(void)
 	}
 }
 
-/* Check if the number of keystrokes needed to blank the statusbar has
- * been pressed.  If so, blank the statusbar, unless constant cursor
+/* Check if the number of keystrokes needed to blank the status bar has
+ * been pressed.  If so, blank the status bar, unless constant cursor
  * position display is on and we are in the editing screen. */
 void check_statusblank(void)
 {
@@ -1919,11 +1869,13 @@ char *display_string(const char *buf, size_t column, size_t span,
 
 #ifdef ENABLE_UTF8
 #define ISO8859_CHAR  FALSE
+#define ZEROWIDTH_CHAR  (mbwidth(buf) == 0)
 #else
 #define ISO8859_CHAR  ((unsigned char)*buf > 0x9F)
+#define ZEROWIDTH_CHAR  FALSE
 #endif
 
-	while (*buf != '\0' && (column < beyond || mbwidth(buf) == 0)) {
+	while (*buf != '\0' && (column < beyond || ZEROWIDTH_CHAR)) {
 		/* A plain printable ASCII character is one byte, one column. */
 		if (((signed char)*buf > 0x20 && *buf != DEL_CODE) || ISO8859_CHAR) {
 			converted[index++] = *(buf++);
@@ -1992,12 +1944,20 @@ char *display_string(const char *buf, size_t column, size_t span,
 			continue;
 		}
 
+		/* Determine whether the character takes zero, one, or two columns. */
+		charwidth = wcwidth(wc);
+
+#ifdef __linux__
+		/* On a Linux console, skip zero-width characters, as it would show
+		 * them WITH a width, thus messing up the display.  See bug #52954. */
+		if (on_a_vt && charwidth == 0) {
+			buf += charlength;
+			continue;
+		}
+#endif
 		/* For any valid character, just copy its bytes. */
 		for (; charlength > 0; charlength--)
 			converted[index++] = *(buf++);
-
-		/* Determine whether the character occupies one or two columns. */
-		charwidth = wcwidth(wc);
 
 		/* If the codepoint is unassigned, assume a width of one. */
 		column += (charwidth < 0 ? 1 : charwidth);
@@ -2011,17 +1971,21 @@ char *display_string(const char *buf, size_t column, size_t span,
 
 	/* If there is more text than can be shown, make room for the ">". */
 	if (column > beyond || (*buf != '\0' && (isprompt ||
-					(isdata && !ISSET(SOFTWRAP))))) {
+							(isdata && !ISSET(SOFTWRAP))))) {
+#ifdef ENABLE_UTF8
 		do {
 			index = step_left(converted, index);
 		} while (mbwidth(converted + index) == 0);
 
-#ifdef ENABLE_UTF8
 		/* Display the left half of a two-column character as '['. */
 		if (mbwidth(converted + index) == 2)
 			converted[index++] = '[';
+#else
+		index--;
 #endif
-	}
+		has_more = TRUE;
+	} else
+		has_more = FALSE;
 
 	is_shorter = (column < beyond);
 
@@ -2048,17 +2012,17 @@ int buffer_number(openfilestruct *buffer)
 
 /* If path is NULL, we're in normal editing mode, so display the current
  * version of nano, the current filename, and whether the current file
- * has been modified on the titlebar.  If path isn't NULL, we're either
+ * has been modified on the title bar.  If path isn't NULL, we're either
  * in the file browser or the help viewer, so show either the current
  * directory or the title of help text, that is: whatever is in path. */
 void titlebar(const char *path)
 {
 	size_t verlen, prefixlen, pathlen, statelen;
-		/* The width of the different titlebar elements, in columns. */
+		/* The width of the different title-bar elements, in columns. */
 	size_t pluglen = 0;
 		/* The width that "Modified" would take up. */
 	size_t offset = 0;
-		/* The position at which the center part of the titlebar starts. */
+		/* The position at which the center part of the title bar starts. */
 	const char *upperleft = "";
 		/* What is shown in the top left corner. */
 	const char *prefix = "";
@@ -2070,7 +2034,7 @@ void titlebar(const char *path)
 	char *indicator = NULL;
 		/* The buffer sequence number plus buffer count. */
 
-	/* If the screen is too small, there is no titlebar. */
+	/* If the screen is too small, there is no title bar. */
 	if (topwin == NULL)
 		return;
 
@@ -2119,8 +2083,8 @@ void titlebar(const char *path)
 			state = _("View");
 		else if (ISSET(RESTRICTED))
 			state = _("Restricted");
-
-		pluglen = breadth(_("Modified")) + 1;
+		else
+			pluglen = breadth(_("Modified")) + 1;
 	}
 
 	/* Determine the widths of the four elements, including their padding. */
@@ -2130,10 +2094,8 @@ void titlebar(const char *path)
 		prefixlen++;
 	pathlen = breadth(path);
 	statelen = breadth(state) + 2;
-	if (statelen > 2) {
+	if (statelen > 2)
 		pathlen++;
-		pluglen = 0;
-	}
 
 	/* Only print the version message when there is room for it. */
 	if (verlen + prefixlen + pathlen + pluglen + statelen <= COLS)
@@ -2189,30 +2151,15 @@ void titlebar(const char *path)
 	wrefresh(topwin);
 }
 
-/* Display a normal message on the statusbar, quietly. */
-void statusbar(const char *msg)
-{
-	statusline(HUSH, msg);
-}
-
-/* Warn the user on the statusbar and pause for a moment, so that the
- * message can be noticed and read. */
-void warn_and_shortly_pause(const char *msg)
-{
-	statusline(ALERT, msg);
-	napms(1800);
-}
-
-/* Display a message on the statusbar, and set suppress_cursorpos to
+/* Display a message on the status bar, and set suppress_cursorpos to
  * TRUE, so that the message won't be immediately overwritten if
  * constant cursor position display is on. */
 void statusline(message_type importance, const char *msg, ...)
 {
 	va_list ap;
-	static int alerts = 0;
 	int colorpair;
 	char *compound, *message;
-	size_t start_col;
+	static size_t start_col = 0;
 	bool bracketed;
 #ifndef NANO_TINY
 	bool old_whitespace = ISSET(WHITESPACE_DISPLAY);
@@ -2235,20 +2182,23 @@ void statusline(message_type importance, const char *msg, ...)
 	}
 #endif
 
-	/* If the ALERT status has been reset, reset the counter. */
-	if (lastmessage == HUSH)
-		alerts = 0;
-
-	/* Shortly pause after each of the first three alert messages,
-	 * to give the user time to read them. */
-	if (lastmessage == ALERT && alerts < 4 && !ISSET(NO_PAUSES))
-		napms(1200);
+	/* If there are multiple alert messages, add trailing dots to the first. */
+	if (lastmessage == ALERT) {
+		if (start_col > 4) {
+			wmove(bottomwin, 0, COLS + 2 - start_col);
+			wattron(bottomwin, interface_color_pair[ERROR_MESSAGE]);
+			waddstr(bottomwin, "...");
+			wattroff(bottomwin, interface_color_pair[ERROR_MESSAGE]);
+			wnoutrefresh(bottomwin);
+			start_col = 0;
+			napms(100);
+			beep();
+		}
+		return;
+	}
 
 	if (importance == ALERT) {
-		if (++alerts > 3 && !ISSET(NO_PAUSES))
-			msg = _("Further warnings were suppressed");
-		else if (alerts < 4)
-			beep();
+		beep();
 		colorpair = interface_color_pair[ERROR_MESSAGE];
 	} else if (importance == NOTICE)
 		colorpair = interface_color_pair[SELECTED_TEXT];
@@ -2294,12 +2244,27 @@ void statusline(message_type importance, const char *msg, ...)
 		SET(WHITESPACE_DISPLAY);
 #endif
 
-	/* If doing quick blanking, blank the statusbar after just one keystroke.
+	/* If doing quick blanking, blank the status bar after just one keystroke.
 	 * Otherwise, blank it after twenty-six keystrokes, as Pico does. */
 	if (ISSET(QUICK_BLANK))
 		statusblank = 1;
 	else
 		statusblank = 26;
+}
+
+/* Display a normal message on the status bar, quietly. */
+void statusbar(const char *msg)
+{
+	statusline(HUSH, msg);
+}
+
+/* Warn the user on the status bar and pause for a moment, so that the
+ * message can be noticed and read. */
+void warn_and_shortly_pause(const char *msg)
+{
+	blank_bottombars();
+	statusline(ALERT, msg);
+	napms(1500);
 }
 
 /* Display the shortcut list corresponding to menu on the last two rows
@@ -2316,14 +2281,11 @@ void bottombars(int menu)
 	if (ISSET(NO_HELP) || LINES < 5)
 		return;
 
-	/* Determine how many shortcuts there are to show. */
-	number = length_of_list(menu);
-
-	if (number > MAIN_VISIBLE)
-		number = MAIN_VISIBLE;
+	/* Determine how many shortcuts must be shown. */
+	number = shown_entries_for(menu);
 
 	/* Compute the width of each keyname-plus-explanation pair. */
-	itemwidth = COLS / ((number / 2) + (number % 2));
+	itemwidth = COLS / ((number + 1) / 2);
 
 	/* If there is no room, don't print anything. */
 	if (itemwidth == 0)
@@ -2377,7 +2339,7 @@ void post_one_key(const char *keystroke, const char *tag, int width)
 void place_the_cursor(void)
 {
 	ssize_t row = 0;
-	size_t col, xpt = xplustabs();
+	size_t column = xplustabs();
 
 #ifndef NANO_TINY
 	if (ISSET(SOFTWRAP)) {
@@ -2393,17 +2355,21 @@ void place_the_cursor(void)
 		}
 
 		/* Add the number of wraps in the current line before the cursor. */
-		row += get_chunk_and_edge(xpt, openfile->current, &leftedge);
-		col = xpt - leftedge;
+		row += get_chunk_and_edge(column, openfile->current, &leftedge);
+		column -= leftedge;
 	} else
 #endif
 	{
 		row = openfile->current->lineno - openfile->edittop->lineno;
-		col = xpt - get_page_start(xpt);
+		column -= get_page_start(column);
 	}
 
 	if (row < editwinrows)
-		wmove(edit, row, margin + col);
+		wmove(edit, row, margin + column);
+#ifndef NANO_TINY
+	else
+		statusline(ALERT, "Misplaced cursor -- please report a bug");
+#endif
 
 	openfile->current_y = row;
 }
@@ -2431,11 +2397,12 @@ void draw_row(int row, const char *converted, linestruct *line, size_t from_col)
 		wattron(edit, interface_color_pair[LINE_NUMBER]);
 #ifndef NANO_TINY
 		if (ISSET(SOFTWRAP) && from_col != 0)
-			mvwprintw(edit, row, 0, "%*s", margin, " ");
+			mvwprintw(edit, row, 0, "%*s", margin - 1, " ");
 		else
 #endif
-			mvwprintw(edit, row, 0, "%*zd ", margin - 1, line->lineno);
+			mvwprintw(edit, row, 0, "%*zd", margin - 1, line->lineno);
 		wattroff(edit, interface_color_pair[LINE_NUMBER]);
+		wprintw(edit, " ");
 	}
 #endif
 
@@ -2705,14 +2672,15 @@ void draw_row(int row, const char *converted, linestruct *line, size_t from_col)
 
 #ifndef NANO_TINY
 	if (stripe_column > from_col && !inhelp &&
-						stripe_column <= from_col + editwincols) {
+					(sequel_column == 0 || stripe_column <= sequel_column) &&
+					stripe_column <= from_col + editwincols) {
 		ssize_t target_column = stripe_column - from_col - 1;
 		size_t target_x = actual_x(converted, target_column);
 		char striped_char[MAXCHARLEN];
 		size_t charlen = 1;
 
 		if (*(converted + target_x) != '\0') {
-			charlen = parse_mbchar(converted + target_x, striped_char, NULL);
+			charlen = collect_char(converted + target_x, striped_char);
 			target_column = wideness(converted, target_x);
 		} else if (target_column + 1 == editwincols) {
 			/* Defeat a VTE bug -- see https://sv.gnu.org/bugs/?55896. */
@@ -2795,6 +2763,8 @@ int update_line(linestruct *line, size_t index)
 #ifndef NANO_TINY
 	if (ISSET(SOFTWRAP))
 		return update_softwrapped_line(line);
+
+	sequel_column = 0;
 #endif
 
 	row = line->lineno - openfile->edittop->lineno;
@@ -2810,7 +2780,7 @@ int update_line(linestruct *line, size_t index)
 		mvwaddch(edit, row, margin, '<');
 		wattroff(edit, hilite_attribute);
 	}
-	if (breadth(line->data) > from_col + editwincols) {
+	if (has_more) {
 		wattron(edit, hilite_attribute);
 		mvwaddch(edit, row, COLS - 1, '>');
 		wattroff(edit, hilite_attribute);
@@ -2865,6 +2835,8 @@ int update_softwrapped_line(linestruct *line)
 		bool end_of_line = FALSE;
 
 		to_col = get_softwrap_breakpoint(line->data, from_col, &end_of_line);
+
+		sequel_column = (end_of_line) ? 0 : to_col;
 
 		/* Convert the chunk to its displayable form and draw it. */
 		converted = display_string(line->data, from_col, to_col - from_col,
@@ -3071,7 +3043,7 @@ size_t get_softwrap_breakpoint(const char *text, size_t leftedge,
 
 	/* First find the place in text where the current chunk starts. */
 	while (*text != '\0' && column < leftedge)
-		text += parse_mbchar(text, NULL, &column);
+		text += advance_over(text, &column);
 
 	/* Now find the place in text where this chunk should end. */
 	while (*text != '\0' && column <= goal_column) {
@@ -3082,7 +3054,7 @@ size_t get_softwrap_breakpoint(const char *text, size_t leftedge,
 		}
 
 		breaking_col = (*text == '\t' ? goal_column : column);
-		text += parse_mbchar(text, NULL, &column);
+		text += advance_over(text, &column);
 	}
 
 	/* If we didn't overshoot the limit, we've found a breaking point;
@@ -3095,7 +3067,7 @@ size_t get_softwrap_breakpoint(const char *text, size_t leftedge,
 	/* If we're softwrapping at blanks and we found at least one blank, break
 	 * after that blank -- if it doesn't overshoot the screen's edge. */
 	if (farthest_blank != NULL) {
-		parse_mbchar(farthest_blank, NULL, &last_blank_col);
+		advance_over(farthest_blank, &last_blank_col);
 
 		if (last_blank_col <= goal_column)
 			return last_blank_col;
@@ -3121,7 +3093,7 @@ size_t get_chunk_and_edge(size_t column, linestruct *line, size_t *leftedge)
 		end_col = get_softwrap_breakpoint(line->data, start_col, &end_of_line);
 
 		/* We reached the end of the line and/or found column, so get out. */
-		if (end_of_line || (column >= start_col && column < end_col)) {
+		if (end_of_line || (start_col <= column && column < end_col)) {
 			if (leftedge != NULL)
 				*leftedge = start_col;
 			return current_chunk;
@@ -3146,14 +3118,14 @@ size_t chunk_for(size_t column, linestruct *line)
  * column is on. */
 size_t leftedge_for(size_t column, linestruct *line)
 {
-	size_t leftedge;
+	if (ISSET(SOFTWRAP)) {
+		size_t leftedge;
 
-	if (!ISSET(SOFTWRAP))
+		get_chunk_and_edge(column, line, &leftedge);
+
+		return leftedge;
+	} else
 		return 0;
-
-	get_chunk_and_edge(column, line, &leftedge);
-
-	return leftedge;
 }
 
 /* Return the row of the last softwrapped chunk of the given line, relative to
@@ -3382,7 +3354,7 @@ void total_refresh(void)
 	bottombars(currmenu);
 }
 
-/* Show info about the current cursor position on the statusbar.
+/* Show info about the current cursor position on the status bar.
  * Do this unconditionally when force is TRUE; otherwise, only if
  * suppress_cursorpos is FALSE.  In any case, reset the latter. */
 void do_cursorpos(bool force)
@@ -3410,7 +3382,7 @@ void do_cursorpos(bool force)
 	if (openfile->current != openfile->filebot)
 		sum--;
 
-	/* Display the current cursor position on the statusbar. */
+	/* Display the current cursor position on the status bar. */
 	linepct = 100 * openfile->current->lineno / openfile->filebot->lineno;
 	colpct = 100 * cur_xpt / cur_lenpt;
 	charpct = (openfile->totsize == 0) ? 0 : 100 * sum / openfile->totsize;
@@ -3459,7 +3431,7 @@ void spotlight(size_t from_col, size_t to_col)
 
 	/* This is so we can show zero-length matches. */
 	if (to_col == from_col) {
-		word = mallocstrcpy(NULL, " ");
+		word = copy_of(" ");
 		to_col++;
 	} else
 		word = display_string(openfile->current->data, from_col,
@@ -3502,7 +3474,7 @@ void spotlight_softwrapped(size_t from_col, size_t to_col)
 
 		/* This is so we can show zero-length matches. */
 		if (break_col == from_col) {
-			word = mallocstrcpy(NULL, " ");
+			word = copy_of(" ");
 			break_col++;
 		} else
 			word = display_string(openfile->current->data, from_col,
@@ -3586,7 +3558,7 @@ void do_credits(void)
 		"",
 		"",
 		"",
-		"(C) 2019",
+		"(C) 2020",
 		"Free Software Foundation, Inc.",
 		"",
 		"",

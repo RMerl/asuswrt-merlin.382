@@ -64,8 +64,26 @@ version 2.81
 
 	Enhance --conf-dir to load files in a deterministic order. Thanks to
 	Evgenii Seliavka for the suggestion and initial patch.
-	
 
+	In the router advert code, handle case where we have two
+	different interfaces on the same IPv6 net, and we're doing
+	RA/DHCP service on only one of them. Thanks to NIIBE Yutaka
+	for spotting this case and making the initial patch.
+
+	Support prefixed ranges of ipv6 addresses in dhcp-host.
+	This eases problems chain-netbooting, where each link in the
+	chain requests an address using a different UID. With a single
+	address, only one gets the "static" address, but with this
+	fix, enough addresses can be reserved for all the stages of the
+	boot. Many thanks to Harald Jensås for his work on this idea and
+	earlier patches.
+
+	Add filtering by tag of --dhcp-host directives. Based on a patch
+	by Harald Jensås.
+
+	Allow empty server spec in --rev-server, to match --server.
+	
+	
 version 2.80
 	Add support for RFC 4039 DHCP rapid commit. Thanks to Ashram Method
 	for the initial patch and motivation.

@@ -744,7 +744,7 @@ test_address_get_if_addrs_list_internal(void *arg)
 
   (void)arg;
 
-  results = get_interface_address_list(LOG_ERR, 1);
+  results = get_interface_address_list(LOG_WARN, 1);
 
   tt_ptr_op(results, OP_NE, NULL);
   /* When the network is down, a system might not have any non-local
@@ -775,7 +775,7 @@ test_address_get_if_addrs_list_no_internal(void *arg)
 
   (void)arg;
 
-  results = get_interface_address_list(LOG_ERR, 0);
+  results = get_interface_address_list(LOG_WARN, 0);
 
   tt_ptr_op(results, OP_NE, NULL);
   /* Work even on systems with only internal IPv4 addresses */
@@ -986,7 +986,7 @@ test_address_get_if_addrs(void *arg)
 
   (void)arg;
 
-  rv = get_interface_address(LOG_ERR, &addr_h);
+  rv = get_interface_address(LOG_WARN, &addr_h);
 
   /* When the network is down, a system might not have any non-local
    * non-multicast IPv4 addresses, not even internal ones.

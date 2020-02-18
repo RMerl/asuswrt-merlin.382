@@ -1,7 +1,7 @@
 /**************************************************************************
  *   move.c  --  This file is part of GNU nano.                           *
  *                                                                        *
- *   Copyright (C) 1999-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 1999-2011, 2013-2020 Free Software Foundation, Inc.    *
  *   Copyright (C) 2014-2018 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
@@ -109,7 +109,7 @@ void set_proper_index_and_pww(size_t *leftedge, size_t target, bool forward)
 	openfile->placewewant = *leftedge + target;
 }
 
-/* Move up nearly one screenful. */
+/* Move up almost one screenful. */
 void do_page_up(void)
 {
 	int mustmove = (editwinrows < 3) ? 1 : editwinrows - 2;
@@ -139,7 +139,7 @@ void do_page_up(void)
 	refresh_needed = TRUE;
 }
 
-/* Move down nearly one screenful. */
+/* Move down almost one screenful. */
 void do_page_down(void)
 {
 	int mustmove = (editwinrows < 3) ? 1 : editwinrows - 2;
@@ -534,7 +534,7 @@ void do_down(void)
 }
 
 #if !defined(NANO_TINY) || defined(ENABLE_HELP)
-/* Scroll up one line or chunk without scrolling the cursor. */
+/* Scroll up one line or chunk without moving the cursor textwise. */
 void do_scroll_up(void)
 {
 	/* When the top of the file is onscreen, we can't scroll. */
@@ -548,7 +548,7 @@ void do_scroll_up(void)
 		edit_scroll(BACKWARD);
 }
 
-/* Scroll down one line or chunk without scrolling the cursor. */
+/* Scroll down one line or chunk without moving the cursor textwise. */
 void do_scroll_down(void)
 {
 	if (openfile->current_y == 0)

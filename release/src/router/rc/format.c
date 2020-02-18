@@ -17,6 +17,10 @@ extern int vpnc_load_profile(VPNC_PROFILE *list, const int list_size, const int 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#ifdef RTCONFIG_DNSFILTER
+#include "dnsfilter.h"
+#endif
+
 void adjust_merlin_config(void)
 {
 #ifdef RTCONFIG_OPENVPN
@@ -151,8 +155,8 @@ void adjust_merlin_config(void)
 /* Remove discontinued DNSFilter services */
 #ifdef RTCONFIG_DNSFILTER
 	globalmode = nvram_get_int("dnsfilter_mode");
-	if (globalmode == 2 || globalmode == 3 || globalmode == 4)
-		nvram_set("dnsfilter_mode", "7");
+	if (globalmode == DNSF_SRV_NORTON1 || globalmode == DNSF_SRV_NORTON2 || globalmode == DNSF_SRV_NORTON3)
+		nvram_set_int("dnsfilter_mode", DNSF_SRV_OPENDNS_FAMILY);
 
 #ifdef HND_ROUTER
 	nv = nvp = malloc(255 * 6 + 1);
@@ -171,9 +175,10 @@ void adjust_merlin_config(void)
 			if (!*mac || !*mode )
 				continue;
 
-			if (mode[0] == '2' || mode[0] == '3' || mode[0] == '4')  mode[0] = '7';
-
-			snprintf(tmp, sizeof(tmp), "<%s>%s>%s", name, mac, mode);
+			if (atoi(mode) == DNSF_SRV_NORTON1 || atoi(mode) == DNSF_SRV_NORTON2 || atoi(mode) == DNSF_SRV_NORTON3)
+				snprintf(tmp, sizeof(tmp), "<%s>%s>%d", name, mac, DNSF_SRV_OPENDNS_FAMILY);
+			else
+				snprintf(tmp, sizeof(tmp), "<%s>%s>%s", name, mac, mode);
 			strcat(newstr, tmp);
 		}
 

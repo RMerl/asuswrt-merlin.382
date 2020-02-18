@@ -1,5 +1,5 @@
-# wcwidth.m4 serial 29
-dnl Copyright (C) 2006-2019 Free Software Foundation, Inc.
+# wcwidth.m4 serial 30
+dnl Copyright (C) 2006-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -108,7 +108,7 @@ changequote(,)dnl
              *-musl*)       gl_cv_func_wcwidth_works="guessing yes";;
                             # Guess yes on AIX 7 systems.
              aix[7-9]*)     gl_cv_func_wcwidth_works="guessing yes";;
-             *)             gl_cv_func_wcwidth_works="guessing no";;
+             *)             gl_cv_func_wcwidth_works="$gl_cross_guess_normal";;
            esac
 changequote([,])dnl
           ])

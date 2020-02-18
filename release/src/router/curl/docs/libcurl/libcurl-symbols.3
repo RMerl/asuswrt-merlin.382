@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) 1998 - 2020, Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -19,7 +19,7 @@
 .\" * KIND, either express or implied.
 .\" *
 .\" **************************************************************************
-.TH libcurl-symbols 3 "nov  6, 2019" "libcurl 7.41.0" "libcurl symbols"
+.TH libcurl-symbols 3 "Jan  8, 2020" "libcurl 7.41.0" "libcurl symbols"
 .SH NAME
 libcurl-symbols \- libcurl symbol version information
 .SH "libcurl symbols"
@@ -90,6 +90,7 @@ Introduced in 7.1
 Introduced in 7.18.2
 .IP CURLE_ALREADY_COMPLETE
 Introduced in 7.7.2
+Deprecated since 7.8
 .IP CURLE_AUTH_ERROR
 Introduced in 7.66.0
 .IP CURLE_BAD_CALLING_ORDER
@@ -128,6 +129,7 @@ Introduced in 7.24.0
 Introduced in 7.24.0
 .IP CURLE_FTP_ACCESS_DENIED
 Introduced in 7.1
+Deprecated since 7.17.0
 .IP CURLE_FTP_BAD_DOWNLOAD_RESUME
 Introduced in 7.1
 Deprecated since 7.1
@@ -153,6 +155,7 @@ Deprecated since 7.17.0
 Introduced in 7.17.0
 .IP CURLE_FTP_COULDNT_STOR_FILE
 Introduced in 7.1
+Deprecated since 7.16.3
 .IP CURLE_FTP_COULDNT_USE_REST
 Introduced in 7.1
 .IP CURLE_FTP_PARTIAL_FILE
@@ -179,6 +182,7 @@ Introduced in 7.1
 Introduced in 7.1
 .IP CURLE_FTP_WEIRD_SERVER_REPLY
 Introduced in 7.1
+Deprecated since 7.51.0
 .IP CURLE_FTP_WEIRD_USER_REPLY
 Introduced in 7.1
 Deprecated since 7.17.0
@@ -193,8 +197,11 @@ Introduced in 7.9.1
 Introduced in 7.38.0
 .IP CURLE_HTTP2_STREAM
 Introduced in 7.49.0
+.IP CURLE_HTTP3
+Introduced in 7.68.0
 .IP CURLE_HTTP_NOT_FOUND
 Introduced in 7.1
+Deprecated since 7.10.3
 .IP CURLE_HTTP_PORT_FAILED
 Introduced in 7.3
 Deprecated since 7.12.0
@@ -323,6 +330,7 @@ Introduced in 7.5
 Introduced in 7.21.5
 .IP CURLE_UNKNOWN_TELNET_OPTION
 Introduced in 7.7
+Deprecated since 7.21.5
 .IP CURLE_UNSUPPORTED_PROTOCOL
 Introduced in 7.1
 .IP CURLE_UPLOAD_FAILED
@@ -747,6 +755,8 @@ Introduced in 7.9.6
 Introduced in 7.9.6
 .IP CURLM_RECURSIVE_API_CALL
 Introduced in 7.59.0
+.IP CURLM_WAKEUP_FAILURE
+Introduced in 7.68.0
 .IP CURLM_UNKNOWN_OPTION
 Introduced in 7.15.4
 .IP CURLOPTTYPE_FUNCTIONPOINT
@@ -1530,6 +1540,8 @@ Introduced in 7.16.1
 .IP CURLSSLBACKEND_AXTLS
 Introduced in 7.38.0
 Deprecated since 7.61.0
+.IP CURLSSLBACKEND_BEARSSL
+Introduced in 7.68.0
 .IP CURLSSLBACKEND_BORINGSSL
 Introduced in 7.49.0
 .IP CURLSSLBACKEND_CYASSL
@@ -1565,6 +1577,8 @@ Introduced in 7.64.1
 Introduced in 7.49.0
 .IP CURLSSLOPT_ALLOW_BEAST
 Introduced in 7.25.0
+.IP CURLSSLOPT_NO_PARTIALCHAIN
+Introduced in 7.68.0
 .IP CURLSSLOPT_NO_REVOKE
 Introduced in 7.44.0
 .IP CURLSSLSET_NO_BACKENDS
@@ -1835,6 +1849,8 @@ Introduced in 7.14.0
 Introduced in 7.14.0
 .IP CURL_POLL_REMOVE
 Introduced in 7.14.0
+.IP CURL_PROGRESSFUNC_CONTINUE
+Introduced in 7.68.0
 .IP CURL_PROGRESS_BAR
 Introduced in 7.1.1
 .IP CURL_PROGRESS_STATS

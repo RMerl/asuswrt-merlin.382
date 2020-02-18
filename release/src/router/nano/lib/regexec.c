@@ -1,5 +1,5 @@
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002-2019 Free Software Foundation, Inc.
+   Copyright (C) 2002-2020 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
@@ -443,7 +443,7 @@ re_search_stub (struct re_pattern_buffer *bufp, const char *string, Idx length,
     {
       if (ret_len)
 	{
-	  assert (pmatch[0].rm_so == start);
+	  DEBUG_ASSERT (pmatch[0].rm_so == start);
 	  rval = pmatch[0].rm_eo - start;
 	}
       else
@@ -502,9 +502,9 @@ re_copy_regs (struct re_registers *regs, regmatch_t *pmatch, Idx nregs,
     }
   else
     {
-      assert (regs_allocated == REGS_FIXED);
+      DEBUG_ASSERT (regs_allocated == REGS_FIXED);
       /* This function may not be called with REGS_FIXED and nregs too big.  */
-      assert (regs->num_regs >= nregs);
+      DEBUG_ASSERT (nregs <= regs->num_regs);
       rval = REGS_FIXED;
     }
 
@@ -597,20 +597,11 @@ re_search_internal (const regex_t *preg, const char *string, Idx length,
   Idx extra_nmatch;
   bool sb;
   int ch;
-#if defined _LIBC || (defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L)
   re_match_context_t mctx = { .dfa = dfa };
-#else
-  re_match_context_t mctx;
-#endif
   char *fastmap = ((preg->fastmap != NULL && preg->fastmap_accurate
 		    && start != last_start && !preg->can_be_null)
 		   ? preg->fastmap : NULL);
   RE_TRANSLATE_TYPE t = preg->translate;
-
-#if !(defined _LIBC || (defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L))
-  memset (&mctx, '\0', sizeof (re_match_context_t));
-  mctx.dfa = dfa;
-#endif
 
   extra_nmatch = (nmatch > preg->re_nsub) ? nmatch - (preg->re_nsub + 1) : 0;
   nmatch -= extra_nmatch;
@@ -622,10 +613,8 @@ re_search_internal (const regex_t *preg, const char *string, Idx length,
 			|| dfa->init_state_begbuf == NULL))
     return REG_NOMATCH;
 
-#ifdef DEBUG
   /* We assume front-end functions already check them.  */
-  assert (0 <= last_start && last_start <= length);
-#endif
+  DEBUG_ASSERT (0 <= last_start && last_start <= length);
 
   /* If initial states with non-begbuf contexts have no elements,
      the regex must be anchored.  If preg->newline_anchor is set,
@@ -677,8 +666,6 @@ re_search_internal (const regex_t *preg, const char *string, Idx length,
 	  goto free_return;
 	}
     }
-  else
-    mctx.state_log = NULL;
 
   match_first = start;
   mctx.input.tip_context = (eflags & REG_NOTBOL) ? CONTEXT_BEGBUF
@@ -838,10 +825,8 @@ re_search_internal (const regex_t *preg, const char *string, Idx length,
       match_ctx_clean (&mctx);
     }
 
-#ifdef DEBUG
-  assert (match_last != -1);
-  assert (err == REG_NOERROR);
-#endif
+  DEBUG_ASSERT (match_last != -1);
+  DEBUG_ASSERT (err == REG_NOERROR);
 
   /* Set pmatch[] if we need.  */
   if (nmatch > 0)
@@ -886,7 +871,7 @@ re_search_internal (const regex_t *preg, const char *string, Idx length,
 		   : mctx.input.offsets[pmatch[reg_idx].rm_eo]);
 	      }
 #else
-	    assert (mctx.input.offsets_needed == 0);
+	    DEBUG_ASSERT (mctx.input.offsets_needed == 0);
 #endif
 	    pmatch[reg_idx].rm_so += match_first;
 	    pmatch[reg_idx].rm_eo += match_first;
@@ -926,9 +911,7 @@ prune_impossible_nodes (re_match_context_t *mctx)
   re_dfastate_t **sifted_states;
   re_dfastate_t **lim_states = NULL;
   re_sift_context_t sctx;
-#ifdef DEBUG
-  assert (mctx->state_log != NULL);
-#endif
+  DEBUG_ASSERT (mctx->state_log != NULL);
   match_last = mctx->match_last;
   halt_node = mctx->last_node;
 
@@ -1074,7 +1057,7 @@ check_matching (re_match_context_t *mctx, bool fl_longest_match,
   /* An initial state must not be NULL (invalid).  */
   if (__glibc_unlikely (cur_state == NULL))
     {
-      assert (err == REG_ESPACE);
+      DEBUG_ASSERT (err == REG_ESPACE);
       return -2;
     }
 
@@ -1129,7 +1112,7 @@ check_matching (re_match_context_t *mctx, bool fl_longest_match,
 	  err = extend_buffers (mctx, next_char_idx + 1);
 	  if (__glibc_unlikely (err != REG_NOERROR))
 	    {
-	      assert (err == REG_ESPACE);
+	      DEBUG_ASSERT (err == REG_ESPACE);
 	      return -2;
 	    }
 	}
@@ -1212,9 +1195,7 @@ check_halt_state_context (const re_match_context_t *mctx,
 {
   Idx i;
   unsigned int context;
-#ifdef DEBUG
-  assert (state->halt);
-#endif
+  DEBUG_ASSERT (state->halt);
   context = re_string_context_at (&mctx->input, idx, mctx->eflags);
   for (i = 0; i < state->nodes.nelem; ++i)
     if (check_halt_node_context (mctx->dfa, state->nodes.elems[i], context))
@@ -1285,10 +1266,13 @@ proceed_next_node (const re_match_context_t *mctx, Idx nregs, regmatch_t *regs,
       if (type == OP_BACK_REF)
 	{
 	  Idx subexp_idx = dfa->nodes[node].opr.idx + 1;
-	  naccepted = regs[subexp_idx].rm_eo - regs[subexp_idx].rm_so;
+	  if (subexp_idx < nregs)
+	    naccepted = regs[subexp_idx].rm_eo - regs[subexp_idx].rm_so;
 	  if (fs != NULL)
 	    {
-	      if (regs[subexp_idx].rm_so == -1 || regs[subexp_idx].rm_eo == -1)
+	      if (subexp_idx >= nregs
+		  || regs[subexp_idx].rm_so == -1
+		  || regs[subexp_idx].rm_eo == -1)
 		return -1;
 	      else if (naccepted)
 		{
@@ -1362,7 +1346,7 @@ pop_fail_stack (struct re_fail_stack_t *fs, Idx *pidx, Idx nregs,
 		regmatch_t *regs, re_node_set *eps_via_nodes)
 {
   Idx num = --fs->num;
-  assert (num >= 0);
+  DEBUG_ASSERT (num >= 0);
   *pidx = fs->stack[num].idx;
   memcpy (regs, fs->stack[num].regs, sizeof (regmatch_t) * nregs);
   re_node_set_free (eps_via_nodes);
@@ -1389,10 +1373,8 @@ set_regs (const regex_t *preg, const re_match_context_t *mctx, size_t nmatch,
   regmatch_t *prev_idx_match;
   bool prev_idx_match_malloced = false;
 
-#ifdef DEBUG
-  assert (nmatch > 1);
-  assert (mctx->state_log != NULL);
-#endif
+  DEBUG_ASSERT (nmatch > 1);
+  DEBUG_ASSERT (mctx->state_log != NULL);
   if (fl_backtrack)
     {
       fs = &fs_body;
@@ -1578,9 +1560,7 @@ sift_states_backward (const re_match_context_t *mctx, re_sift_context_t *sctx)
   Idx str_idx = sctx->last_str_idx;
   re_node_set cur_dest;
 
-#ifdef DEBUG
-  assert (mctx->state_log != NULL && mctx->state_log[str_idx] != NULL);
-#endif
+  DEBUG_ASSERT (mctx->state_log != NULL && mctx->state_log[str_idx] != NULL);
 
   /* Build sifted state_log[str_idx].  It has the nodes which can epsilon
      transit to the last_node and the last_node itself.  */
@@ -1648,11 +1628,8 @@ build_sifted_states (const re_match_context_t *mctx, re_sift_context_t *sctx,
       Idx prev_node = cur_src->elems[i];
       int naccepted = 0;
       bool ok;
+      DEBUG_ASSERT (!IS_EPSILON_NODE (dfa->nodes[prev_node].type));
 
-#ifdef DEBUG
-      re_token_type_t type = dfa->nodes[prev_node].type;
-      assert (!IS_EPSILON_NODE (type));
-#endif
 #ifdef RE_ENABLE_I18N
       /* If the node may accept "multi byte".  */
       if (dfa->nodes[prev_node].accept_mb)
@@ -2505,9 +2482,7 @@ transit_state_mb (re_match_context_t *mctx, re_dfastate_t *pstate)
       err = clean_state_log_if_needed (mctx, dest_idx);
       if (__glibc_unlikely (err != REG_NOERROR))
 	return err;
-#ifdef DEBUG
-      assert (dfa->nexts[cur_node_idx] != -1);
-#endif
+      DEBUG_ASSERT (dfa->nexts[cur_node_idx] != -1);
       new_nodes = dfa->eclosures + dfa->nexts[cur_node_idx];
 
       dest_state = mctx->state_log[dest_idx];
@@ -2571,9 +2546,7 @@ transit_state_bkref (re_match_context_t *mctx, const re_node_set *nodes)
 
       /* And add the epsilon closures (which is 'new_dest_nodes') of
 	 the backreference to appropriate state_log.  */
-#ifdef DEBUG
-      assert (dfa->nexts[node_idx] != -1);
-#endif
+      DEBUG_ASSERT (dfa->nexts[node_idx] != -1);
       for (; bkc_idx < mctx->nbkref_ents; ++bkc_idx)
 	{
 	  Idx subexp_len;
@@ -3032,10 +3005,8 @@ check_arrival_add_next_nodes (re_match_context_t *mctx, Idx str_idx,
     {
       int naccepted = 0;
       Idx cur_node = cur_nodes->elems[cur_idx];
-#ifdef DEBUG
-      re_token_type_t type = dfa->nodes[cur_node].type;
-      assert (!IS_EPSILON_NODE (type));
-#endif
+      DEBUG_ASSERT (!IS_EPSILON_NODE (dfa->nodes[cur_node].type));
+
 #ifdef RE_ENABLE_I18N
       /* If the node may accept "multi byte".  */
       if (dfa->nodes[cur_node].accept_mb)
@@ -3103,9 +3074,7 @@ check_arrival_expand_ecl (const re_dfa_t *dfa, re_node_set *cur_nodes,
   reg_errcode_t err;
   Idx idx, outside_node;
   re_node_set new_nodes;
-#ifdef DEBUG
-  assert (cur_nodes->nelem);
-#endif
+  DEBUG_ASSERT (cur_nodes->nelem);
   err = re_node_set_alloc (&new_nodes, cur_nodes->nelem);
   if (__glibc_unlikely (err != REG_NOERROR))
     return err;
@@ -3695,6 +3664,7 @@ group_nodes_into_DFAstates (const re_dfa_t *dfa, const re_dfastate_t *state,
 	  bitset_empty (accepts);
 	}
     }
+  assume (ndests <= SBC_MAX);
   return ndests;
  error_return:
   for (j = 0; j < ndests; ++j)
@@ -4272,10 +4242,8 @@ static reg_errcode_t
 __attribute_warn_unused_result__
 match_ctx_add_subtop (re_match_context_t *mctx, Idx node, Idx str_idx)
 {
-#ifdef DEBUG
-  assert (mctx->sub_tops != NULL);
-  assert (mctx->asub_tops > 0);
-#endif
+  DEBUG_ASSERT (mctx->sub_tops != NULL);
+  DEBUG_ASSERT (mctx->asub_tops > 0);
   if (__glibc_unlikely (mctx->nsub_tops == mctx->asub_tops))
     {
       Idx new_asub_tops = mctx->asub_tops * 2;

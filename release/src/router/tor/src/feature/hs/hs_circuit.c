@@ -405,8 +405,12 @@ launch_rendezvous_point_circuit(const hs_service_t *service,
     if (circ_needs_uptime) {
       circ_flags |= CIRCLAUNCH_NEED_UPTIME;
     }
-    /* Firewall and policies are checked when getting the extend info. */
-    if (service->config.is_single_onion) {
+    /* Firewall and policies are checked when getting the extend info.
+     *
+     * We only use a one-hop path on the first attempt. If the first attempt
+     * fails, we use a 3-hop path for reachability / reliability.
+     * See the comment in retry_service_rendezvous_point() for details. */
+    if (service->config.is_single_onion && i == 0) {
       circ_flags |= CIRCLAUNCH_ONEHOP_TUNNEL;
     }
 
@@ -754,13 +758,16 @@ hs_circ_retry_service_rendezvous_point(origin_circuit_t *circ)
 }
 
 /* For a given service and a service intro point, launch a circuit to the
- * extend info ei. If the service is a single onion, a one-hop circuit will be
- * requested. Return 0 if the circuit was successfully launched and tagged
+ * extend info ei. If the service is a single onion, and direct_conn is true,
+ * a one-hop circuit will be requested.
+ *
+ * Return 0 if the circuit was successfully launched and tagged
  * with the correct identifier. On error, a negative value is returned. */
 int
 hs_circ_launch_intro_point(hs_service_t *service,
                            const hs_service_intro_point_t *ip,
-                           extend_info_t *ei)
+                           extend_info_t *ei,
+                           bool direct_conn)
 {
   /* Standard flags for introduction circuit. */
   int ret = -1, circ_flags = CIRCLAUNCH_NEED_UPTIME | CIRCLAUNCH_IS_INTERNAL;
@@ -772,7 +779,16 @@ hs_circ_launch_intro_point(hs_service_t *service,
 
   /* Update circuit flags in case of a single onion service that requires a
    * direct connection. */
-  if (service->config.is_single_onion) {
+  tor_assert_nonfatal(ip->circuit_retries > 0);
+  /* Only single onion services can make direct conns */
+  if (BUG(!service->config.is_single_onion && direct_conn)) {
+    goto end;
+  }
+  /* We only use a one-hop path on the first attempt. If the first attempt
+   * fails, we use a 3-hop path for reachability / reliability.
+   * (Unlike v2, retries is incremented by the caller before it calls this
+   * function.) */
+  if (direct_conn && ip->circuit_retries == 1) {
     circ_flags |= CIRCLAUNCH_ONEHOP_TUNNEL;
   }
 

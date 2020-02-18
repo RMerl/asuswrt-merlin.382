@@ -1,9 +1,26 @@
 # Enable large files on systems where this is not the default.
+# Enable support for files on Linux file systems with 64-bit inode numbers.
 
-# Copyright 1992-1996, 1998-2019 Free Software Foundation, Inc.
+# Copyright 1992-1996, 1998-2020 Free Software Foundation, Inc.
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
+
+# The following macro works around a problem in Autoconf's AC_FUNC_FSEEKO:
+# It does not set _LARGEFILE_SOURCE=1 on HP-UX/ia64 32-bit, although this
+# setting of _LARGEFILE_SOURCE is needed so that <stdio.h> declares fseeko
+# and ftello in C++ mode as well.
+AC_DEFUN([gl_SET_LARGEFILE_SOURCE],
+[
+  AC_REQUIRE([AC_CANONICAL_HOST])
+  AC_FUNC_FSEEKO
+  case "$host_os" in
+    hpux*)
+      AC_DEFINE([_LARGEFILE_SOURCE], [1],
+        [Define to 1 to make fseeko visible on some hosts (e.g. glibc 2.2).])
+      ;;
+  esac
+])
 
 # The following implementation works around a problem in autoconf <= 2.69;
 # AC_SYS_LARGEFILE does not configure for large inodes on Mac OS X 10.5,
@@ -56,7 +73,10 @@ rm -rf conftest*[]dnl
 # By default, many hosts won't let programs access large files;
 # one must use special compiler options to get large-file access to work.
 # For more details about this brain damage please see:
-# http://www.unix-systems.org/version2/whatsnew/lfs20mar.html
+# http://www.unix.org/version2/whatsnew/lfs20mar.html
+# Additionally, on Linux file systems with 64-bit inodes a file that happens
+# to have a 64-bit inode number cannot be accessed by 32-bit applications on
+# Linux x86/x86_64.  This can occur with file systems such as XFS and NFS.
 AC_DEFUN([AC_SYS_LARGEFILE],
 [AC_ARG_ENABLE(largefile,
                [  --disable-largefile     omit support for large files])

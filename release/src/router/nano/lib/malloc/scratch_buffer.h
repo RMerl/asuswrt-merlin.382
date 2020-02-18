@@ -1,5 +1,5 @@
 /* Variable-sized buffer with on-stack default allocation.
-   Copyright (C) 2015-2019 Free Software Foundation, Inc.
+   Copyright (C) 2015-2020 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -66,7 +66,7 @@
 struct scratch_buffer {
   void *data;    /* Pointer to the beginning of the scratch area.  */
   size_t length; /* Allocated space at the data pointer, in bytes.  */
-  max_align_t __space[(1023 + sizeof (max_align_t)) / sizeof (max_align_t)];
+  union { max_align_t __align; char __c[1024]; } __space;
 };
 
 /* Initializes *BUFFER so that BUFFER->data points to BUFFER->__space
@@ -74,7 +74,7 @@ struct scratch_buffer {
 static inline void
 scratch_buffer_init (struct scratch_buffer *buffer)
 {
-  buffer->data = buffer->__space;
+  buffer->data = buffer->__space.__c;
   buffer->length = sizeof (buffer->__space);
 }
 
@@ -82,7 +82,7 @@ scratch_buffer_init (struct scratch_buffer *buffer)
 static inline void
 scratch_buffer_free (struct scratch_buffer *buffer)
 {
-  if (buffer->data != buffer->__space)
+  if (buffer->data != buffer->__space.__c)
     free (buffer->data);
 }
 

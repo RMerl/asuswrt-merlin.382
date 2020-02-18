@@ -68,10 +68,10 @@
 // Redundant with util.h, but doing it here so we can avoid that dependency.
 #define raw_free free
 
-#ifdef USE_BACKTRACE
 /** Version of Tor to report in backtrace messages. */
 static char bt_version[128] = "";
 
+#ifdef USE_BACKTRACE
 /** Largest stack depth to try to dump. */
 #define MAX_DEPTH 256
 /** Static allocation of stack to dump. This is static so we avoid stack
@@ -127,7 +127,7 @@ log_backtrace_impl(int severity, int domain, const char *msg,
   depth = backtrace(cb_buf, MAX_DEPTH);
   symbols = backtrace_symbols(cb_buf, (int)depth);
 
-  logger(severity, domain, "%s. Stack trace:", msg);
+  logger(severity, domain, "%s: %s. Stack trace:", bt_version, msg);
   if (!symbols) {
     /* LCOV_EXCL_START -- we can't provoke this. */
     logger(severity, domain, "    Unable to generate backtrace.");
@@ -193,14 +193,11 @@ dump_stack_symbols_to_error_fds(void)
 /** Install signal handlers as needed so that when we crash, we produce a
  * useful stack trace. Return 0 on success, -errno on failure. */
 static int
-install_bt_handler(const char *software)
+install_bt_handler(void)
 {
   int trap_signals[] = { SIGSEGV, SIGILL, SIGFPE, SIGBUS, SIGSYS,
                          SIGIO, -1 };
   int i, rv=0;
-
-  strncpy(bt_version, software, sizeof(bt_version) - 1);
-  bt_version[sizeof(bt_version) - 1] = 0;
 
   struct sigaction sa;
 
@@ -243,13 +240,13 @@ void
 log_backtrace_impl(int severity, int domain, const char *msg,
                    tor_log_fn logger)
 {
-  logger(severity, domain, "%s. (Stack trace not available)", msg);
+  logger(severity, domain, "%s: %s. (Stack trace not available)",
+         bt_version, msg);
 }
 
 static int
-install_bt_handler(const char *software)
+install_bt_handler(void)
 {
-  (void) software;
   return 0;
 }
 
@@ -264,6 +261,14 @@ dump_stack_symbols_to_error_fds(void)
 }
 #endif /* defined(NO_BACKTRACE_IMPL) */
 
+/** Return the tor version used for error messages on crashes.
+ * Signal-safe: returns a pointer to a static array. */
+const char *
+get_tor_backtrace_version(void)
+{
+  return bt_version;
+}
+
 /** Set up code to handle generating error messages on crashes. */
 int
 configure_backtrace_handler(const char *tor_version)
@@ -271,10 +276,25 @@ configure_backtrace_handler(const char *tor_version)
   char version[128] = "Tor\0";
 
   if (tor_version) {
-    snprintf(version, sizeof(version), "Tor %s", tor_version);
+    int snp_rv = 0;
+    /* We can't use strlcat() here, because it is defined in
+     * string/compat_string.h on some platforms, and string uses torerr. */
+    snp_rv = snprintf(version, sizeof(version), "Tor %s", tor_version);
+    /* It's safe to call raw_assert() here, because raw_assert() does not
+     * call configure_backtrace_handler(). */
+    raw_assert(snp_rv < (int)sizeof(version));
+    raw_assert(snp_rv >= 0);
   }
 
-  return install_bt_handler(version);
+  char *str_rv = NULL;
+  /* We can't use strlcpy() here, see the note about strlcat() above. */
+  str_rv = strncpy(bt_version, version, sizeof(bt_version) - 1);
+  /* We must terminate bt_version, then raw_assert(), because raw_assert()
+   * uses bt_version. */
+  bt_version[sizeof(bt_version) - 1] = 0;
+  raw_assert(str_rv == bt_version);
+
+  return install_bt_handler();
 }
 
 /** Perform end-of-process cleanup for code that generates error messages on

@@ -4568,16 +4568,14 @@ test_config_parse_port_config__ports__ports_given(void *data)
                           "127.0.0.44", 0, CL_PORT_NO_STREAM_OPTIONS);
   tt_int_op(ret, OP_EQ, -1);
 
-  // TODO: this seems wrong. Shouldn't it be the other way around?
-  // Potential bug.
-  // Test failure for a SessionGroup argument with valid value but with stream
-  // options allowed
+  // Test failure for a SessionGroup argument with valid value but with no
+  // stream options allowed
   config_free_lines(config_port_invalid); config_port_invalid = NULL;
   SMARTLIST_FOREACH(slout,port_cfg_t *,pf,port_cfg_free(pf));
   smartlist_clear(slout);
   config_port_invalid = mock_config_line("DNSPort", "42 SessionGroup=123");
   ret = parse_port_config(slout, config_port_invalid, "DNS", 0,
-                          "127.0.0.44", 0, 0);
+                          "127.0.0.44", 0, CL_PORT_NO_STREAM_OPTIONS);
   tt_int_op(ret, OP_EQ, -1);
 
   // Test failure for more than one SessionGroup argument
@@ -4587,7 +4585,7 @@ test_config_parse_port_config__ports__ports_given(void *data)
   config_port_invalid = mock_config_line("DNSPort", "42 SessionGroup=123 "
                                          "SessionGroup=321");
   ret = parse_port_config(slout, config_port_invalid, "DNS", 0,
-                          "127.0.0.44", 0, CL_PORT_NO_STREAM_OPTIONS);
+                          "127.0.0.44", 0, 0);
   tt_int_op(ret, OP_EQ, -1);
 
   // Test success with a sessiongroup options
@@ -4596,7 +4594,7 @@ test_config_parse_port_config__ports__ports_given(void *data)
   smartlist_clear(slout);
   config_port_valid = mock_config_line("DNSPort", "42 SessionGroup=1111122");
   ret = parse_port_config(slout, config_port_valid, "DNS", 0,
-                          "127.0.0.44", 0, CL_PORT_NO_STREAM_OPTIONS);
+                          "127.0.0.44", 0, 0);
   tt_int_op(ret, OP_EQ, 0);
   tt_int_op(smartlist_len(slout), OP_EQ, 1);
   port_cfg = (port_cfg_t *)smartlist_get(slout, 0);
@@ -5289,6 +5287,73 @@ test_config_include_folder_order(void *data)
 }
 
 static void
+test_config_include_blank_file_last(void *data)
+{
+  (void)data;
+
+  config_line_t *result = NULL;
+  char *torrcd = NULL;
+  char *path = NULL;
+  char *dir = tor_strdup(get_fname("test_include_blank_file_last"));
+  tt_ptr_op(dir, OP_NE, NULL);
+
+#ifdef _WIN32
+  tt_int_op(mkdir(dir), OP_EQ, 0);
+#else
+  tt_int_op(mkdir(dir, 0700), OP_EQ, 0);
+#endif
+
+  tor_asprintf(&torrcd, "%s"PATH_SEPARATOR"%s", dir, "torrc.d");
+
+#ifdef _WIN32
+  tt_int_op(mkdir(torrcd), OP_EQ, 0);
+#else
+  tt_int_op(mkdir(torrcd, 0700), OP_EQ, 0);
+#endif
+
+  tor_asprintf(&path, "%s"PATH_SEPARATOR"%s", torrcd, "aa_1st");
+  tt_int_op(write_str_to_file(path, "Test 1\n", 0), OP_EQ, 0);
+  tor_free(path);
+
+  tor_asprintf(&path, "%s"PATH_SEPARATOR"%s", torrcd, "bb_2nd");
+  tt_int_op(write_str_to_file(path, "Test 2\n", 0), OP_EQ, 0);
+  tor_free(path);
+
+  tor_asprintf(&path, "%s"PATH_SEPARATOR"%s", torrcd, "cc_comment");
+  tt_int_op(write_str_to_file(path, "# comment only\n", 0), OP_EQ, 0);
+  tor_free(path);
+
+  char torrc_contents[1000];
+  tor_snprintf(torrc_contents, sizeof(torrc_contents),
+               "%%include %s\n"
+               "Test 3\n",
+               torrcd);
+
+  int include_used;
+  tt_int_op(config_get_lines_include(torrc_contents, &result, 0, &include_used,
+            NULL), OP_EQ, 0);
+  tt_ptr_op(result, OP_NE, NULL);
+  tt_int_op(include_used, OP_EQ, 1);
+
+  int len = 0;
+  config_line_t *next;
+  for (next = result; next != NULL; next = next->next) {
+    char expected[10];
+    tor_snprintf(expected, sizeof(expected), "%d", len + 1);
+    tt_str_op(next->key, OP_EQ, "Test");
+    tt_str_op(next->value, OP_EQ, expected);
+    len++;
+  }
+  tt_int_op(len, OP_EQ, 3);
+
+ done:
+  config_free_lines(result);
+  tor_free(torrcd);
+  tor_free(path);
+  tor_free(dir);
+}
+
+static void
 test_config_include_path_syntax(void *data)
 {
   (void)data;
@@ -5850,6 +5915,7 @@ struct testcase_t config_tests[] = {
   CONFIG_TEST(include_recursion_before_after, 0),
   CONFIG_TEST(include_recursion_after_only, 0),
   CONFIG_TEST(include_folder_order, 0),
+  CONFIG_TEST(include_blank_file_last, 0),
   CONFIG_TEST(include_path_syntax, 0),
   CONFIG_TEST(include_not_processed, 0),
   CONFIG_TEST(include_has_include, 0),

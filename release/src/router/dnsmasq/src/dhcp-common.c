@@ -271,35 +271,45 @@ static int is_config_in_context(struct dhcp_context *context, struct dhcp_config
 {
   if (!context) /* called via find_config() from lease_update_from_configs() */
     return 1; 
-
-  if (!(config->flags & (CONFIG_ADDR | CONFIG_ADDR6)))
-    return 1;
   
 #ifdef HAVE_DHCP6
-  if ((context->flags & CONTEXT_V6) && (config->flags & CONFIG_WILDCARD))
-    return 1;
-#endif
+  if (context->flags & CONTEXT_V6)
+    {
+       struct addrlist *addr_list;
 
-  for (; context; context = context->current)
-#ifdef HAVE_DHCP6
-    if (context->flags & CONTEXT_V6) 
-      {
-	if ((config->flags & CONFIG_ADDR6) && is_same_net6(&config->addr6, &context->start6, context->prefix))
-	  return 1;
-      }
-    else 
+       if (!(config->flags & CONFIG_ADDR6))
+	 return 1;
+       
+        for (; context; context = context->current)
+	  for (addr_list = config->addr6; addr_list; addr_list = addr_list->next)
+	    {
+	      if ((addr_list->flags & ADDRLIST_WILDCARD) && context->prefix == 64)
+		return 1;
+	      
+	      if (is_same_net6(&addr_list->addr.addr6, &context->start6, context->prefix))
+		return 1;
+	    }
+    }
+  else
 #endif
-      if ((config->flags & CONFIG_ADDR) && is_same_net(config->addr, context->start, context->netmask))
+    {
+      if (!(config->flags & CONFIG_ADDR))
 	return 1;
+      
+      for (; context; context = context->current)
+	if ((config->flags & CONFIG_ADDR) && is_same_net(config->addr, context->start, context->netmask))
+	  return 1;
+    }
 
   return 0;
 }
 
-struct dhcp_config *find_config(struct dhcp_config *configs,
-				struct dhcp_context *context,
-				unsigned char *clid, int clid_len,
-				unsigned char *hwaddr, int hw_len, 
-				int hw_type, char *hostname)
+static struct dhcp_config *find_config_match(struct dhcp_config *configs,
+					     struct dhcp_context *context,
+					     unsigned char *clid, int clid_len,
+					     unsigned char *hwaddr, int hw_len, 
+					     int hw_type, char *hostname,
+					     struct dhcp_netid *tags, int tag_not_needed)
 {
   int count, new;
   struct dhcp_config *config, *candidate; 
@@ -311,7 +321,9 @@ struct dhcp_config *find_config(struct dhcp_config *configs,
 	{
 	  if (config->clid_len == clid_len && 
 	      memcmp(config->clid, clid, clid_len) == 0 &&
-	      is_config_in_context(context, config))
+	      is_config_in_context(context, config) &&
+	      match_netid(config->filter, tags, tag_not_needed))
+	    
 	    return config;
 	  
 	  /* dhcpcd prefixes ASCII client IDs by zero which is wrong, but we try and
@@ -319,7 +331,8 @@ struct dhcp_config *find_config(struct dhcp_config *configs,
 	     see lease_update_from_configs() */
 	  if ((!context || !(context->flags & CONTEXT_V6)) && *clid == 0 && config->clid_len == clid_len-1  &&
 	      memcmp(config->clid, clid+1, clid_len-1) == 0 &&
-	      is_config_in_context(context, config))
+	      is_config_in_context(context, config) &&
+	      match_netid(config->filter, tags, tag_not_needed))
 	    return config;
 	}
   
@@ -327,14 +340,16 @@ struct dhcp_config *find_config(struct dhcp_config *configs,
   if (hwaddr)
     for (config = configs; config; config = config->next)
       if (config_has_mac(config, hwaddr, hw_len, hw_type) &&
-	  is_config_in_context(context, config))
+	  is_config_in_context(context, config) &&
+	  match_netid(config->filter, tags, tag_not_needed))
 	return config;
   
   if (hostname && context)
     for (config = configs; config; config = config->next)
       if ((config->flags & CONFIG_NAME) && 
 	  hostname_isequal(config->hostname, hostname) &&
-	  is_config_in_context(context, config))
+	  is_config_in_context(context, config) &&
+	  match_netid(config->filter, tags, tag_not_needed))
 	return config;
 
   
@@ -343,7 +358,8 @@ struct dhcp_config *find_config(struct dhcp_config *configs,
 
   /* use match with fewest wildcard octets */
   for (candidate = NULL, count = 0, config = configs; config; config = config->next)
-    if (is_config_in_context(context, config))
+    if (is_config_in_context(context, config) &&
+	match_netid(config->filter, tags, tag_not_needed))
       for (conf_addr = config->hwaddr; conf_addr; conf_addr = conf_addr->next)
 	if (conf_addr->wildcard_mask != 0 &&
 	    conf_addr->hwaddr_len == hw_len &&	
@@ -355,6 +371,21 @@ struct dhcp_config *find_config(struct dhcp_config *configs,
 	  }
   
   return candidate;
+}
+
+/* Find tagged configs first. */
+struct dhcp_config *find_config(struct dhcp_config *configs,
+				struct dhcp_context *context,
+				unsigned char *clid, int clid_len,
+				unsigned char *hwaddr, int hw_len, 
+				int hw_type, char *hostname, struct dhcp_netid *tags)
+{
+  struct dhcp_config *ret = find_config_match(configs, context, clid, clid_len, hwaddr, hw_len, hw_type, hostname, tags, 0);
+
+  if (!ret)
+    ret = find_config_match(configs, context, clid, clid_len, hwaddr, hw_len, hw_type, hostname, tags, 1);
+
+  return ret;
 }
 
 void dhcp_update_configs(struct dhcp_config *configs)
@@ -424,10 +455,21 @@ void dhcp_update_configs(struct dhcp_config *configs)
 
 #ifdef HAVE_DHCP6
 	    if (prot == AF_INET6 && 
-		(!(conf_tmp = config_find_by_address6(configs, &crec->addr.addr6, 128, 0)) || conf_tmp == config))
+		(!(conf_tmp = config_find_by_address6(configs, NULL, 0, &crec->addr.addr6)) || conf_tmp == config))
 	      {
-		memcpy(&config->addr6, &crec->addr.addr6, IN6ADDRSZ);
-		config->flags |= CONFIG_ADDR6 | CONFIG_ADDR6_HOSTS;
+		/* host must have exactly one address if comming from /etc/hosts. */
+		if (!config->addr6 && (config->addr6 = whine_malloc(sizeof(struct addrlist))))
+		  {
+		    config->addr6->next = NULL;
+		    config->addr6->flags = 0;
+		  }
+
+		if (config->addr6 && !config->addr6->next && !(config->addr6->flags & (ADDRLIST_WILDCARD|ADDRLIST_PREFIX)))
+		  {
+		    memcpy(&config->addr6->addr.addr6, &crec->addr.addr6, IN6ADDRSZ);
+		    config->flags |= CONFIG_ADDR6 | CONFIG_ADDR6_HOSTS;
+		  }
+	    
 		continue;
 	      }
 #endif

@@ -1,5 +1,5 @@
 # DO NOT EDIT! GENERATED AUTOMATICALLY!
-# Copyright (C) 2002-2019 Free Software Foundation, Inc.
+# Copyright (C) 2002-2020 Free Software Foundation, Inc.
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,9 +83,9 @@ AC_DEFUN([gl_EARLY],
   # Code from module glob:
   # Code from module glob-h:
   # Code from module hard-locale:
-  # Code from module havelib:
   # Code from module include_next:
   # Code from module intprops:
+  # Code from module inttypes-incomplete:
   # Code from module isblank:
   # Code from module isnand-nolibm:
   # Code from module isnanf-nolibm:
@@ -125,6 +125,7 @@ AC_DEFUN([gl_EARLY],
   # Code from module readdir:
   # Code from module regex:
   # Code from module scratch_buffer:
+  # Code from module setlocale-null:
   # Code from module sigaction:
   # Code from module signal-h:
   # Code from module signbit:
@@ -302,6 +303,7 @@ AC_DEFUN([gl_INIT],
     GNULIB_GL_UNISTD_H_GETOPT=1
   fi
   AC_SUBST([GNULIB_GL_UNISTD_H_GETOPT])
+  gl_UNISTD_MODULE_INDICATOR([getopt-posix])
   AC_SUBST([LIBINTL])
   AC_SUBST([LTLIBINTL])
   gl_GETTIME
@@ -322,6 +324,10 @@ AC_DEFUN([gl_INIT],
   fi
   gl_GLOB_MODULE_INDICATOR([glob])
   gl_GLOB_H
+  AC_REQUIRE([gl_FUNC_SETLOCALE_NULL])
+  LIB_HARD_LOCALE="$LIB_SETLOCALE_NULL"
+  AC_SUBST([LIB_HARD_LOCALE])
+  gl_INTTYPES_INCOMPLETE
   gl_FUNC_ISBLANK
   if test $HAVE_ISBLANK = 0; then
     AC_LIBOBJ([isblank])
@@ -386,6 +392,11 @@ AC_DEFUN([gl_INIT],
   gl_FUNC_MBRTOWC
   if test $HAVE_MBRTOWC = 0 || test $REPLACE_MBRTOWC = 1; then
     AC_LIBOBJ([mbrtowc])
+    if test $REPLACE_MBSTATE_T = 1; then
+      AC_LIBOBJ([lc-charset-dispatch])
+      AC_LIBOBJ([mbtowc-lock])
+      gl_PREREQ_MBTOWC_LOCK
+    fi
     gl_PREREQ_MBRTOWC
   fi
   gl_WCHAR_MODULE_INDICATOR([mbrtowc])
@@ -460,6 +471,12 @@ AC_DEFUN([gl_INIT],
     AC_LIBOBJ([regex])
     gl_PREREQ_REGEX
   fi
+  gl_FUNC_SETLOCALE_NULL
+  if test $SETLOCALE_NULL_ALL_MTSAFE = 0 || test $SETLOCALE_NULL_ONE_MTSAFE = 0; then
+    AC_LIBOBJ([setlocale-lock])
+    gl_PREREQ_SETLOCALE_LOCK
+  fi
+  gl_LOCALE_MODULE_INDICATOR([setlocale_null])
   gl_SIGACTION
   if test $HAVE_SIGACTION = 0; then
     AC_LIBOBJ([sigaction])
@@ -734,7 +751,6 @@ AC_DEFUN([gltests_LIBSOURCES], [
 # This macro records the list of files which have been installed by
 # gnulib-tool and may be removed by future gnulib-tool invocations.
 AC_DEFUN([gl_FILE_LIST], [
-  build-aux/config.rpath
   lib/_Noreturn.h
   lib/alloca.c
   lib/alloca.in.h
@@ -791,6 +807,7 @@ AC_DEFUN([gl_FILE_LIST], [
   lib/hard-locale.c
   lib/hard-locale.h
   lib/intprops.h
+  lib/inttypes.in.h
   lib/isblank.c
   lib/isnan.c
   lib/isnand-nolibm.h
@@ -802,6 +819,8 @@ AC_DEFUN([gl_FILE_LIST], [
   lib/iswblank.c
   lib/itold.c
   lib/langinfo.in.h
+  lib/lc-charset-dispatch.c
+  lib/lc-charset-dispatch.h
   lib/libc-config.h
   lib/limits.in.h
   lib/localcharset.c
@@ -820,12 +839,16 @@ AC_DEFUN([gl_FILE_LIST], [
   lib/malloca.h
   lib/math.c
   lib/math.in.h
+  lib/mbrtowc-impl-utf8.h
+  lib/mbrtowc-impl.h
   lib/mbrtowc.c
   lib/mbsinit.c
   lib/mbsrtowcs-impl.h
   lib/mbsrtowcs-state.c
   lib/mbsrtowcs.c
   lib/mbtowc-impl.h
+  lib/mbtowc-lock.c
+  lib/mbtowc-lock.h
   lib/mbtowc.c
   lib/memchr.c
   lib/memchr.valgrind
@@ -854,6 +877,9 @@ AC_DEFUN([gl_FILE_LIST], [
   lib/regex_internal.h
   lib/regexec.c
   lib/scratch_buffer.h
+  lib/setlocale-lock.c
+  lib/setlocale_null.c
+  lib/setlocale_null.h
   lib/sig-handler.c
   lib/sig-handler.h
   lib/sigaction.c
@@ -966,9 +992,9 @@ AC_DEFUN([gl_FILE_LIST], [
   m4/glob.m4
   m4/glob_h.m4
   m4/gnulib-common.m4
-  m4/host-cpu-c-abi.m4
   m4/include_next.m4
   m4/intmax_t.m4
+  m4/inttypes.m4
   m4/inttypes_h.m4
   m4/isblank.m4
   m4/isnand.m4
@@ -978,9 +1004,6 @@ AC_DEFUN([gl_FILE_LIST], [
   m4/langinfo_h.m4
   m4/largefile.m4
   m4/ldexpl.m4
-  m4/lib-ld.m4
-  m4/lib-link.m4
-  m4/lib-prefix.m4
   m4/libunistring-base.m4
   m4/limits-h.m4
   m4/localcharset.m4
@@ -991,7 +1014,6 @@ AC_DEFUN([gl_FILE_LIST], [
   m4/localeconv.m4
   m4/localtime-buffer.m4
   m4/lock.m4
-  m4/longlong.m4
   m4/lstat.m4
   m4/malloc.m4
   m4/malloca.m4
@@ -1019,6 +1041,7 @@ AC_DEFUN([gl_FILE_LIST], [
   m4/raise.m4
   m4/readdir.m4
   m4/regex.m4
+  m4/setlocale_null.m4
   m4/sigaction.m4
   m4/signal_h.m4
   m4/signalblocking.m4
@@ -1056,6 +1079,7 @@ AC_DEFUN([gl_FILE_LIST], [
   m4/utimens.m4
   m4/utimes.m4
   m4/vasnprintf.m4
+  m4/visibility.m4
   m4/vsnprintf-posix.m4
   m4/vsnprintf.m4
   m4/warn-on-use.m4
@@ -1066,4 +1090,5 @@ AC_DEFUN([gl_FILE_LIST], [
   m4/wcwidth.m4
   m4/wint_t.m4
   m4/xsize.m4
+  m4/zzgnulib.m4
 ])

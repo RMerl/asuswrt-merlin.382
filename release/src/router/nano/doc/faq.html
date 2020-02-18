@@ -1,9 +1,12 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+
 <head>
   <title>The GNU nano editor FAQ</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="description" content="The genesis story of the nano editor, plus the solution to some common problems.">
 </head>
+
 <body text="#330000" bgcolor="#ffffff" link="#0000ef" vlink="#51188e" alink="#ff0000">
 
 <h1>The GNU nano editor FAQ</h1>
@@ -28,11 +31,12 @@
   <a href="#3.1">3.1. How do I install the RPM or DEB package?</a><br>
   <a href="#3.2">3.2. Compiling from source: WHAT THE HECK DO I DO NOW?</a><br>
   <a href="#3.3">3.3. Why does everything go into /usr/local?</a><br>
-  <a href="#3.5">3.5. nano should automatically run strip on the binary when installing it!</a><br>
-  <a href="#3.6">3.6. How can I make the executable smaller? This is too bloated!</a><br>
-  <a href="#3.7">3.7. Tell me more about this multibuffer stuff!</a><br>
-  <a href="#3.8">3.8. Tell me more about this verbatim input stuff!</a><br>
-  <a href="#3.9">3.9. How do I make a .nanorc file that nano will read when I start it?</a><br>
+  <a href="#3.4">3.4. nano should automatically run strip on the binary when installing it!</a><br>
+  <a href="#3.5">3.5. How can I make the executable smaller? This is too bloated!</a><br>
+  <a href="#3.6">3.6. Tell me more about this multibuffer stuff!</a><br>
+  <a href="#3.7">3.7. Tell me more about this verbatim input stuff!</a><br>
+  <a href="#3.8">3.8. How do I make a .nanorc file that nano will read when I start it?</a><br>
+  <a href="#3.9">3.9. Why does my self-compiled nano not read /etc/nanorc?</a><br>
 </p></blockquote>
 <h3><a href="#4">4. Running</a></h3>
 <blockquote><p>
@@ -85,7 +89,7 @@
 <h3><a name="1.3"></a>1.3. Why the name change from TIP?</h3>
 <blockquote><p>On January 10, 2000, TIP was officially renamed to nano because of a namespace conflict with another program called 'tip'. The original 'tip' program &quot;establishes a full duplex terminal connection to a remote host&quot;, and was included with many older Unix systems (and newer ones like Solaris). The conflict was not noticed at first because there is no 'tip' utility included with most GNU/Linux distributions (where nano was developed).</p></blockquote>
 <h3><a name="1.4"></a>1.4. What is the current version of nano?</h3>
-<blockquote><p>The current version of nano <i>should</i> be <b>4.4</b>.  Of course, you should always check the <a href="https://nano-editor.org/">nano homepage</a> to see what the latest and greatest version is.</p></blockquote>
+<blockquote><p>The current version of nano <i>should</i> be <b>4.8</b>.  Of course, you should always check the <a href="https://nano-editor.org/">nano homepage</a> to see what the latest and greatest version is.</p></blockquote>
 <h3><a name="1.5"></a>1.5. I want to read the man page without having to download the program!</h3>
 <blockquote><p>Jeez, demanding, aren't we? Okay, look <a href="https://nano-editor.org/dist/latest/nano.1.html">here</a>.</p></blockquote>
 <hr width="100%">
@@ -94,8 +98,8 @@
 <h3><a name="2.1"></a>2.1. Web sites that carry nano.</h3>
 <blockquote><p>The nano source tarballs can be downloaded from the following web sites:</p>
   <ul>
-    <li><a href="https://nano-editor.org/dist/">https://nano-editor.org/dist/</a></li>
-    <li><a href="https://ftp.gnu.org/gnu/nano/">https://ftp.gnu.org/gnu/nano/</a></li>
+    <li><a href="https://nano-editor.org/dist/latest/">https://nano-editor.org/dist/latest/</a></li>
+    <li><a href="https://ftpmirror.gnu.org/gnu/nano/">https://ftpmirror.gnu.org/gnu/nano/</a></li>
   </ul>
 </blockquote>
 <h3><a name="2.2"></a>2.2. RPM packages (RedHat, OpenSuse, and derivatives).</h3>
@@ -112,7 +116,7 @@
     <li><a href="https://packages.debian.org/testing/editors/nano">testing</a></li>
     <li><a href="https://packages.debian.org/unstable/editors/nano">unstable</a></li>
   </ul>
-  <p>You can also have a look at the <a href="ftp://ftp.debian.org/debian/pool/main/n/nano/">Package Pool</a> to see all the available binary and source packages.</p>
+  <p>You can also have a look at the <a href="http://ftp.debian.org/debian/pool/main/n/nano/">Package Pool</a> to see all the available binary and source packages.</p>
 </blockquote>
 <h3><a name="2.4"></a>2.4. By GIT (for the brave).</h3>
 <blockquote><p>For the 'bleeding edge' current version of nano, you can use GIT to download the current source code. <b>Note:</b> believe it or not, by downloading code that has not yet stabilized into an official release, there could quite possibly be bugs, in fact the code may not even compile! Anyway, see <a href="http://git.savannah.gnu.org/cgit/nano.git/tree/README.GIT">the nano GIT document</a> for info on anonymous GIT access to the nano source.</p></blockquote>
@@ -120,23 +124,23 @@
 
 <h1><a name="3"></a>3. Installation and Configuration</h1>
 <h3><a name="3.1"></a>3.1. How do I install the RPM or DEB package?</h3>
-<blockquote><p>It's simple really! As root, type <b>rpm -Uvh nano-x.y.z-1.i386.rpm</b> if you have a RedHat-ish system or <b>dpkg -i nano_x.y.z-1.deb</b> if you have a Debian-ish system, where <b>x.y.z</b> is the release of nano. There are other programs to install packages, and if you wish to use those, knock yourself out.</p></blockquote>
+<blockquote><p>It's simple really! As root, type <b>rpm -Uvh nano-x.y-1*.rpm</b> if you have a RedHat-ish system or <b>dpkg -i nano_x.y-1*.deb</b> if you have a Debian-ish system, where <b>x.y</b> is the version number of nano. There are other programs to install packages, and if you wish to use those, knock yourself out.</p></blockquote>
 <h3><a name="3.2"></a>3.2. Compiling from source: WHAT THE HECK DO I DO NOW?</h3>
 <blockquote><p>Okay, take a deep breath, this really isn't hard. Unpack the nano source with a command like:</p>
-  <p><b>tar -xvf nano-x.y.z.tar.gz</b></p>
+  <p><b>tar -xvf nano-x.y.tar.gz</b></p>
   <p>Then you need to run <b>configure</b> with any options you might want (if any).</p>
   <p>The average case is this:</p>
-  <p><b>cd nano-x.y.z/</b><br>
+  <p><b>cd nano-x.y/</b><br>
   <b>./configure</b><br>
   <b>make</b><br>
   <b>make install</b> (as root, of course)</p></blockquote>
 <h3><a name="3.3"></a>3.3. Why does everything go into /usr/local?</h3>
 <blockquote><p>Well, that's what the <b>configure</b> script defaults to. If you wish to change this, simply do this:</p>
   <p><b>./configure --prefix=/usr</b></p>
-  <p>to put nano into /usr/bin when you run <b>make install</b>.</p></blockquote>
-<h3><a name="3.5"></a>3.5. nano should automatically run strip on the binary when installing it!</h3>
-<blockquote><p>Actually, it does, but you have to use <b>make install-strip</b>. The default make install does not, and will not, run strip automatically.</p></blockquote>
-<h3><a name="3.6"></a>3.6. How can I make the executable smaller? This is too bloated!</h3>
+  <p>This will put nano into /usr/bin when you run <b>make install</b>.</p></blockquote>
+<h3><a name="3.4"></a>3.4. nano should automatically run strip on the binary when installing it!</h3>
+<blockquote><p>It does when you use <b>make install-strip</b>. The default <b>make install</b> does not, and will not, run strip automatically.</p></blockquote>
+<h3><a name="3.5"></a>3.5. How can I make the executable smaller? This is too bloated!</h3>
 <blockquote><p>Actually, there are several parts of the editor that can be disabled. You can pass arguments to the <b>configure</b> script that disable certain features. Here's a brief list:</p>
   <pre>
   <b>--disable-browser</b>       Disable the built-in file browser
@@ -156,26 +160,28 @@
   <b>--disable-tabcomp</b>       Disable the tab-completion functions
   <b>--disable-wordcomp</b>      Disable the word-completion function
   <b>--disable-wrapping</b>      Disable all hard-wrapping of text</pre>
-  <p>There's also the <b>--enable-tiny</b> option which disables everything above, as well as some larger chunks of the program (like the marker code that you use with Control-^ to select text). Also, if you know you aren't going to be using other languages, you can use <b>--disable-nls</b> to disable internationalization and save a few K to a few dozen K depending on whether you have locale support on your system. And finally, there's always good old <b>strip</b> to strip all debugging code and code that exists in libraries on your system.</p>
+  <p>There's also the <b>--enable-tiny</b> option which disables everything above, as well as some larger chunks of the program (like the undo/redo code and the code for selecting text). Also, if you know you don't need other languages, you can use <b>--disable-nls</b> to disable internationalization and save a few kilobytes. And finally, there's always good old <b>strip</b> to remove all unneeded symbols.</p>
 </blockquote>
-<h3><a name="3.7"></a>3.7. Tell me more about this multibuffer stuff!</h3>
+<h3><a name="3.6"></a>3.6. Tell me more about this multibuffer stuff!</h3>
 <blockquote><p>To use multiple file buffers, you must not have configured nano with <b>--disable-multibuffer</b> nor with <b>--enable-tiny</b> (use <b>nano -V</b> to check the compilation options). Then when you want to insert a file into its own buffer instead of into the current file, just hit <b>Meta-F</b> after typing <b>^R</b>. If you always want files to be loaded into their own buffers, use the <b>-F</b> or <b>--multibuffer</b> flag when you invoke nano, or add <b>set multibuffer</b> to your .nanorc file.</p>
   <p>You can move between the buffers you have open with the <b>Meta-&lt;</b> and <b>Meta-&gt;</b> keys, or more easily without holding Shift: <b>Meta-,</b> and <b>Meta-.</b> (clear as mud, right? =-). When you have more than one buffer open, the ^X shortcut will say &quot;Close&quot;, instead of &quot;Exit&quot;.</p></blockquote>
-<h3><a name="3.8"></a>3.8. Tell me more about this verbatim input stuff!</h3>
+<h3><a name="3.7"></a>3.7. Tell me more about this verbatim input stuff!</h3>
 <blockquote><p>When you want to insert a literal character into the file you're editing, such as a control character that nano usually treats as a command, first press <b>Meta-V</b> (if you're not at a prompt, you'll get the message &quot;Verbatim Input&quot; on the status bar), then press the key(s) that generate the character you want.</p>
   <p>Alternatively, if Unicode support is enabled (see section <a href="#5.3">5.3</a>), you can press <b>Meta-V</b> and then type a six-digit hexadecimal code (from 000000 to 10FFFF, case-insensitive), and the character with the corresponding value will be inserted. The status bar will change to &quot;Unicode Input: ......&quot; when you do this.</p></blockquote>
-<h3><a name="3.9"></a>3.9. How do I make a .nanorc file that will be read when I start nano?</h3>
-<blockquote><p>It's not hard at all! But, your nano must <b>not</b> have been compiled with <b>--disable-nanorc</b>. Then simply copy the <b>sample.nanorc</b> that came with the nano source or your nano package (most likely in /usr/doc/nano) to .nanorc in your home directory. If you didn't get one, the syntax of the file is simple. Flags are turned on and off by using the words <b>set</b> and <b>unset</b> plus the long option name for the feature. For example, &quot;set nowrap&quot; or &quot;set smarthome&quot;.</p></blockquote>
+<h3><a name="3.8"></a>3.8. How do I make a .nanorc file that will be read when I start nano?</h3>
+<blockquote><p>It's not hard at all! Simply copy the <b>sample.nanorc</b> from the doc/ directory in the nano source package (or from /usr/doc/nano on your system) to <b>.nanorc</b> in your home directory, and then edit it. If you didn't get a sample nanorc, the syntax of the file is simple: features are turned on and off by using the words <b>set</b> and <b>unset</b> followed by the long option name of the feature (see <b>man nanorc</b> for the full list of options). For example, &quot;set quickblank&quot; or &quot;set smarthome&quot;. Of course, for this to work, your nano must <b>not</b> have been compiled with <b>--disable-nanorc</b>.</p></blockquote>
+<h3><a name="3.9"></a>3.9. Why does my self-compiled nano not read /etc/nanorc?</h3>
+<blockquote><p>By default (see <a href="#3.3">3.3</a>), nano gets installed into /usr/local. This also means that, at startup, nano will read <b>/usr/local/etc/nanorc</b> instead of <b>/etc/nanorc</b>. You can make a symlink from the former to the latter if you want your self-compiled nano to read the same nanorc as the system-installed nano. Or you can configure your nano to overwrite the system nano (again, see <a href="#3.3">3.3</a>).</p></blockquote>
 <hr width="100%">
 
 <h1><a name="4"></a>4. Running</h1>
 <h3><a name="4.1"></a>4.1. How do I open a file with a name beginning with '+' from the command line?</h3>
-<blockquote><p>If a command-line option that begins with '+' is followed by another option, the former is always treated as a starting line and column number, and the latter is always treated as a filename. If a command-line option that begins with '+' isn't followed by another option, it's always treated as a filename. Examples:</p>
-  <p>To open '+filename.txt' starting on line 1: <b>nano +filename.txt</b><br>
+<blockquote><p>If a command-line argument that begins with '+' is followed by another argument, the former is always treated as a starting line (plus column number), and the latter always as a filename. If a command-line argument that begins with '+' isn't followed by another argument, it's treated as a filename. Examples:</p>
+  <p>To open '+filename.txt': <b>nano +filename.txt</b><br>
   To open '+filename.txt' starting on line 10: <b>nano +10 +filename.txt</b><br>
   To open '+filename.txt' starting on line 1, column 20: <b>nano +,20 +filename.txt</b><br>
   To open '+filename.txt' starting on line 10, column 20: <b>nano +10,20 +filename.txt</b><br>
-  To open '+filename.txt' starting on line 1 and 'filename.txt' starting on line 40 (if nano has been compiled with multibuffer support): <b>nano +1 +filename.txt +40 filename.txt</b></p></blockquote>
+  To open '+filename.txt' starting on line 1 and 'filename.txt' starting on line 40: <b>nano +1 +filename.txt +40 filename.txt</b></p></blockquote>
 <h3><a name="4.2"></a>4.2. Ack! My Backspace/Delete/Enter/Meta/double bucky key doesn't seem to work! What can I do?</h3>
 <blockquote><p>Try setting your $TERM variable to 'vt100'. nano doesn't yet support every term entry under the sun.</p>
   <p>Bourne shell users (bash and sh): <b>export TERM=vt100</b><br>
@@ -187,9 +193,11 @@
 <h3><a name="4.5"></a>4.5. How do I select text for or paste text from the clipboard when nano's mouse support is turned on?</h3>
 <blockquote><p>Try holding down the Shift key and selecting or pasting the text as you normally would.</p></blockquote>
 <h3><a name="4.6"></a>4.6. When I paste text into a document, each line gets indented further than the last. Why? And how can I stop this?</h3>
-<blockquote><p>You have the <i>autoindent</i> feature turned on. Hit <b>Meta-I</b> to turn it off, paste your text, and then hit <b>Meta-I</b> again to turn it back on.</p></blockquote>
+<blockquote><p>You have the <i>autoindent</i> feature turned on. Hit <b>Meta-I</b> to turn it off, paste your text, and then hit <b>Meta-I</b> again to turn it back on.</p>
+  <p><i>Update:</i> Since version 4.8, nano will suppress auto-indentation during a paste, so you no longer need to toggle it off and on manually.</p></blockquote>
 <h3><a name="4.7"></a>4.7. When I paste from Windows into a remote nano, nano rewraps the lines. What gives?</h3>
-<blockquote><p>When pasting from Windows, in some situations linefeeds are sent instead of carriage returns (Enters). And linefeeds are <b>^J</b>s, which make nano justify (rewrap) the current paragraph. To prevent these linefeeds from causing these unwanted justifications, add this line to your .nanorc on the remote Linux box: <b>unbind ^J main</b> or <b>bind ^J enter main</b>, depending on whether the paste contains CR + LF or only LF.</p></blockquote>
+<blockquote><p>When pasting from Windows, in some situations linefeeds are sent instead of carriage returns (Enters). And linefeeds are <b>^J</b>s, which make nano justify (rewrap) the current paragraph. To prevent these linefeeds from causing these unwanted justifications, add this line to your .nanorc on the remote Linux box: <b>unbind ^J main</b> or <b>bind ^J enter main</b>, depending on whether the paste contains CR + LF or only LF.</p>
+  <p><i>Update:</i> Since version 4.8, nano will ignore linefeed characters in a paste, so you no longer need the above workaround.</p></blockquote>
 <h3><a name="4.8"></a>4.8. I've compiled nano with color support, but I don't see any color when I run it!</h3>
 <blockquote><p>If you want nano to actually use color, you have to specify the color configurations you want it to use in your .nanorc. Several example configurations are in the <b>syntax/</b> subdirectory of the nano source, which are normally installed to <b>/usr/local/share/nano/</b>. To enable all of them, uncomment the line <b># include "/usr/local/share/nano/*.nanorc"</b> in your nanorc. See also section <a href="#3.9">3.9</a>.</p></blockquote>
 <h3><a name="4.9"></a>4.9. How do I make nano my default editor (in Pine, mutt, etc.)?</h3>
@@ -203,8 +211,8 @@
   <b>[ ] enable-alternate-editor-implicitly</b></p>
   <p>Then exit (<b>E</b>) and select Yes (<b>Y</b>).</p>
   <p>If you're a mutt user, you should see an effect immediately the next time you log in. No further configuration is needed. However, if you want to let people know you use nano to compose your email messages, you can put a line like this in your <b>.muttrc</b>:</p>
-  <p><b>my_hdr X-Composer: nano x.y.z</b></p>
-  <p>Again, replace x.y.z with the version of nano you use.</p></blockquote>
+  <p><b>my_hdr X-Composer: nano-x.y</b></p>
+  <p>Again, replace x.y with the version of nano you use.</p></blockquote>
 <hr width="100%">
 
 <h1><a name="5"></a>5. Internationalization</h1>

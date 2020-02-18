@@ -1,5 +1,5 @@
-# vasnprintf.m4 serial 36
-dnl Copyright (C) 2002-2004, 2006-2019 Free Software Foundation, Inc.
+# vasnprintf.m4 serial 37
+dnl Copyright (C) 2002-2004, 2006-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -32,7 +32,6 @@ AC_DEFUN([gl_REPLACE_VASNPRINTF],
 # Prerequisites of lib/printf-args.h, lib/printf-args.c.
 AC_DEFUN([gl_PREREQ_PRINTF_ARGS],
 [
-  AC_REQUIRE([AC_TYPE_LONG_LONG_INT])
   AC_REQUIRE([gt_TYPE_WCHAR_T])
   AC_REQUIRE([gt_TYPE_WINT_T])
 ])
@@ -41,7 +40,6 @@ AC_DEFUN([gl_PREREQ_PRINTF_ARGS],
 AC_DEFUN([gl_PREREQ_PRINTF_PARSE],
 [
   AC_REQUIRE([gl_FEATURES_H])
-  AC_REQUIRE([AC_TYPE_LONG_LONG_INT])
   AC_REQUIRE([gt_TYPE_WCHAR_T])
   AC_REQUIRE([gt_TYPE_WINT_T])
   AC_REQUIRE([AC_TYPE_SIZE_T])
@@ -56,7 +54,6 @@ AC_DEFUN([gl_PREREQ_PRINTF_PARSE],
 AC_DEFUN_ONCE([gl_PREREQ_VASNPRINTF],
 [
   AC_REQUIRE([AC_FUNC_ALLOCA])
-  AC_REQUIRE([AC_TYPE_LONG_LONG_INT])
   AC_REQUIRE([gt_TYPE_WCHAR_T])
   AC_REQUIRE([gt_TYPE_WINT_T])
   AC_CHECK_FUNCS([snprintf strnlen wcslen wcsnlen mbrtowc wcrtomb])

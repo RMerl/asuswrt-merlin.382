@@ -43,10 +43,11 @@ fi
 trap "rm -rf '$DATA_DIR'" 0
 
 touch "$DATA_DIR"/empty_torrc
+touch "$DATA_DIR"/empty_defaults_torrc
 
 # DisableNetwork means that the ORPort won't actually be opened.
 # 'ExitRelay 0' suppresses a warning.
-TOR="${TOR_BINARY} --hush --DisableNetwork 1 --ShutdownWaitLength 0 --ORPort 12345 --ExitRelay 0 -f $DATA_DIR/empty_torrc"
+TOR="${TOR_BINARY} --hush --DisableNetwork 1 --ShutdownWaitLength 0 --ORPort 12345 --ExitRelay 0 -f $DATA_DIR/empty_torrc --defaults-torrc $DATA_DIR/empty_defaults_torrc"
 
 if [ -s "$DATA_DIR"/keys/secret_id_key ] && [ -s "$DATA_DIR"/keys/secret_onion_key ] &&
    [ -s "$DATA_DIR"/keys/secret_onion_key_ntor ]; then

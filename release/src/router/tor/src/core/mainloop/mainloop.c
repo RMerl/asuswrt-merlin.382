@@ -879,6 +879,16 @@ conn_read_callback(evutil_socket_t fd, short event, void *_conn)
 
   /* assert_connection_ok(conn, time(NULL)); */
 
+  /* Handle marked for close connections early */
+  if (conn->marked_for_close && connection_is_reading(conn)) {
+    /* Libevent says we can read, but we are marked for close so we will never
+     * try to read again. We will try to close the connection below inside of
+     * close_closeable_connections(), but let's make sure not to cause Libevent
+     * to spin on conn_read_callback() while we wait for the socket to let us
+     * flush to it.*/
+    connection_stop_reading(conn);
+  }
+
   if (connection_handle_read(conn) < 0) {
     if (!conn->marked_for_close) {
 #ifndef _WIN32

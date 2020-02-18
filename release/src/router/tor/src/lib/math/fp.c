@@ -62,12 +62,16 @@ clamp_double_to_int64(double number)
 {
   int exponent;
 
-#if defined(MINGW_ANY) && GCC_VERSION >= 409
+#if (defined(MINGW_ANY)||defined(__FreeBSD__)) && GCC_VERSION >= 409
 /*
   Mingw's math.h uses gcc's __builtin_choose_expr() facility to declare
   isnan, isfinite, and signbit.  But as implemented in at least some
   versions of gcc, __builtin_choose_expr() can generate type warnings
   even from branches that are not taken.  So, suppress those warnings.
+
+  FreeBSD's math.h uses an __fp_type_select() macro, which dispatches
+  based on sizeof -- again, this can generate type warnings from
+  branches that are not taken.
 */
 #define PROBLEMATIC_FLOAT_CONVERSION_WARNING
 DISABLE_GCC_WARNING(float-conversion)

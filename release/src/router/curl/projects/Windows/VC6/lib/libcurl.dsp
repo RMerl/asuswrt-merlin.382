@@ -1222,6 +1222,26 @@ SOURCE=..\..\..\..\lib\vauth\vauth.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\..\..\..\lib\vquic\ngtcp2.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vquic\quiche.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vssh\libssh2.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vssh\libssh.c
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vtls\bearssl.c
+# End Source File
+# Begin Source File
+
 SOURCE=..\..\..\..\lib\vtls\gskit.c
 # End Source File
 # Begin Source File
@@ -1658,10 +1678,6 @@ SOURCE=..\..\..\..\lib\splay.h
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\..\..\lib\ssh.h
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\..\..\lib\strcase.h
 # End Source File
 # Begin Source File
@@ -1735,6 +1751,22 @@ SOURCE=..\..\..\..\lib\vauth\ntlm.h
 # Begin Source File
 
 SOURCE=..\..\..\..\lib\vauth\vauth.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vquic\ngtcp2.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vquic\quiche.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vssh\ssh.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\..\..\..\lib\vtls\bearssl.h
 # End Source File
 # Begin Source File
 

@@ -161,11 +161,12 @@ parse_introduce2_encrypted(const uint8_t *decrypted_data,
   }
 
   if (trn_cell_introduce_encrypted_get_onion_key_type(enc_cell) !=
-      HS_CELL_ONION_KEY_TYPE_NTOR) {
+      TRUNNEL_HS_INTRO_ONION_KEY_TYPE_NTOR) {
     log_info(LD_REND, "INTRODUCE2 onion key type is invalid. Got %u but "
                       "expected %u on circuit %u for service %s",
              trn_cell_introduce_encrypted_get_onion_key_type(enc_cell),
-             HS_CELL_ONION_KEY_TYPE_NTOR, TO_CIRCUIT(circ)->n_circ_id,
+             TRUNNEL_HS_INTRO_ONION_KEY_TYPE_NTOR,
+             TO_CIRCUIT(circ)->n_circ_id,
              safe_str_client(service->onion_address));
     goto err;
   }
@@ -258,7 +259,7 @@ introduce1_set_encrypted_onion_key(trn_cell_introduce_encrypted_t *cell,
   tor_assert(onion_pk);
   /* There is only one possible key type for a non legacy cell. */
   trn_cell_introduce_encrypted_set_onion_key_type(cell,
-                                                  HS_CELL_ONION_KEY_TYPE_NTOR);
+                                   TRUNNEL_HS_INTRO_ONION_KEY_TYPE_NTOR);
   trn_cell_introduce_encrypted_set_onion_key_len(cell, CURVE25519_PUBKEY_LEN);
   trn_cell_introduce_encrypted_setlen_onion_key(cell, CURVE25519_PUBKEY_LEN);
   memcpy(trn_cell_introduce_encrypted_getarray_onion_key(cell), onion_pk,
@@ -442,7 +443,8 @@ introduce1_set_auth_key(trn_cell_introduce1_t *cell,
   tor_assert(cell);
   tor_assert(data);
   /* There is only one possible type for a non legacy cell. */
-  trn_cell_introduce1_set_auth_key_type(cell, HS_INTRO_AUTH_KEY_TYPE_ED25519);
+  trn_cell_introduce1_set_auth_key_type(cell,
+                                   TRUNNEL_HS_INTRO_AUTH_KEY_TYPE_ED25519);
   trn_cell_introduce1_set_auth_key_len(cell, ED25519_PUBKEY_LEN);
   trn_cell_introduce1_setlen_auth_key(cell, ED25519_PUBKEY_LEN);
   memcpy(trn_cell_introduce1_getarray_auth_key(cell),
@@ -515,7 +517,7 @@ hs_cell_build_establish_intro(const char *circ_nonce,
 
   /* Set AUTH_KEY_TYPE: 2 means ed25519 */
   trn_cell_establish_intro_set_auth_key_type(cell,
-                                             HS_INTRO_AUTH_KEY_TYPE_ED25519);
+                                    TRUNNEL_HS_INTRO_AUTH_KEY_TYPE_ED25519);
 
   /* Set AUTH_KEY and AUTH_KEY_LEN field. Must also set byte-length of
    * AUTH_KEY to match */
@@ -882,9 +884,9 @@ hs_cell_parse_introduce_ack(const uint8_t *payload, size_t payload_len)
    * do a special case. */
   if (payload_len <= 1) {
     if (payload_len == 0) {
-      ret = HS_CELL_INTRO_ACK_SUCCESS;
+      ret = TRUNNEL_HS_INTRO_ACK_STATUS_SUCCESS;
     } else {
-      ret = HS_CELL_INTRO_ACK_FAILURE;
+      ret = TRUNNEL_HS_INTRO_ACK_STATUS_UNKNOWN_ID;
     }
     goto end;
   }

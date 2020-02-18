@@ -144,14 +144,21 @@ tor_raw_assertion_failed_msg_(const char *file, int line, const char *expr,
 {
   char linebuf[16];
   format_dec_number_sigsafe(line, linebuf, sizeof(linebuf));
-  tor_log_err_sigsafe("INTERNAL ERROR: Raw assertion failed at ",
-                      file, ":", linebuf, ": ", expr, NULL);
+  tor_log_err_sigsafe("INTERNAL ERROR: Raw assertion failed in ",
+                      get_tor_backtrace_version(), " at ",
+                      file, ":", linebuf, ": ", expr, "\n", NULL);
   if (msg) {
     tor_log_err_sigsafe_write(msg);
     tor_log_err_sigsafe_write("\n");
   }
 
   dump_stack_symbols_to_error_fds();
+
+  /* Some platforms (macOS, maybe others?) can swallow the last write before an
+   * abort. This issue is probably caused by a race condition between write
+   * buffer cache flushing, and process termination. So we write an extra
+   * newline, to make sure that the message always gets through. */
+  tor_log_err_sigsafe_write("\n");
 }
 
 /* As format_{hex,dex}_number_sigsafe, but takes a <b>radix</b> argument

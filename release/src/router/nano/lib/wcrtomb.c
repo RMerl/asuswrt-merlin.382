@@ -1,5 +1,5 @@
 /* Convert wide character to multibyte character.
-   Copyright (C) 2008-2019 Free Software Foundation, Inc.
+   Copyright (C) 2008-2020 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2008.
 
    This program is free software: you can redistribute it and/or modify
@@ -26,6 +26,7 @@
 
 size_t
 wcrtomb (char *s, wchar_t wc, mbstate_t *ps)
+#undef wcrtomb
 {
   /* This implementation of wcrtomb supports only stateless encodings.
      ps must be in the initial state.  */
@@ -35,12 +36,17 @@ wcrtomb (char *s, wchar_t wc, mbstate_t *ps)
       return (size_t)(-1);
     }
 
+#if !HAVE_WCRTOMB                       /* IRIX 6.5 */ \
+    || WCRTOMB_RETVAL_BUG               /* Solaris 11.3, MSVC */ \
+    || WCRTOMB_C_LOCALE_BUG             /* Android */
   if (s == NULL)
     /* We know the NUL wide character corresponds to the NUL character.  */
     return 1;
   else
+#endif
     {
-#if defined __ANDROID__
+#if HAVE_WCRTOMB
+# if WCRTOMB_C_LOCALE_BUG               /* Android */
       /* Implement consistently with mbrtowc(): through a 1:1 correspondence,
          as in ISO-8859-1.  */
       if (wc >= 0 && wc <= 0xff)
@@ -48,17 +54,27 @@ wcrtomb (char *s, wchar_t wc, mbstate_t *ps)
           *s = (unsigned char) wc;
           return 1;
         }
-#else
-      /* Implement on top of wctomb().  */
-      int ret = wctomb (s, wc);
-
-      if (ret >= 0)
-        return ret;
-#endif
       else
         {
           errno = EILSEQ;
           return (size_t)(-1);
         }
+# else
+      return wcrtomb (s, wc, ps);
+# endif
+#else                                   /* IRIX 6.5 */
+      /* Fallback for platforms that don't have wcrtomb().
+         Implement on top of wctomb().
+         This code is not multithread-safe.  */
+      int ret = wctomb (s, wc);
+
+      if (ret >= 0)
+        return ret;
+      else
+        {
+          errno = EILSEQ;
+          return (size_t)(-1);
+        }
+#endif
     }
 }

@@ -1,9 +1,9 @@
 /**************************************************************************
  *   help.c  --  This file is part of GNU nano.                           *
  *                                                                        *
- *   Copyright (C) 2000-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2000-2011, 2013-2020 Free Software Foundation, Inc.    *
  *   Copyright (C) 2017 Rishabh Dave                                      *
- *   Copyright (C) 2014-2018 Benno Schulenberg                            *
+ *   Copyright (C) 2014-2019 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
  *   it under the terms of the GNU General Public License as published    *
@@ -22,10 +22,10 @@
 
 #include "proto.h"
 
+#ifdef ENABLE_HELP
+
 #include <errno.h>
 #include <string.h>
-
-#ifdef ENABLE_HELP
 
 static char *help_text = NULL;
 		/* The text displayed in the help window. */
@@ -40,19 +40,34 @@ static size_t location;
 		/* The offset (in bytes) of the topleft of the shown help text. */
 
 /* Hard-wrap the concatenated help text, and write it into a new buffer. */
-void wrap_help_text_into_buffer()
+void wrap_help_text_into_buffer(void)
 {
 	size_t sum = 0;
+	/* Avoid overtight and overwide paragraphs in the introductory text. */
+	size_t wrapping_point = (COLS < 32) ? 32 : (COLS > 74) ? 74 : COLS;
 	const char *ptr = start_of_body;
 
 	make_new_buffer();
 
 	/* Copy the help text into the just-created new buffer. */
 	while (*ptr != '\0') {
-		int length = help_line_len(ptr);
-		char *oneline = nmalloc(length + 1);
+		int length, shim;
+		char *oneline;
 
-		snprintf(oneline, length + 1, "%s", ptr);
+		if (ptr == end_of_intro)
+			wrapping_point = (COLS < 32) ? 32 : COLS;
+
+		if (ptr > end_of_intro && *(ptr - 1) != '\n') {
+			length = break_line(ptr, (COLS < 32) ? 14 : COLS - 18, TRUE);
+			oneline = nmalloc(length + 5);
+			snprintf(oneline, length + 5, "\t\t  %s", ptr);
+		} else {
+			length = break_line(ptr, wrapping_point, TRUE);
+			oneline = nmalloc(length + 1);
+			shim = (*(ptr + length - 1) == ' ') ? 0 : 1;
+			snprintf(oneline, length + shim, "%s", ptr);
+		}
+
 		free(openfile->current->data);
 		openfile->current->data = oneline;
 
@@ -64,7 +79,7 @@ void wrap_help_text_into_buffer()
 		do {
 			openfile->current->next = make_new_node(openfile->current);
 			openfile->current = openfile->current->next;
-			openfile->current->data = mallocstrcpy(NULL, "");
+			openfile->current->data = copy_of("");
 		} while (*(++ptr) == '\n');
 	}
 
@@ -88,8 +103,8 @@ void wrap_help_text_into_buffer()
 	openfile->edittop = openfile->current;
 }
 
-/* Our main help-viewer function. */
-void do_help(void)
+/* Assemble a help text, display it, and allow scrolling through it. */
+void show_help(void)
 {
 	int kbinput = ERR;
 	functionptrtype func;
@@ -103,7 +118,7 @@ void do_help(void)
 #ifdef ENABLE_COLOR
 	char *was_syntax = syntaxstr;
 #endif
-	char *saved_answer = (answer != NULL) ? strdup(answer) : NULL;
+	char *saved_answer = (answer != NULL) ? copy_of(answer) : NULL;
 		/* The current answer when the user invokes help at the prompt. */
 	unsigned stash[sizeof(flags) / sizeof(flags[0])];
 		/* A storage place for the current flag settings. */
@@ -140,8 +155,9 @@ void do_help(void)
 #endif
 	curs_set(0);
 
-	/* Compose the help text from all the pieces. */
+	/* Compose the help text from all the relevant pieces. */
 	help_init();
+
 	inhelp = TRUE;
 	location = 0;
 	didfind = 0;
@@ -150,8 +166,7 @@ void do_help(void)
 
 	/* Extract the title from the head of the help text. */
 	length = break_line(help_text, MAX_BUF_SIZE, TRUE);
-	title = charalloc(length * sizeof(char) + 1);
-	strncpy(title, help_text, length);
+	title = measured_copy(help_text, length + 1);
 	title[length] = '\0';
 
 	titlebar(title);
@@ -172,7 +187,13 @@ void do_help(void)
 		kbinput = get_kbinput(edit, didfind == 1 || ISSET(SHOW_CURSOR));
 		didfind = 0;
 
-		func = parse_help_input(&kbinput);
+#ifndef NANO_TINY
+		if (bracketed_paste || kbinput == BRACKETED_PASTE_MARKER) {
+			beep();
+			continue;
+		}
+#endif
+		func = interpret(&kbinput);
 
 		if (func == total_refresh) {
 			total_redraw();
@@ -247,7 +268,6 @@ void do_help(void)
 	inhelp = FALSE;
 
 	curs_set(0);
-	refresh_needed = TRUE;
 
 	if (ISSET(NO_HELP)) {
 		currmenu = oldmenu;
@@ -262,7 +282,10 @@ void do_help(void)
 		browser_refresh();
 	else
 #endif
+	{
 		titlebar(NULL);
+		edit_refresh();
+	}
 }
 
 /* Allocate space for the help text for the current menu, and concatenate
@@ -540,74 +563,13 @@ void help_init(void)
 	}
 #endif /* !NANO_TINY */
 }
-
-/* Return the function that is bound to the given key, accepting certain
- * plain characters too, for consistency with the file browser. */
-functionptrtype parse_help_input(int *kbinput)
-{
-	if (!meta_key) {
-		switch (*kbinput) {
-			case BS_CODE:
-			case '-':
-				return do_page_up;
-			case ' ':
-				return do_page_down;
-			case 'W':
-			case 'w':
-			case '/':
-				return do_search_forward;
-			case 'N':
-				return do_findprevious;
-			case 'n':
-				return do_findnext;
-			case 'E':
-			case 'e':
-			case 'Q':
-			case 'q':
-			case 'X':
-			case 'x':
-				return do_exit;
-		}
-	}
-	return func_from_key(kbinput);
-}
-
-/* Calculate the displayable length of the help-text line starting at ptr. */
-size_t help_line_len(const char *ptr)
-{
-	size_t wrapping_point = (COLS > 24) ? COLS - 1 : 24;
-		/* The target width for wrapping long lines. */
-	ssize_t wrap_location;
-		/* Actual position where the line can be wrapped. */
-	size_t length = 0;
-		/* Full length of the line, until the first newline. */
-
-	/* Avoid overwide paragraphs in the introductory text. */
-	if (ptr < end_of_intro && COLS > 74)
-		wrapping_point = 74;
-
-	wrap_location = break_line(ptr, wrapping_point, TRUE);
-
-	/* Get the length of the entire line up to a null or a newline. */
-	while (*(ptr + length) != '\0' && *(ptr + length) != '\n')
-		length = step_right(ptr, length);
-
-	/* If the entire line will just fit the screen, don't wrap it. */
-	if (wideness(ptr, length) <= wrapping_point + 1)
-		return length;
-	else if (wrap_location > 0)
-		return wrap_location;
-	else
-		return 1;
-}
-
 #endif /* ENABLE_HELP */
 
-/* Start the help viewer. */
-void do_help_void(void)
+/* Start the help viewer, or indicate that there is no help. */
+void do_help(void)
 {
 #ifdef ENABLE_HELP
-	do_help();
+	show_help();
 #else
 	if (currmenu == MMAIN)
 		say_there_is_no_help();

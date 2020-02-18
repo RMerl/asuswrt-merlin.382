@@ -1,5 +1,5 @@
 /* Read the next entry of a directory.
-   Copyright (C) 2011-2019 Free Software Foundation, Inc.
+   Copyright (C) 2011-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ readdir (DIR *dirp)
 
   /* There is no need to add code to produce entries for "." and "..".
      According to the POSIX:2008 section "4.12 Pathname Resolution"
-     <http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html>
+     <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html>
      "." and ".." are syntactic entities.
      POSIX also says:
        "If entries for dot or dot-dot exist, one entry shall be returned

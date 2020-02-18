@@ -985,7 +985,7 @@ state_query(sr_state_action_t action, sr_state_object_t obj_type,
 
 /* Delete the current SRV value from the state freeing it and the value is set
  * to NULL meaning empty. */
-static void
+STATIC void
 state_del_current_srv(void)
 {
   state_query(SR_STATE_ACTION_DEL, SR_STATE_OBJ_CURSRV, NULL, NULL);
@@ -993,7 +993,7 @@ state_del_current_srv(void)
 
 /* Delete the previous SRV value from the state freeing it and the value is
  * set to NULL meaning empty. */
-static void
+STATIC void
 state_del_previous_srv(void)
 {
   state_query(SR_STATE_ACTION_DEL, SR_STATE_OBJ_PREVSRV, NULL, NULL);

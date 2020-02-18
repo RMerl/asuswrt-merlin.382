@@ -213,6 +213,14 @@ crypto_openssl_early_init(void)
         !strcmp(version_str, OPENSSL_VERSION_TEXT)) {
       log_info(LD_CRYPTO, "OpenSSL version matches version from headers "
                  "(%lx: %s).", version_num, version_str);
+    } else if ((version_num & 0xffff0000) ==
+               (OPENSSL_VERSION_NUMBER & 0xffff0000)) {
+      log_notice(LD_CRYPTO,
+               "We compiled with OpenSSL %lx: %s and we "
+               "are running with OpenSSL %lx: %s. "
+               "These two versions should be binary compatible.",
+               (unsigned long)OPENSSL_VERSION_NUMBER, OPENSSL_VERSION_TEXT,
+               version_num, version_str);
     } else {
       log_warn(LD_CRYPTO, "OpenSSL version from headers does not match the "
                "version we're running with. If you get weird crashes, that "

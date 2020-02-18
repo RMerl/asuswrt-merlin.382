@@ -156,6 +156,8 @@ struct OperationConfig {
   char *pubkey;
   char *hostpubmd5;
   char *engine;
+  char *etag_save_file;
+  char *etag_compare_file;
   bool crlf;
   char *customrequest;
   char *krblevel;
@@ -300,6 +302,7 @@ struct GlobalConfig {
 #endif
   bool parallel;
   long parallel_max;
+  bool parallel_connect;
   struct OperationConfig *first;
   struct OperationConfig *current;
   struct OperationConfig *last;   /* Always last in the struct */

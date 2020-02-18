@@ -99,7 +99,7 @@
   if (ASSERT_PREDICT_LIKELY_(expr)) {                                   \
   } else {                                                              \
     tor_assertion_failed_(SHORT_FILE__, __LINE__, __func__, #expr);     \
-    abort();                                                            \
+    tor_abort_();                                                       \
   } STMT_END
 #endif /* defined(TOR_UNIT_TESTS) && defined(DISABLE_ASSERTS_IN_UNIT_TESTS) */
 
@@ -107,7 +107,7 @@
   STMT_BEGIN {                                                  \
     tor_assertion_failed_(SHORT_FILE__, __LINE__, __func__,     \
                           "line should be unreached");          \
-    abort();                                                    \
+    tor_abort_();                                               \
   } STMT_END
 
 /* Non-fatal bug assertions. The "unreached" variants mean "this line should
@@ -141,7 +141,7 @@
 #define BUG(cond)                                                       \
   (ASSERT_PREDICT_UNLIKELY_(cond) ?                                     \
    (tor_assertion_failed_(SHORT_FILE__,__LINE__,__func__,"!("#cond")"), \
-    abort(), 1)                                                         \
+    tor_abort_(), 1)                                                    \
    : 0)
 #elif defined(TOR_UNIT_TESTS) && defined(DISABLE_ASSERTS_IN_UNIT_TESTS)
 #define tor_assert_nonfatal_unreached() STMT_NIL
@@ -225,6 +225,8 @@ void tor_assertion_failed_(const char *fname, unsigned int line,
 void tor_bug_occurred_(const char *fname, unsigned int line,
                        const char *func, const char *expr,
                        int once);
+
+void tor_abort_(void) ATTR_NORETURN;
 
 #ifdef _WIN32
 #define SHORT_FILE__ (tor_fix_source_file(__FILE__))

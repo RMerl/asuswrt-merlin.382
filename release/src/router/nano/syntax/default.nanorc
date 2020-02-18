@@ -17,4 +17,4 @@ color brightred "(GNU )?[Nn]ano [1-4]\.[0-9][-.[:alnum:]]*\>"
 color magenta "<[[:alnum:].%_+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}>"
 
 # Bracketed captions in certain config files.
-color brightgreen "^\[.*\]$"
+color brightgreen "^\[[^][]+\]$"

@@ -4386,10 +4386,6 @@
 			>
 			</File>
 			<File
-				RelativePath="..\..\..\..\lib\ssh.h"
-			>
-			</File>
-			<File
 				RelativePath="..\..\..\..\lib\strcase.h"
 			>
 			</File>
@@ -4535,11 +4531,67 @@
 			</Filter>
 		</Filter>
 		<Filter
+			Name="vquic"
+			>
+			<Filter
+				Name="Source Files"
+				>
+				<File
+					RelativePath="..\..\..\..\lib\vquic\ngtcp2.c"
+				>
+				</File>
+				<File
+					RelativePath="..\..\..\..\lib\vquic\quiche.c"
+				>
+				</File>
+			</Filter>
+			<Filter
+				Name="Header Files"
+				>
+				<File
+					RelativePath="..\..\..\..\lib\vquic\ngtcp2.h"
+				>
+				</File>
+				<File
+					RelativePath="..\..\..\..\lib\vquic\quiche.h"
+				>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="vssh"
+			>
+			<Filter
+				Name="Source Files"
+				>
+				<File
+					RelativePath="..\..\..\..\lib\vssh\libssh2.c"
+				>
+				</File>
+				<File
+					RelativePath="..\..\..\..\lib\vssh\libssh.c"
+				>
+				</File>
+			</Filter>
+			<Filter
+				Name="Header Files"
+				>
+				<File
+					RelativePath="..\..\..\..\lib\vssh\ssh.h"
+				>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
 			Name="vtls"
 			>
 			<Filter
 				Name="Source Files"
 				>
+				<File
+					RelativePath="..\..\..\..\lib\vtls\bearssl.c"
+				>
+				</File>
 				<File
 					RelativePath="..\..\..\..\lib\vtls\gskit.c"
 				>
@@ -4596,6 +4648,10 @@
 			<Filter
 				Name="Header Files"
 				>
+				<File
+					RelativePath="..\..\..\..\lib\vtls\bearssl.h"
+				>
+				</File>
 				<File
 					RelativePath="..\..\..\..\lib\vtls\gskit.h"
 				>

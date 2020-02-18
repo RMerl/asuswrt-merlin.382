@@ -6,11 +6,11 @@ magic "Ruby script"
 linter ruby -w -c
 comment "#"
 
+# Constants.
+color brightblue "\<[A-Z]+[0-9A-Z_a-z]*|(\$|@|@@)[0-9A-Z_a-z]+"
 # Reserved words.
 color yellow "\<(BEGIN|END|alias|and|begin|break|case|class|def|defined\?|do|else|elsif|end|ensure|false|for|if|in|module)\>"
 color yellow "\<(next|nil|not|or|redo|rescue|retry|return|self|super|then|true|undef|unless|until|when|while|yield)\>"
-# Constants.
-color brightblue "(\$|@|@@)?\<[A-Z]+[0-9A-Z_a-z]*"
 # Ruby "symbols".
 color magenta "([ 	]|^):[0-9A-Za-z_]+\>"
 # Some unique things we want to stand out.

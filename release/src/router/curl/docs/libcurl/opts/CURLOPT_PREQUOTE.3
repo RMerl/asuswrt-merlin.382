@@ -20,7 +20,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_PREQUOTE 3 "June 18, 2017" "libcurl 7.67.0" "curl_easy_setopt options"
+.TH CURLOPT_PREQUOTE 3 "December 18, 2019" "libcurl 7.68.0" "curl_easy_setopt options"
 
 .SH NAME
 CURLOPT_PREQUOTE \- commands to run before an FTP transfer
@@ -44,15 +44,15 @@ NULL
 FTP
 .SH EXAMPLE
 .nf
-struct curl_slist *h = NULL;
-h = curl_slist_append(h, "SYST");
+struct curl_slist *cmdlist = NULL;
+cmdlist = curl_slist_append(cmdlist, "SYST");
 
 curl = curl_easy_init();
 if(curl) {
   curl_easy_setopt(curl, CURLOPT_URL, "ftp://example.com/foo.bin");
 
   /* pass in the FTP commands to run */
-  curl_easy_setopt(curl, CURLOPT_PREQUOTE, headerlist);
+  curl_easy_setopt(curl, CURLOPT_PREQUOTE, cmdlist);
 
   ret = curl_easy_perform(curl);
 

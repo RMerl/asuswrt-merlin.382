@@ -1,6 +1,6 @@
 /* nl_langinfo() replacement: query locale dependent information.
 
-   Copyright (C) 2007-2019 Free Software Foundation, Inc.
+   Copyright (C) 2007-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -28,16 +28,33 @@
 # include <stdio.h>
 #endif
 
+/* nl_langinfo() must be multithread-safe.  To achieve this without using
+   thread-local storage:
+     1. We use a specific static buffer for each possible argument.
+        So that different threads can call nl_langinfo with different arguments,
+        without interfering.
+     2. We use a simple strcpy or memcpy to fill this static buffer.  Filling it
+        through, for example, strcpy + strcat would not be guaranteed to leave
+        the buffer's contents intact if another thread is currently accessing
+        it.  If necessary, the contents is first assembled in a stack-allocated
+        buffer.  */
+
 #if !REPLACE_NL_LANGINFO || GNULIB_defined_CODESET
 /* Return the codeset of the current locale, if this is easily deducible.
    Otherwise, return "".  */
 static char *
 ctype_codeset (void)
 {
-  static char buf[2 + 10 + 1];
-  char const *locale = setlocale (LC_CTYPE, NULL);
-  char *codeset = buf;
+  static char result[2 + 10 + 1];
+  char buf[2 + 10 + 1];
+  char locale[SETLOCALE_NULL_MAX];
+  char *codeset;
   size_t codesetlen;
+
+  if (setlocale_null_r (LC_CTYPE, locale, sizeof (locale)))
+    locale[0] = '\0';
+
+  codeset = buf;
   codeset[0] = '\0';
 
   if (locale && locale[0])
@@ -79,11 +96,16 @@ ctype_codeset (void)
   /* For a locale name such as "French_France.65001", in Windows 10,
      setlocale now returns "French_France.utf8" instead.  */
   if (strcmp (buf + 2, "65001") == 0 || strcmp (buf + 2, "utf8") == 0)
-    return "UTF-8";
+    return (char *) "UTF-8";
   else
-    return memcpy (buf, "CP", 2);
+    {
+      memcpy (buf, "CP", 2);
+      strcpy (result, buf);
+      return result;
+    }
 # else
-  return codeset;
+  strcpy (result, codeset);
+  return result;
 #endif
 }
 #endif
@@ -175,7 +197,7 @@ rpl_nl_langinfo (nl_item item)
 char *
 nl_langinfo (nl_item item)
 {
-  static char nlbuf[100];
+  char buf[100];
   struct tm tmm = { 0 };
 
   switch (item)
@@ -215,14 +237,22 @@ nl_langinfo (nl_item item)
     case T_FMT_AMPM:
       return (char *) "%I:%M:%S %p";
     case AM_STR:
-      if (!strftime (nlbuf, sizeof nlbuf, "%p", &tmm))
-        return (char *) "AM";
-      return nlbuf;
+      {
+        static char result[80];
+        if (!strftime (buf, sizeof result, "%p", &tmm))
+          return (char *) "AM";
+        strcpy (result, buf);
+        return result;
+      }
     case PM_STR:
-      tmm.tm_hour = 12;
-      if (!strftime (nlbuf, sizeof nlbuf, "%p", &tmm))
-        return (char *) "PM";
-      return nlbuf;
+      {
+        static char result[80];
+        tmm.tm_hour = 12;
+        if (!strftime (buf, sizeof result, "%p", &tmm))
+          return (char *) "PM";
+        strcpy (result, buf);
+        return result;
+      }
     case DAY_1:
     case DAY_2:
     case DAY_3:
@@ -231,14 +261,16 @@ nl_langinfo (nl_item item)
     case DAY_6:
     case DAY_7:
       {
+        static char result[7][50];
         static char const days[][sizeof "Wednesday"] = {
           "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
           "Friday", "Saturday"
         };
         tmm.tm_wday = item - DAY_1;
-        if (!strftime (nlbuf, sizeof nlbuf, "%A", &tmm))
+        if (!strftime (buf, sizeof result[0], "%A", &tmm))
           return (char *) days[item - DAY_1];
-        return nlbuf;
+        strcpy (result[item - DAY_1], buf);
+        return result[item - DAY_1];
       }
     case ABDAY_1:
     case ABDAY_2:
@@ -248,13 +280,15 @@ nl_langinfo (nl_item item)
     case ABDAY_6:
     case ABDAY_7:
       {
+        static char result[7][30];
         static char const abdays[][sizeof "Sun"] = {
           "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
         };
         tmm.tm_wday = item - ABDAY_1;
-        if (!strftime (nlbuf, sizeof nlbuf, "%a", &tmm))
+        if (!strftime (buf, sizeof result[0], "%a", &tmm))
           return (char *) abdays[item - ABDAY_1];
-        return nlbuf;
+        strcpy (result[item - ABDAY_1], buf);
+        return result[item - ABDAY_1];
       }
     {
       static char const months[][sizeof "September"] = {
@@ -273,10 +307,14 @@ nl_langinfo (nl_item item)
       case MON_10:
       case MON_11:
       case MON_12:
-        tmm.tm_mon = item - MON_1;
-        if (!strftime (nlbuf, sizeof nlbuf, "%B", &tmm))
-          return (char *) months[item - MON_1];
-        return nlbuf;
+        {
+          static char result[12][50];
+          tmm.tm_mon = item - MON_1;
+          if (!strftime (buf, sizeof result[0], "%B", &tmm))
+            return (char *) months[item - MON_1];
+          strcpy (result[item - MON_1], buf);
+          return result[item - MON_1];
+        }
       case ALTMON_1:
       case ALTMON_2:
       case ALTMON_3:
@@ -289,15 +327,19 @@ nl_langinfo (nl_item item)
       case ALTMON_10:
       case ALTMON_11:
       case ALTMON_12:
-        tmm.tm_mon = item - ALTMON_1;
-        /* The platforms without nl_langinfo() don't support strftime with %OB.
-           We don't even need to try.  */
-        #if 0
-        if (!strftime (nlbuf, sizeof nlbuf, "%OB", &tmm))
-        #endif
-          if (!strftime (nlbuf, sizeof nlbuf, "%B", &tmm))
-            return (char *) months[item - ALTMON_1];
-        return nlbuf;
+        {
+          static char result[12][50];
+          tmm.tm_mon = item - ALTMON_1;
+          /* The platforms without nl_langinfo() don't support strftime with
+             %OB.  We don't even need to try.  */
+          #if 0
+          if (!strftime (buf, sizeof result[0], "%OB", &tmm))
+          #endif
+            if (!strftime (buf, sizeof result[0], "%B", &tmm))
+              return (char *) months[item - ALTMON_1];
+          strcpy (result[item - ALTMON_1], buf);
+          return result[item - ALTMON_1];
+        }
     }
     case ABMON_1:
     case ABMON_2:
@@ -312,14 +354,16 @@ nl_langinfo (nl_item item)
     case ABMON_11:
     case ABMON_12:
       {
+        static char result[12][30];
         static char const abmonths[][sizeof "Jan"] = {
           "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
           "Sep", "Oct", "Nov", "Dec"
         };
         tmm.tm_mon = item - ABMON_1;
-        if (!strftime (nlbuf, sizeof nlbuf, "%b", &tmm))
+        if (!strftime (buf, sizeof result[0], "%b", &tmm))
           return (char *) abmonths[item - ABMON_1];
-        return nlbuf;
+        strcpy (result[item - ABMON_1], buf);
+        return result[item - ABMON_1];
       }
     case ERA:
       return (char *) "";

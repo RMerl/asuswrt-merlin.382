@@ -1,5 +1,5 @@
-# locale_h.m4 serial 21
-dnl Copyright (C) 2007, 2009-2019 Free Software Foundation, Inc.
+# locale_h.m4 serial 24
+dnl Copyright (C) 2007, 2009-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -16,6 +16,8 @@ AC_DEFUN([gl_LOCALE_H],
 
   dnl If <stddef.h> is replaced, then <locale.h> must also be replaced.
   AC_REQUIRE([gl_STDDEF_H])
+
+  AC_REQUIRE([gl_LOCALE_T])
 
   dnl Solaris 11.0 defines the int_p_*, int_n_* members of 'struct lconv'
   dnl only if _LCONV_C99 is defined.
@@ -37,34 +39,6 @@ AC_DEFUN([gl_LOCALE_H],
        [gl_cv_header_locale_h_posix2001=yes],
        [gl_cv_header_locale_h_posix2001=no])])
 
-  dnl Check for <xlocale.h>.
-  AC_CHECK_HEADERS_ONCE([xlocale.h])
-  if test $ac_cv_header_xlocale_h = yes; then
-    HAVE_XLOCALE_H=1
-    dnl Check whether use of locale_t requires inclusion of <xlocale.h>,
-    dnl e.g. on Mac OS X 10.5. If <locale.h> does not define locale_t by
-    dnl itself, we assume that <xlocale.h> will do so.
-    AC_CACHE_CHECK([whether locale.h defines locale_t],
-      [gl_cv_header_locale_has_locale_t],
-      [AC_COMPILE_IFELSE(
-         [AC_LANG_PROGRAM(
-            [[#include <locale.h>
-              locale_t x;]],
-            [[]])],
-         [gl_cv_header_locale_has_locale_t=yes],
-         [gl_cv_header_locale_has_locale_t=no])
-      ])
-    if test $gl_cv_header_locale_has_locale_t = yes; then
-      gl_cv_header_locale_h_needs_xlocale_h=no
-    else
-      gl_cv_header_locale_h_needs_xlocale_h=yes
-    fi
-  else
-    HAVE_XLOCALE_H=0
-    gl_cv_header_locale_h_needs_xlocale_h=no
-  fi
-  AC_SUBST([HAVE_XLOCALE_H])
-
   dnl Check whether 'struct lconv' is complete.
   dnl Bionic libc's 'struct lconv' is just a dummy.
   dnl On OpenBSD 4.9, HP-UX 11, IRIX 6.5, OSF/1 5.1, Solaris 9, Cygwin 1.5.x,
@@ -82,7 +56,20 @@ AC_DEFUN([gl_LOCALE_H],
        [gl_cv_sys_struct_lconv_ok=no])
     ])
   if test $gl_cv_sys_struct_lconv_ok = no; then
-    REPLACE_STRUCT_LCONV=1
+    dnl On native Windows with MSVC, merely define these member names as macros.
+    dnl This avoids trouble in C++ mode.
+    case "$host_os" in
+      mingw*)
+        AC_EGREP_CPP([Special], [
+#ifdef _MSC_VER
+ Special
+#endif
+          ],
+          [],
+          [REPLACE_STRUCT_LCONV=1])
+        ;;
+      *) REPLACE_STRUCT_LCONV=1 ;;
+    esac
   fi
 
   dnl <locale.h> is always overridden, because of GNULIB_POSIXCHECK.
@@ -99,6 +86,49 @@ AC_DEFUN([gl_LOCALE_H],
     [setlocale newlocale duplocale freelocale])
 ])
 
+dnl Checks to determine whether the system has the locale_t type,
+dnl and how to obtain it.
+AC_DEFUN([gl_LOCALE_T],
+[
+  dnl Persuade glibc and Solaris <locale.h> to define locale_t.
+  AC_REQUIRE([gl_USE_SYSTEM_EXTENSIONS])
+
+  dnl Check whether use of locale_t requires inclusion of <xlocale.h>,
+  dnl e.g. on Mac OS X 10.5. If <locale.h> does not define locale_t by
+  dnl itself, we assume that <xlocale.h> will do so.
+  AC_CACHE_CHECK([whether locale.h defines locale_t],
+    [gl_cv_header_locale_has_locale_t],
+    [AC_COMPILE_IFELSE(
+       [AC_LANG_PROGRAM(
+          [[#include <locale.h>
+            locale_t x;]],
+          [[]])],
+       [gl_cv_header_locale_has_locale_t=yes],
+       [gl_cv_header_locale_has_locale_t=no])
+    ])
+
+  dnl Check for <xlocale.h>.
+  AC_CHECK_HEADERS_ONCE([xlocale.h])
+  if test $ac_cv_header_xlocale_h = yes; then
+    HAVE_XLOCALE_H=1
+    if test $gl_cv_header_locale_has_locale_t = yes; then
+      gl_cv_header_locale_h_needs_xlocale_h=no
+    else
+      gl_cv_header_locale_h_needs_xlocale_h=yes
+    fi
+    HAVE_LOCALE_T=1
+  else
+    HAVE_XLOCALE_H=0
+    gl_cv_header_locale_h_needs_xlocale_h=no
+    if test $gl_cv_header_locale_has_locale_t = yes; then
+      HAVE_LOCALE_T=1
+    else
+      HAVE_LOCALE_T=0
+    fi
+  fi
+  AC_SUBST([HAVE_XLOCALE_H])
+])
+
 AC_DEFUN([gl_LOCALE_MODULE_INDICATOR],
 [
   dnl Use AC_REQUIRE here, so that the default settings are expanded once only.
@@ -110,10 +140,11 @@ AC_DEFUN([gl_LOCALE_MODULE_INDICATOR],
 
 AC_DEFUN([gl_LOCALE_H_DEFAULTS],
 [
-  GNULIB_LOCALECONV=0; AC_SUBST([GNULIB_LOCALECONV])
-  GNULIB_SETLOCALE=0;  AC_SUBST([GNULIB_SETLOCALE])
-  GNULIB_DUPLOCALE=0;  AC_SUBST([GNULIB_DUPLOCALE])
-  GNULIB_LOCALENAME=0; AC_SUBST([GNULIB_LOCALENAME])
+  GNULIB_LOCALECONV=0;     AC_SUBST([GNULIB_LOCALECONV])
+  GNULIB_SETLOCALE=0;      AC_SUBST([GNULIB_SETLOCALE])
+  GNULIB_SETLOCALE_NULL=0; AC_SUBST([GNULIB_SETLOCALE_NULL])
+  GNULIB_DUPLOCALE=0;      AC_SUBST([GNULIB_DUPLOCALE])
+  GNULIB_LOCALENAME=0;     AC_SUBST([GNULIB_LOCALENAME])
   dnl Assume proper GNU behavior unless another module says otherwise.
   HAVE_NEWLOCALE=1;       AC_SUBST([HAVE_NEWLOCALE])
   HAVE_DUPLOCALE=1;       AC_SUBST([HAVE_DUPLOCALE])

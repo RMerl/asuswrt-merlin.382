@@ -1,6 +1,6 @@
 /* A substitute for ISO C99 <ctype.h>, for platforms on which it is incomplete.
 
-   Copyright (C) 2009-2019 Free Software Foundation, Inc.
+   Copyright (C) 2009-2020 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 /*
  * ISO C 99 <ctype.h> for platforms on which it is incomplete.
- * <http://www.opengroup.org/onlinepubs/9699919799/basedefs/ctype.h.html>
+ * <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/ctype.h.html>
  */
 
 #ifndef _@GUARD_PREFIX@_CTYPE_H

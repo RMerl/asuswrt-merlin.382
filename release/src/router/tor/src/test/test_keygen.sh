@@ -83,10 +83,11 @@ trap "rm -rf '$DATA_DIR'" 0
 DATA_DIR=`cd "${DATA_DIR}" && pwd`
 
 touch "${DATA_DIR}/empty_torrc"
+touch "${DATA_DIR}/empty_defaults_torrc"
 
 QUIETLY="--hush"
 SILENTLY="--quiet"
-TOR="${TOR_BINARY} ${QUIETLY} --DisableNetwork 1 --ShutdownWaitLength 0 --ORPort 12345 --ExitRelay 0 -f ${DATA_DIR}/empty_torrc"
+TOR="${TOR_BINARY} ${QUIETLY} --DisableNetwork 1 --ShutdownWaitLength 0 --ORPort 12345 --ExitRelay 0 -f ${DATA_DIR}/empty_torrc --defaults-torrc ${DATA_DIR}/empty_defaults_torrc"
 
 ##### SETUP
 #

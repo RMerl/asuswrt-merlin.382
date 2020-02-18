@@ -55,7 +55,7 @@ static enum alpnid alpn2alpnid(char *name)
   if(strcasecompare(name, "h2"))
     return ALPN_h2;
 #if (defined(USE_QUICHE) || defined(USE_NGTCP2)) && !defined(UNITTESTS)
-  if(strcasecompare(name, "h3-23"))
+  if(strcasecompare(name, "h3-24"))
     return ALPN_h3;
 #else
   if(strcasecompare(name, "h3"))
@@ -74,7 +74,7 @@ const char *Curl_alpnid2str(enum alpnid id)
     return "h2";
   case ALPN_h3:
 #if (defined(USE_QUICHE) || defined(USE_NGTCP2)) && !defined(UNITTESTS)
-    return "h3-23";
+    return "h3-24";
 #else
     return "h3";
 #endif
@@ -161,7 +161,7 @@ static CURLcode altsvc_add(struct altsvcinfo *asi, char *line)
               date, &persist, &prio);
   if(9 == rc) {
     struct altsvc *as;
-    time_t expires = curl_getdate(date, NULL);
+    time_t expires = Curl_getdate_capped(date);
     as = altsvc_create(srchost, dsthost, srcalpn, dstalpn, srcport, dstport);
     if(as) {
       as->expires = expires;
@@ -320,8 +320,8 @@ CURLcode Curl_altsvc_save(struct altsvcinfo *altsvc, const char *file)
     /* no cache activated */
     return CURLE_OK;
 
-  if((altsvc->flags & CURLALTSVC_READONLYFILE) || !file[0])
-    /* marked as read-only or zero length file name */
+  if((altsvc->flags & CURLALTSVC_READONLYFILE) || !file || !file[0])
+    /* marked as read-only, no file or zero length file name */
     return CURLE_OK;
   out = fopen(file, FOPEN_WRITETEXT);
   if(!out)

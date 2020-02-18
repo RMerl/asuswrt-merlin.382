@@ -124,7 +124,7 @@ typedef ssize_t (Curl_recv)(struct connectdata *conn, /* connection data */
 #include "smtp.h"
 #include "ftp.h"
 #include "file.h"
-#include "ssh.h"
+#include "vssh/ssh.h"
 #include "http.h"
 #include "rtsp.h"
 #include "smb.h"
@@ -257,6 +257,7 @@ struct ssl_config_data {
   BIT(falsestart);
   BIT(enable_beast); /* allow this flaw for interoperability's sake*/
   BIT(no_revoke);    /* disable SSL certificate revocation checks */
+  BIT(no_partialchain); /* don't accept partial certificate chains */
 };
 
 struct ssl_general_config {
@@ -528,6 +529,24 @@ enum upgrade101 {
   UPGR101_WORKING             /* talking upgraded protocol */
 };
 
+enum doh_slots {
+  /* Explicit values for first two symbols so as to match hard-coded
+   * constants in existing code
+   */
+  DOH_PROBE_SLOT_IPADDR_V4 = 0, /* make 'V4' stand out for readability */
+  DOH_PROBE_SLOT_IPADDR_V6 = 1, /* 'V6' likewise */
+
+  /* Space here for (possibly build-specific) additional slot definitions */
+
+  /* for example */
+  /* #ifdef WANT_DOH_FOOBAR_TXT */
+  /*   DOH_PROBE_SLOT_FOOBAR_TXT, */
+  /* #endif */
+
+  /* AFTER all slot definitions, establish how many we have */
+  DOH_PROBE_SLOTS
+};
+
 struct dohresponse {
   unsigned char *memory;
   size_t size;
@@ -544,7 +563,7 @@ struct dnsprobe {
 
 struct dohdata {
   struct curl_slist *headers;
-  struct dnsprobe probe[2];
+  struct dnsprobe probe[DOH_PROBE_SLOTS];
   unsigned int pending; /* still outstanding requests */
   const char *host;
   int port;

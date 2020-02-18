@@ -1,5 +1,5 @@
 /* Substitute for and wrapper around <langinfo.h>.
-   Copyright (C) 2009-2019 Free Software Foundation, Inc.
+   Copyright (C) 2009-2020 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 /*
  * POSIX <langinfo.h> for platforms that lack it or have an incomplete one.
- * <http://www.opengroup.org/onlinepubs/9699919799/basedefs/langinfo.h.html>
+ * <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/langinfo.h.html>
  */
 
 #ifndef _@GUARD_PREFIX@_LANGINFO_H

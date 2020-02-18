@@ -1,5 +1,5 @@
-# getopt.m4 serial 46
-dnl Copyright (C) 2002-2006, 2008-2019 Free Software Foundation, Inc.
+# getopt.m4 serial 47
+dnl Copyright (C) 2002-2006, 2008-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -302,8 +302,10 @@ dnl is ambiguous with environment values that contain newlines.
            ]])],
         [gl_cv_func_getopt_gnu=yes],
         [gl_cv_func_getopt_gnu=no],
-        [dnl Cross compiling. Assume the worst, even on glibc platforms.
-         gl_cv_func_getopt_gnu="guessing no"
+        [dnl Cross compiling.
+         dnl Assume the worst, even on glibc platforms.
+         dnl But obey --enable-cross-guesses.
+         gl_cv_func_getopt_gnu="$gl_cross_guess_normal"
         ])
        case $gl_had_POSIXLY_CORRECT in
          exported) ;;

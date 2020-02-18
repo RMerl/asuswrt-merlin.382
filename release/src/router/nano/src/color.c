@@ -1,7 +1,7 @@
 /**************************************************************************
  *   color.c  --  This file is part of GNU nano.                          *
  *                                                                        *
- *   Copyright (C) 2001-2011, 2013-2019 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2001-2011, 2013-2020 Free Software Foundation, Inc.    *
  *   Copyright (C) 2014-2017 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
@@ -21,14 +21,13 @@
 
 #include "proto.h"
 
+#ifdef ENABLE_COLOR
+
 #include <errno.h>
 #ifdef HAVE_MAGIC_H
 #include <magic.h>
 #endif
 #include <string.h>
-#include <unistd.h>
-
-#ifdef ENABLE_COLOR
 
 /* For early versions of ncurses-6.0, use an additional A_PROTECT attribute
  * for all colors, in order to work around an ncurses miscoloring bug. */
@@ -68,7 +67,6 @@ void set_colorpairs(void)
 {
 	syntaxtype *sint;
 	bool using_defaults = FALSE;
-	size_t i;
 
 	/* Tell ncurses to enable colors. */
 	start_color();
@@ -79,30 +77,31 @@ void set_colorpairs(void)
 #endif
 
 	/* Initialize the color pairs for nano's interface elements. */
-	for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
-		colortype *combo = color_combo[i];
+	for (size_t index = 0; index < NUMBER_OF_ELEMENTS; index++) {
+		colortype *combo = color_combo[index];
 
 		if (combo != NULL) {
 			if (combo->fg == USE_THE_DEFAULT && !using_defaults)
 				combo->fg = COLOR_WHITE;
 			if (combo->bg == USE_THE_DEFAULT && !using_defaults)
 				combo->bg = COLOR_BLACK;
-			init_pair(i + 1, combo->fg, combo->bg);
-			interface_color_pair[i] = COLOR_PAIR(i + 1) | A_BANDAID |
-										combo->attributes;
+			init_pair(index + 1, combo->fg, combo->bg);
+			interface_color_pair[index] = COLOR_PAIR(index + 1) | A_BANDAID |
+												combo->attributes;
 		} else {
-			if (i == FUNCTION_TAG)
-				interface_color_pair[i] = A_NORMAL;
-			else if (i == GUIDE_STRIPE)
-				interface_color_pair[i] = A_REVERSE;
-			else if (i == ERROR_MESSAGE) {
-				init_pair(i + 1, COLOR_WHITE, COLOR_RED);
-				interface_color_pair[i] = COLOR_PAIR(i + 1) | A_BOLD | A_BANDAID;
+			if (index == FUNCTION_TAG)
+				interface_color_pair[index] = A_NORMAL;
+			else if (index == GUIDE_STRIPE)
+				interface_color_pair[index] = A_REVERSE;
+			else if (index == ERROR_MESSAGE) {
+				init_pair(index + 1, COLOR_WHITE, COLOR_RED);
+				interface_color_pair[index] = COLOR_PAIR(index + 1) |
+												A_BOLD | A_BANDAID;
 			} else
-				interface_color_pair[i] = hilite_attribute;
+				interface_color_pair[index] = hilite_attribute;
 		}
 
-		free(color_combo[i]);
+		free(color_combo[index]);
 	}
 
 	/* For each loaded syntax, assign pair numbers to color combinations. */
@@ -192,20 +191,7 @@ void color_update(void)
 	/* If no syntax-override string was specified, or it didn't match,
 	 * try finding a syntax based on the filename (extension). */
 	if (sint == NULL && !inhelp) {
-		char *reserved = charalloc(PATH_MAX + 1);
-		char *currentdir = getcwd(reserved, PATH_MAX + 1);
-		char *joinednames = charalloc(PATH_MAX + 1);
-		char *fullname = NULL;
-
-		if (currentdir == NULL)
-			free(reserved);
-		else {
-			/* Concatenate the current working directory with the
-			 * specified filename, and canonicalize the result. */
-			sprintf(joinednames, "%s/%s", currentdir, openfile->filename);
-			fullname = get_full_path(joinednames);
-			free(currentdir);
-		}
+		char *fullname = get_full_path(openfile->filename);
 
 		if (fullname == NULL)
 			fullname = mallocstrcpy(fullname, openfile->filename);
@@ -215,7 +201,6 @@ void color_update(void)
 				break;
 		}
 
-		free(joinednames);
 		free(fullname);
 	}
 

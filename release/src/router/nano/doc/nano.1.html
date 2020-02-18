@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.22.4 -->
-<!-- CreationDate: Sun Aug 25 10:41:25 2019 -->
+<!-- CreationDate: Fri Feb  7 11:11:00 2020 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -64,18 +64,21 @@ Nano&rsquo;s ANOther editor, inspired by Pico</p>
 </h2>
 
 
-<p style="margin-left:11%; margin-top: 1em">Starting with
-version 4.0, <b>nano</b> no longer hard-wraps an overlong
-line by default. It further uses smooth scrolling by
-default, and by default includes the line below the title
-bar into the editing area.</p>
+<p style="margin-left:11%; margin-top: 1em">Since version
+4.0, <b>nano</b> by default:</p>
+
+<p style="margin-left:17%; margin-top: 1em">&bull; does not
+automatically hard-wrap lines that become overlong, <br>
+&bull; includes the line below the title bar in the editing
+area, <br>
+&bull; does linewise (smooth) scrolling.</p>
 
 <p style="margin-left:11%; margin-top: 1em">If you want the
 old, Pico behavior back, you can use
 <b>&minus;&minus;breaklonglines</b>,
-<b>&minus;&minus;jumpyscrolling</b>, and
-<b>&minus;&minus;emptyline</b> (or <b>&minus;bje</b> for
-short).</p>
+<b>&minus;&minus;emptyline</b>, and
+<b>&minus;&minus;jumpyscrolling</b> (or <b>&minus;bej</b>
+for short).</p>
 
 <h2>DESCRIPTION
 <a name="DESCRIPTION"></a>
@@ -93,7 +96,8 @@ soft-wrapping overlong lines.</p>
 filename on the command line, the cursor can be put on a
 specific line by adding the line number with a plus sign
 (<b>+</b>) before the filename, and even in a specific
-column by adding it with a comma. The cursor can be put on
+column by adding it with a comma. (Negative numbers count
+from the end of the file or line.) The cursor can be put on
 the first or last occurrence of a specific string by
 specifying that string after <b>+/</b> or <b>+?</b> before
 the filename. The string can be made case sensitive and/or
@@ -186,8 +190,12 @@ the specified <i>directory</i>.</p>
 <p style="margin-left:11%;"><b>&minus;D</b>,
 <b>&minus;&minus;boldtext</b></p>
 
-<p style="margin-left:22%;">Use bold text instead of
-reverse video text.</p>
+<p style="margin-left:22%;">For the interface, use bold
+instead of reverse video. This will be overridden by setting
+the options <b>titlecolor</b>, <b>statuscolor</b>,
+<b>keycolor</b>, <b>functioncolor</b>, <b>numbercolor</b>,
+and/or <b>selectedcolor</b> in your nanorc file. See
+<b>nanorc</b>(5).</p>
 
 <p style="margin-left:11%;"><b>&minus;E</b>,
 <b>&minus;&minus;tabstospaces</b></p>
@@ -398,6 +406,14 @@ Backspace.</p>
 <p style="margin-left:22%;">Do not use the line below the
 title bar, leaving it entirely blank.</p>
 
+
+<p style="margin-left:11%;"><b>&minus;f&nbsp;</b><i>file</i>,
+<b>&minus;&minus;rcfile=</b><i>file</i></p>
+
+<p style="margin-left:22%;">Read only this <i>file</i> for
+setting nano&rsquo;s options, instead of reading both the
+system-wide and the user&rsquo;s nanorc files.</p>
+
 <p style="margin-left:11%;"><b>&minus;g</b>,
 <b>&minus;&minus;showcursor</b></p>
 
@@ -490,12 +506,14 @@ screen if the screen is resized. The default value is
 &minus;8.</p>
 
 <p style="margin-left:11%;"><b>&minus;s
-&quot;</b><i>program</i> [<i>arg</i>...]<b>&quot;</b>,
+&quot;</b><i>program</i> [<i>argument</i> ...]<b>&quot;</b>,
 <b>&minus;&minus;speller=&quot;</b><i>program</i>
-[<i>arg</i>...]<b>&quot;</b></p>
+[<i>argument</i> ...]<b>&quot;</b></p>
 
-<p style="margin-left:22%;">Use this alternative command to
-perform spell checking.</p>
+<p style="margin-left:22%;">Use this command to perform
+spell checking and correcting, instead of using the built-in
+corrector that calls <b>hunspell</b> or GNU
+<b>spell</b>.</p>
 
 <p style="margin-left:11%;"><b>&minus;t</b>,
 <b>&minus;&minus;tempfile</b></p>
@@ -579,8 +597,11 @@ complete list.</p>
 </h2>
 
 
-<p style="margin-left:11%; margin-top: 1em"><b>nano</b>
-will read two configuration files: first the system&rsquo;s
+<p style="margin-left:11%; margin-top: 1em">When
+<b>&minus;&minus;rcfile</b> is given, <b>nano</b> will read
+just the specified file for setting its options and syntaxes
+and key bindings. Without that option, <b>nano</b> will read
+two configuration files: first the system&rsquo;s
 <i>nanorc</i> (if it exists), and then the user&rsquo;s
 <i>nanorc</i> (if it exists), either <i>~/.nanorc</i> or
 <i>$XDG_CONFIG_HOME/nano/nanorc</i> or

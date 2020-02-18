@@ -1,6 +1,6 @@
 # Checks for stat-related time functions.
 
-# Copyright (C) 1998-1999, 2001, 2003, 2005-2007, 2009-2019 Free Software
+# Copyright (C) 1998-1999, 2001, 2003, 2005-2007, 2009-2020 Free Software
 # Foundation, Inc.
 
 # This file is free software; the Free Software Foundation

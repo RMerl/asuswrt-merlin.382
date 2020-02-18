@@ -1723,7 +1723,8 @@ test_entry_guard_manage_primary(void *arg)
     dir_info_str =guard_selection_get_err_str_if_dir_info_missing(gs, 1, 2, 3);
     tt_str_op(dir_info_str, OP_EQ,
               "We're missing descriptors for 1/2 of our primary entry guards "
-              "(total microdescriptors: 2/3).");
+              "(total microdescriptors: 2/3). That's ok. We will try to fetch "
+              "missing descriptors soon.");
     tor_free(dir_info_str);
   }
 

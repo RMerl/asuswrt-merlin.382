@@ -140,7 +140,7 @@ helper_create_introduce1_cell(void)
   {
     size_t auth_key_len = sizeof(auth_key_kp.pubkey);
     trn_cell_introduce1_set_auth_key_type(cell,
-                                         HS_INTRO_AUTH_KEY_TYPE_ED25519);
+                                     TRUNNEL_HS_INTRO_AUTH_KEY_TYPE_ED25519);
     trn_cell_introduce1_set_auth_key_len(cell, auth_key_len);
     trn_cell_introduce1_setlen_auth_key(cell, auth_key_len);
     uint8_t *auth_key_ptr = trn_cell_introduce1_getarray_auth_key(cell);
@@ -751,7 +751,7 @@ test_introduce1_validation(void *arg)
   ret = validate_introduce1_parsed_cell(cell);
   tt_int_op(ret, OP_EQ, -1);
   /* Reset is to correct value and make sure it's correct. */
-  cell->auth_key_type = HS_INTRO_AUTH_KEY_TYPE_ED25519;
+  cell->auth_key_type = TRUNNEL_HS_INTRO_AUTH_KEY_TYPE_ED25519;
   ret = validate_introduce1_parsed_cell(cell);
   tt_int_op(ret, OP_EQ, 0);
 

@@ -1,5 +1,5 @@
 /* Safe automatic memory allocation.
-   Copyright (C) 2003-2007, 2009-2019 Free Software Foundation, Inc.
+   Copyright (C) 2003-2007, 2009-2020 Free Software Foundation, Inc.
    Written by Bruno Haible <bruno@clisp.org>, 2003.
 
    This program is free software; you can redistribute it and/or modify
@@ -112,14 +112,10 @@ enum
    among all elementary types.  */
   sa_alignment_long = sa_alignof (long),
   sa_alignment_double = sa_alignof (double),
-#if HAVE_LONG_LONG_INT
   sa_alignment_longlong = sa_alignof (long long),
-#endif
   sa_alignment_longdouble = sa_alignof (long double),
   sa_alignment_max = ((sa_alignment_long - 1) | (sa_alignment_double - 1)
-#if HAVE_LONG_LONG_INT
                       | (sa_alignment_longlong - 1)
-#endif
                       | (sa_alignment_longdouble - 1)
                      ) + 1
 };

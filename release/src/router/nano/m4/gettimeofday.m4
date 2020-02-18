@@ -1,6 +1,6 @@
-# serial 26
+# serial 27
 
-# Copyright (C) 2001-2003, 2005, 2007, 2009-2019 Free Software Foundation, Inc.
+# Copyright (C) 2001-2003, 2005, 2007, 2009-2020 Free Software Foundation, Inc.
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -109,8 +109,8 @@ AC_DEFUN([gl_FUNC_GETTIMEOFDAY_CLOBBER],
         *-musl*)       gl_cv_func_gettimeofday_clobber="guessing no" ;;
                        # Guess no on native Windows.
         mingw*)        gl_cv_func_gettimeofday_clobber="guessing no" ;;
-                       # If we don't know, assume the worst.
-        *)             gl_cv_func_gettimeofday_clobber="guessing yes" ;;
+                       # If we don't know, obey --enable-cross-guesses.
+        *)             gl_cv_func_gettimeofday_clobber="$gl_cross_guess_inverted" ;;
       esac
      ])])
 

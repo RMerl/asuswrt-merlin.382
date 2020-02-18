@@ -182,7 +182,7 @@ static const char *connection_proxy_state_to_string(int state);
 static int connection_read_https_proxy_response(connection_t *conn);
 static void connection_send_socks5_connect(connection_t *conn);
 static const char *proxy_type_to_string(int proxy_type);
-static int get_proxy_type(void);
+static int conn_get_proxy_type(const connection_t *conn);
 const tor_addr_t *conn_get_outbound_address(sa_family_t family,
                   const or_options_t *options, unsigned int conn_type);
 static void reenable_blocked_connection_init(const or_options_t *options);
@@ -897,13 +897,19 @@ connection_mark_for_close_(connection_t *conn, int line, const char *file)
 }
 
 /** Mark <b>conn</b> to be closed next time we loop through
- * conn_close_if_marked() in main.c; the _internal version bypasses the
- * CONN_TYPE_OR checks; this should be called when you either are sure that
- * if this is an or_connection_t the controlling channel has been notified
- * (e.g. with connection_or_notify_error()), or you actually are the
+ * conn_close_if_marked() in main.c.
+ *
+ * This _internal version bypasses the CONN_TYPE_OR checks; this should be
+ * called when you either are sure that if this is an or_connection_t the
+ * controlling channel has been notified (e.g. with
+ * connection_or_notify_error()), or you actually are the
  * connection_or_close_for_error() or connection_or_close_normally() function.
- * For all other cases, use connection_mark_and_flush() instead, which
- * checks for or_connection_t properly, instead.  See below.
+ * For all other cases, use connection_mark_and_flush() which checks for
+ * or_connection_t properly, instead.  See below.
+ *
+ * We want to keep this function simple and quick, since it can be called from
+ * quite deep in the call chain, and hence it should avoid having side-effects
+ * that interfere with its callers view of the connection.
  */
 MOCK_IMPL(void,
 connection_mark_for_close_internal_, (connection_t *conn,
@@ -1527,7 +1533,7 @@ connection_listener_new(const struct sockaddr *listensockaddr,
                conn_type_to_string(type), conn->address);
   } else {
     log_notice(LD_NET, "Opened %s on %s",
-               conn_type_to_string(type), fmt_addrport(&addr, usePort));
+               conn_type_to_string(type), fmt_addrport(&addr, gotPort));
   }
   return conn;
 
@@ -2260,18 +2266,27 @@ connection_proxy_state_to_string(int state)
   return states[state];
 }
 
-/** Returns the global proxy type used by tor. Use this function for
- *  logging or high-level purposes, don't use it to fill the
+/** Returns the proxy type used by tor for a single connection, for
+ *  logging or high-level purposes. Don't use it to fill the
  *  <b>proxy_type</b> field of or_connection_t; use the actual proxy
  *  protocol instead.*/
 static int
-get_proxy_type(void)
+conn_get_proxy_type(const connection_t *conn)
 {
   const or_options_t *options = get_options();
 
-  if (options->ClientTransportPlugin)
-    return PROXY_PLUGGABLE;
-  else if (options->HTTPSProxy)
+  if (options->ClientTransportPlugin) {
+    /* If we have plugins configured *and* this addr/port is a known bridge
+     * with a transport, then we should be PROXY_PLUGGABLE. */
+    const transport_t *transport = NULL;
+    int r;
+    r = get_transport_by_bridge_addrport(&conn->addr, conn->port, &transport);
+    if (r == 0 && transport)
+      return PROXY_PLUGGABLE;
+  }
+
+  /* In all other cases, we're using a global proxy. */
+  if (options->HTTPSProxy)
     return PROXY_CONNECT;
   else if (options->Socks4Proxy)
     return PROXY_SOCKS4;
@@ -2358,7 +2373,7 @@ connection_proxy_connect(connection_t *conn, int type)
            arguments to transmit. If we do, compress all arguments to
            a single string in 'socks_args_string': */
 
-        if (get_proxy_type() == PROXY_PLUGGABLE) {
+        if (conn_get_proxy_type(conn) == PROXY_PLUGGABLE) {
           socks_args_string =
             pt_get_socks_args_for_proxy_addrport(&conn->addr, conn->port);
           if (socks_args_string)
@@ -2418,7 +2433,7 @@ connection_proxy_connect(connection_t *conn, int type)
          Socks5ProxyUsername or if we want to pass arguments to our
          pluggable transport proxy: */
       if ((options->Socks5ProxyUsername) ||
-          (get_proxy_type() == PROXY_PLUGGABLE &&
+          (conn_get_proxy_type(conn) == PROXY_PLUGGABLE &&
            (get_socks_args_by_bridge_addrport(&conn->addr, conn->port)))) {
       /* number of auth methods */
         buf[1] = 2;
@@ -2611,16 +2626,16 @@ connection_read_proxy_handshake(connection_t *conn)
         const char *user, *pass;
         char *socks_args_string = NULL;
 
-        if (get_proxy_type() == PROXY_PLUGGABLE) {
+        if (conn_get_proxy_type(conn) == PROXY_PLUGGABLE) {
           socks_args_string =
             pt_get_socks_args_for_proxy_addrport(&conn->addr, conn->port);
           if (!socks_args_string) {
-            log_warn(LD_NET, "Could not create SOCKS args string.");
+            log_warn(LD_NET, "Could not create SOCKS args string for PT.");
             ret = -1;
             break;
           }
 
-          log_debug(LD_NET, "SOCKS5 arguments: %s", socks_args_string);
+          log_debug(LD_NET, "PT SOCKS5 arguments: %s", socks_args_string);
           tor_assert(strlen(socks_args_string) > 0);
           tor_assert(strlen(socks_args_string) <= MAX_SOCKS5_AUTH_SIZE_TOTAL);
 
@@ -3759,6 +3774,10 @@ connection_buf_read_from_socket(connection_t *conn, ssize_t *max_to_read,
     if (conn->linked_conn) {
       result = buf_move_to_buf(conn->inbuf, conn->linked_conn->outbuf,
                                &conn->linked_conn->outbuf_flushlen);
+      if (BUG(result<0)) {
+        log_warn(LD_BUG, "reading from linked connection buffer failed.");
+        return -1;
+      }
     } else {
       result = 0;
     }

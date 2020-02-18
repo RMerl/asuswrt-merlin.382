@@ -1,6 +1,6 @@
 /* A GNU-like <signal.h>.
 
-   Copyright (C) 2006-2019 Free Software Foundation, Inc.
+   Copyright (C) 2006-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -144,7 +144,9 @@ _GL_FUNCDECL_SYS (pthread_sigmask, int,
 _GL_CXXALIAS_SYS (pthread_sigmask, int,
                   (int how, const sigset_t *new_mask, sigset_t *old_mask));
 # endif
+# if __GLIBC__ >= 2
 _GL_CXXALIASWARN (pthread_sigmask);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef pthread_sigmask
 # if HAVE_RAW_DECL_PTHREAD_SIGMASK
@@ -168,7 +170,9 @@ _GL_FUNCDECL_SYS (raise, int, (int sig));
 #  endif
 _GL_CXXALIAS_SYS (raise, int, (int sig));
 # endif
+# if __GLIBC__ >= 2
 _GL_CXXALIASWARN (raise);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef raise
 /* Assume raise is always declared.  */
@@ -318,10 +322,18 @@ _GL_FUNCDECL_RPL (signal, _gl_function_taking_int_returning_void_t,
 _GL_CXXALIAS_RPL (signal, _gl_function_taking_int_returning_void_t,
                   (int sig, _gl_function_taking_int_returning_void_t func));
 # else
+/* On OpenBSD, the declaration of 'signal' may not be present at this point,
+   because it occurs in <sys/signal.h>, not <signal.h> directly.  */
+#  if defined __OpenBSD__
+_GL_FUNCDECL_SYS (signal, _gl_function_taking_int_returning_void_t,
+                  (int sig, _gl_function_taking_int_returning_void_t func));
+#  endif
 _GL_CXXALIAS_SYS (signal, _gl_function_taking_int_returning_void_t,
                   (int sig, _gl_function_taking_int_returning_void_t func));
 # endif
+# if __GLIBC__ >= 2
 _GL_CXXALIASWARN (signal);
+# endif
 
 # if !@HAVE_POSIX_SIGNALBLOCKING@ && GNULIB_defined_SIGPIPE
 /* Raise signal SIGPIPE.  */

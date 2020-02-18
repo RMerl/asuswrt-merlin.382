@@ -1,5 +1,5 @@
 /* A POSIX <locale.h>.
-   Copyright (C) 2007-2019 Free Software Foundation, Inc.
+   Copyright (C) 2007-2020 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -64,6 +64,18 @@
 # define LC_MESSAGES 1729
 #endif
 
+/* On native Windows with MSVC, 'struct lconv' lacks the members int_p_* and
+   int_n_*.  Instead of overriding 'struct lconv', merely define these member
+   names as macros.  This avoids trouble in C++ mode.  */
+#if defined _MSC_VER
+# define int_p_cs_precedes   p_cs_precedes
+# define int_p_sign_posn     p_sign_posn
+# define int_p_sep_by_space  p_sep_by_space
+# define int_n_cs_precedes   n_cs_precedes
+# define int_n_sign_posn     n_sign_posn
+# define int_n_sep_by_space  n_sep_by_space
+#endif
+
 /* Bionic libc's 'struct lconv' is just a dummy.  */
 #if @REPLACE_STRUCT_LCONV@
 # define lconv rpl_lconv
@@ -72,7 +84,7 @@ struct lconv
   /* All 'char *' are actually 'const char *'.  */
 
   /* Members that depend on the LC_NUMERIC category of the locale.  See
-     <http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_04> */
+     <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_04> */
 
   /* Symbol used as decimal point.  */
   char *decimal_point;
@@ -84,7 +96,7 @@ struct lconv
   char *grouping;
 
   /* Members that depend on the LC_MONETARY category of the locale.  See
-     <http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_03> */
+     <https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_03> */
 
   /* Symbol used as decimal point.  */
   char *mon_decimal_point;
@@ -156,7 +168,9 @@ _GL_CXXALIAS_RPL (localeconv, struct lconv *, (void));
 # else
 _GL_CXXALIAS_SYS (localeconv, struct lconv *, (void));
 # endif
+# if __GLIBC__ >= 2
 _GL_CXXALIASWARN (localeconv);
+# endif
 #elif @REPLACE_STRUCT_LCONV@
 # undef localeconv
 # define localeconv localeconv_used_without_requesting_gnulib_module_localeconv
@@ -181,13 +195,20 @@ _GL_CXXALIAS_RPL (setlocale, char *, (int category, const char *locale));
 # else
 _GL_CXXALIAS_SYS (setlocale, char *, (int category, const char *locale));
 # endif
+# if __GLIBC__ >= 2
 _GL_CXXALIASWARN (setlocale);
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef setlocale
 # if HAVE_RAW_DECL_SETLOCALE
 _GL_WARN_ON_USE (setlocale, "setlocale works differently on native Windows - "
                  "use gnulib module setlocale for portability");
 # endif
+#endif
+
+#if @GNULIB_SETLOCALE_NULL@
+/* Included here for convenience.  */
+# include "setlocale_null.h"
 #endif
 
 #if /*@GNULIB_NEWLOCALE@ ||*/ (@GNULIB_LOCALENAME@ && @HAVE_NEWLOCALE@)
@@ -210,6 +231,11 @@ _GL_CXXALIAS_SYS (newlocale, locale_t,
 # endif
 # if @HAVE_NEWLOCALE@
 _GL_CXXALIASWARN (newlocale);
+# endif
+# if @HAVE_NEWLOCALE@ || @REPLACE_NEWLOCALE@
+#  ifndef HAVE_WORKING_NEWLOCALE
+#   define HAVE_WORKING_NEWLOCALE 1
+#  endif
 # endif
 #elif defined GNULIB_POSIXCHECK
 # undef newlocale
@@ -235,6 +261,11 @@ _GL_CXXALIAS_SYS (duplocale, locale_t, (locale_t locale));
 # if @HAVE_DUPLOCALE@
 _GL_CXXALIASWARN (duplocale);
 # endif
+# if @HAVE_DUPLOCALE@ || @REPLACE_DUPLOCALE@
+#  ifndef HAVE_WORKING_DUPLOCALE
+#   define HAVE_WORKING_DUPLOCALE 1
+#  endif
+# endif
 #elif defined GNULIB_POSIXCHECK
 # undef duplocale
 # if HAVE_RAW_DECL_DUPLOCALE
@@ -254,7 +285,9 @@ _GL_FUNCDECL_RPL (freelocale, void, (locale_t locale) _GL_ARG_NONNULL ((1)));
 _GL_CXXALIAS_RPL (freelocale, void, (locale_t locale));
 # else
 #  if @HAVE_FREELOCALE@
-_GL_CXXALIAS_SYS (freelocale, void, (locale_t locale));
+/* Need to cast, because on FreeBSD and Mac OS X 10.13, the return type is
+                                   int.  */
+_GL_CXXALIAS_SYS_CAST (freelocale, void, (locale_t locale));
 #  endif
 # endif
 # if @HAVE_FREELOCALE@

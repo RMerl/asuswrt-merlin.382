@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.22.4 -->
-<!-- CreationDate: Sun Aug 25 10:41:26 2019 -->
+<!-- CreationDate: Fri Feb  7 11:11:01 2020 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -21,8 +21,8 @@
 <h1 align="center">NANORC</h1>
 
 <a href="#NAME">NAME</a><br>
-<a href="#NOTICE">NOTICE</a><br>
 <a href="#DESCRIPTION">DESCRIPTION</a><br>
+<a href="#NOTICE">NOTICE</a><br>
 <a href="#OPTIONS">OPTIONS</a><br>
 <a href="#SYNTAX HIGHLIGHTING">SYNTAX HIGHLIGHTING</a><br>
 <a href="#REBINDING KEYS">REBINDING KEYS</a><br>
@@ -40,38 +40,42 @@
 <p style="margin-left:11%; margin-top: 1em">nanorc &minus;
 GNU nano&rsquo;s configuration file</p>
 
-<h2>NOTICE
-<a name="NOTICE"></a>
-</h2>
-
-
-<p style="margin-left:11%; margin-top: 1em">Starting with
-version 4.0, <b>nano</b> no longer hard-wraps an overlong
-line by default. It further uses smooth scrolling by
-default, and by default includes the line below the title
-bar into the editing area.</p>
-
-<p style="margin-left:11%; margin-top: 1em">If you want the
-old, Pico behavior back, you can use <b>set
-breaklonglines</b>, <b>set jumpyscrolling</b>, and <b>set
-emptyline</b>.</p>
-
 <h2>DESCRIPTION
 <a name="DESCRIPTION"></a>
 </h2>
 
 
 <p style="margin-left:11%; margin-top: 1em">The
-<i>nanorc</i> file contains the default settings for
-<b>nano</b>, a small and friendly editor. The file should be
-in Unix format, not in DOS or Mac format. During startup,
-<b>nano</b> will first read the system-wide settings, from
+<i>nanorc</i> files contain the default settings for
+<b>nano</b>, a small and friendly editor. They should be in
+Unix format, not in DOS or Mac format. During startup, if
+<b>&minus;&minus;rcfile</b> is not given, <b>nano</b> will
+read two files: first the system-wide settings, from
 <i>/etc/nanorc</i> (the exact path might be different on
 your system), and then the user-specific settings, either
 from <i>~/.nanorc</i> or from
 <i>$XDG_CONFIG_HOME/nano/nanorc</i> or from
 <i>~/.config/nano/nanorc</i>, whichever is encountered
-first.</p>
+first. If <b>&minus;&minus;rcfile</b> is given, <b>nano</b>
+will read just the specified settings file.</p>
+
+<h2>NOTICE
+<a name="NOTICE"></a>
+</h2>
+
+
+<p style="margin-left:11%; margin-top: 1em">Since version
+4.0, <b>nano</b> by default:</p>
+
+<p style="margin-left:17%; margin-top: 1em">&bull; does not
+automatically hard-wrap lines that become overlong, <br>
+&bull; includes the line below the title bar in the editing
+area, <br>
+&bull; does linewise (smooth) scrolling.</p>
+
+<p style="margin-left:11%; margin-top: 1em">To get the old,
+Pico behavior back, you can use <b>set breaklonglines</b>,
+<b>set emptyline</b>, and <b>set jumpyscrolling</b>.</p>
 
 <h2>OPTIONS
 <a name="OPTIONS"></a>
@@ -84,7 +88,8 @@ configuration file accepts a series of <b>set</b> and
 on startup without using command-line options. Additionally,
 there are some commands to define syntax highlighting and to
 rebind keys -- see the two separate sections on those.
-<b>nano</b> reads one command per line.</p>
+<b>nano</b> reads one command per line. All commands and
+keywords should be written in lowercase.</p>
 
 <p style="margin-left:11%; margin-top: 1em">Options in
 <i>nanorc</i> files take precedence over nano&rsquo;s
@@ -302,9 +307,7 @@ you to save non-POSIX text files.)</p>
 
 <p style="margin-left:11%;"><b>set nopauses</b></p>
 
-<p style="margin-left:15%;">Don&rsquo;t pause between
-warnings at startup. This means that only the last one will
-be visible (when there are multiple ones).</p>
+<p style="margin-left:15%;">Obsolete option. Ignored.</p>
 
 <p style="margin-left:11%;"><b>set nowrap</b></p>
 
@@ -422,11 +425,13 @@ jumpyscrolling</b> instead.</p>
 easier viewing of very long lines.</p>
 
 <p style="margin-left:11%;"><b>set speller
-&quot;</b><i>program</i> [<i>arg</i>...]<b>&quot;</b></p>
+&quot;</b><i>program</i> [<i>argument</i>
+...]<b>&quot;</b></p>
 
 <p style="margin-left:15%;">Use the given <i>program</i> to
-do spell checking and correcting, instead of the built-in
-corrector that calls <b>spell</b>.</p>
+do spell checking and correcting, instead of using the
+built-in corrector that calls <b>hunspell</b> or GNU
+<b>spell</b>.</p>
 
 <p style="margin-left:11%;"><b>set statuscolor</b>
 <i>fgcolor</i>,<i>bgcolor</i></p>
@@ -599,8 +604,17 @@ whether this syntax should be used for it. (This
 functionality only works when <b>libmagic</b> is installed
 on the system and will be silently ignored otherwise.)</p>
 
+<p style="margin-left:11%;"><b>formatter</b> <i>program</i>
+[<i>argument</i> ...]</p>
+
+<p style="margin-left:22%;">Run the given <i>program</i> on
+the full contents of the current buffer. (The current buffer
+is written out to a temporary file, the program is run on
+it, and then the temporary file is read back in, replacing
+the contents of the buffer.)</p>
+
 <p style="margin-left:11%;"><b>linter</b> <i>program</i>
-[<i>arg</i> ...]</p>
+[<i>argument</i> ...]</p>
 
 <p style="margin-left:22%;">Use the given <i>program</i> to
 run a syntax check on the current buffer.</p>
@@ -621,6 +635,14 @@ double quotes are specified, the comment/uncomment function
 is disabled; for example, &quot;&quot; for JSON. The default
 value is &quot;<b>#</b>&quot;.</p>
 
+<p style="margin-left:11%;"><b>tabgives
+&quot;</b><i>string</i><b>&quot;</b></p>
+
+<p style="margin-left:22%;">Make the &lt;Tab&gt; key
+produce the given <i>string</i>. Useful for languages like
+Python that want to see only spaces for indentation. This
+overrides the setting of the <b>tabstospaces</b> option.</p>
+
 <p style="margin-left:11%;"><b>color</b>
 <i>fgcolor</i><b>,</b><i>bgcolor</i>
 <b>&quot;</b><i>regex</i><b>&quot;</b> ...</p>
@@ -637,6 +659,11 @@ foreground or background color. You may use the prefix
 highlight. If your terminal supports transparency, not
 specifying a <i>bgcolor</i> tells <b>nano</b> to attempt to
 use a transparent background.</p>
+
+<p style="margin-left:22%; margin-top: 1em">All coloring
+commands are applied in the order in which they are
+specified, which means that later commands can recolor stuff
+that was colored earlier.</p>
 
 <p style="margin-left:11%;"><b>icolor</b>
 <i>fgcolor</i><b>,</b><i>bgcolor</i>
@@ -676,37 +703,17 @@ may contain only the above commands, from <b>syntax</b> to
 <b>icolor</b>.</p>
 
 <p style="margin-left:11%;"><b>extendsyntax</b> <i>name
-command</i> [<i>arg</i> ...]</p>
+command argument</i> ...</p>
 
 <p style="margin-left:22%;">Extend the syntax previously
 defined as <i>name</i> with another <i>command</i>. This
 allows adding a new <b>color</b>, <b>icolor</b>,
-<b>header</b>, <b>magic</b>, <b>comment</b>, or
-<b>linter</b> command to an already defined syntax -- useful
-when you want to slightly improve a syntax defined in one of
-the system-installed files (which normally are not
+<b>header</b>, <b>magic</b>, <b>formatter</b>,
+<b>linter</b>, <b>comment</b>, or <b>tabgives</b> command to
+an already defined syntax -- useful when you want to
+slightly improve a syntax defined in one of the
+system-installed files (which normally are not
 writable).</p>
-
-<p style="margin-left:11%; margin-top: 1em">Note: the
-<b>formatter</b> command has been removed. It was superseded
-by a more general mechanism: the filtering of buffer or
-marked text through an external command. Such filtering is
-done by typing <b>^R^X</b> and then preceding your formatter
-command with the pipe symbol (<b>|</b>). It has the added
-advantage that the operation can be undone.</p>
-
-<p style="margin-left:11%; margin-top: 1em">If you use such
-a formatting command regularly, you could assign the
-relevant series of keystrokes to a single key in your
-nanorc:</p>
-
-<p style="margin-left:22%; margin-top: 1em"><b>bind
-M&minus;F &quot;^R^X|yourformatcommand^M&quot; main</b></p>
-
-<p style="margin-left:11%; margin-top: 1em">(Note that the
-<b>^R</b>, <b>^X</b>, and <b>^M</b> are each a single,
-literal control character. You can enter them by preceding
-each with <b>M&minus;V</b>.)</p>
 
 <h2>REBINDING KEYS
 <a name="REBINDING KEYS"></a>
@@ -719,10 +726,10 @@ can be changed via the following three commands:</p>
 <p style="margin-left:15%;"><b>bind</b> <i>key function
 menu</i></p>
 
-<p style="margin-left:26%;">Rebinds the key <i>key</i> to a
-new function named <i>function</i> in the context of menu
-<i>menu</i> (or in all menus where the function exists by
-using <b>all</b>).</p>
+<p style="margin-left:26%;">Rebinds the given <i>key</i> to
+the given <i>function</i> in the given <i>menu</i> (or in
+all menus where the function exists when <b>all</b> is
+used).</p>
 
 <p style="margin-left:15%;"><b>bind</b> <i>key</i>
 <b>&quot;</b><i>string</i><b>&quot;</b> <i>menu</i></p>
@@ -737,9 +744,9 @@ its keystroke with <b>M&minus;V</b>.)</p>
 <p style="margin-left:15%;"><b>unbind</b> <i>key
 menu</i></p>
 
-<p style="margin-left:26%;">Unbinds the key <i>key</i> from
-the menu named <i>menu</i> (or from all menus where it
-exists by using <b>all</b>).</p>
+<p style="margin-left:26%;">Unbinds the given <i>key</i>
+from the given <i>menu</i> (or from all menus where the key
+exists when <b>all</b> is used).</p>
 
 <p style="margin-left:11%;">The format of <i>key</i> should
 be one of:</p>
@@ -748,48 +755,67 @@ be one of:</p>
        cellspacing="0" cellpadding="0">
 <tr valign="top" align="left">
 <td width="15%"></td>
-<td width="3%">
+<td width="10%">
 
 
-<p><b>^</b></p></td>
-<td width="2%"></td>
-<td width="80%">
+<p><b>^</b><i>X</i></p></td>
+<td width="1%"></td>
+<td width="74%">
 
 
-<p>followed by a Latin letter, by one of several ASCII
-characters (@, ], \, ^, or _), or by the word
+<p>where <i>X</i> is a Latin letter, or one of several
+ASCII characters (@, ], \, ^, _), or the word
 &quot;Space&quot;. Example: ^C.</p></td></tr>
 <tr valign="top" align="left">
 <td width="15%"></td>
-<td width="3%">
+<td width="10%">
 
 
-<p><b>M&minus;</b></p></td>
-<td width="2%"></td>
-<td width="80%">
+<p><b>M&minus;</b><i>X</i></p></td>
+<td width="1%"></td>
+<td width="74%">
 
 
-<p>followed by any ASCII character except [, or by the word
-&quot;Space&quot;. Example: M&minus;C.</p></td></tr>
+<p>where <i>X</i> is any ASCII character except [, or the
+word &quot;Space&quot;. Example: M&minus;8.</p></td></tr>
 <tr valign="top" align="left">
 <td width="15%"></td>
-<td width="3%">
+<td width="10%">
 
 
-<p><b>F</b></p></td>
-<td width="2%"></td>
-<td width="80%">
+<p><b>Sh&minus;M&minus;</b><i>X</i></p></td>
+<td width="1%"></td>
+<td width="74%">
 
 
-<p>followed by a numeric value from 1 to 16. Example:
-F10.</p> </td></tr>
+<p>where <i>X</i> is a Latin letter. Example:
+Sh&minus;M&minus;U. By default, each Meta+letter keystroke
+does the same as the corresponding Shift+Meta+letter. But
+when any Shift+Meta bind is made, that will no longer be the
+case, for all letters.</p></td></tr>
+<tr valign="top" align="left">
+<td width="15%"></td>
+<td width="10%">
+
+
+<p><b>F</b><i>N</i></p></td>
+<td width="1%"></td>
+<td width="74%">
+
+
+<p>where <i>N</i> is a numeric value from 1 to 24. Example:
+F10. (Often, <b>F13</b> to <b>F24</b> can be typed as
+<b>F1</b> to <b>F12</b> with Shift.)</p></td></tr>
 </table>
 
-<p style="margin-left:15%;">the word &quot;Ins&quot; or the
-word &quot;Del&quot;.</p>
+<p style="margin-left:15%;"><b>Ins</b> or <b>Del</b>.</p>
 
-<p style="margin-left:11%;">Valid <i>function</i> names to
-be bound are:</p>
+<p style="margin-left:11%; margin-top: 1em">Rebinding
+<b>^M</b> (Enter) or <b>^I</b> (Tab) is probably not a good
+idea. On some terminals it&rsquo;s not possible to rebind
+<b>^H</b> (unless <b>&minus;&minus;raw</b> is used) because
+its keycode is identical to that of the Backspace key. <br>
+Valid <i>function</i> names to be bound are:</p>
 
 <p style="margin-left:15%;"><b>help</b></p>
 
@@ -910,8 +936,15 @@ lines and characters in the current buffer.</p>
 <p style="margin-left:15%;"><b>speller</b></p>
 
 <p style="margin-left:18%;">Invokes a spell-checking
-program, either the default one, or the one defined by
+program, either the default <b>hunspell</b> or GNU
+<b>spell</b>, or the one defined by
 <b>&minus;&minus;speller</b> or <b>set speller</b>.</p>
+
+<p style="margin-left:15%;"><b>formatter</b></p>
+
+<p style="margin-left:18%;">Invokes a
+full-buffer-processing program (if the active syntax defines
+one).</p>
 
 <p style="margin-left:15%;"><b>linter</b></p>
 
@@ -1359,8 +1392,8 @@ from an external command, reached from the insert menu.</p>
 
 <p style="margin-left:15%;"><b>spell</b></p>
 
-<p style="margin-left:18%;">The interactive spell checker
-Yes/no menu.</p>
+<p style="margin-left:18%;">The menu of the integrated
+spell checker where the user can edit a misspelled word.</p>
 
 <p style="margin-left:15%;"><b>linter</b></p>
 

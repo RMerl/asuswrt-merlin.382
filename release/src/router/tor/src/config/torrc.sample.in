@@ -1,5 +1,5 @@
 ## Configuration file for a typical Tor user
-## Last updated 22 December 2017 for Tor 0.3.2.8-rc.
+## Last updated 28 February 2019 for Tor 0.3.5.1-alpha.
 ## (may or may not work for much older or much newer versions of Tor.)
 ##
 ## Lines that begin with "## " try to explain what's going on. Lines
@@ -172,14 +172,25 @@
 ## Note: do not use MyFamily on bridge relays.
 #MyFamily $keyid,$keyid,...
 
-## Uncomment this if you do *not* want your relay to allow any exit traffic.
-## (Relays allow exit traffic by default.)
-#ExitRelay 0
+## Uncomment this if you want your relay to be an exit, with the default
+## exit policy (or whatever exit policy you set below).
+## (If ReducedExitPolicy or ExitPolicy are set, relays are exits.
+## If neither exit policy option is set, relays are non-exits.)
+#ExitRelay 1
 
 ## Uncomment this if you want your relay to allow IPv6 exit traffic.
-## (Relays only allow IPv4 exit traffic by default.)
+## You must also set ExitRelay, ReducedExitPolicy, or ExitPolicy to make your
+## relay into an exit.
+## (Relays do not allow any exit traffic by default.)
 #IPv6Exit 1
 
+## Uncomment this if you want your relay to be an exit, with a reduced set
+## of exit ports.
+#ReducedExitPolicy 1
+
+## Uncomment these lines if you want your relay to be an exit, with the
+## specified set of exit IPs and ports.
+##
 ## A comma-separated list of exit policies. They're considered first
 ## to last, and the first match wins.
 ##

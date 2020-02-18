@@ -27,6 +27,8 @@ authdir_mode_v3(const or_options_t *options)
   return authdir_mode(options) && options->V3AuthoritativeDir != 0;
 }
 
+#define have_module_dirauth() (1)
+
 #else /* HAVE_MODULE_DIRAUTH */
 
 #define authdir_mode(options) (((void)(options)),0)
@@ -36,6 +38,8 @@ authdir_mode_v3(const or_options_t *options)
 #define authdir_mode_tests_reachability(options) (((void)(options)),0)
 #define authdir_mode_bridge(options) (((void)(options)),0)
 #define authdir_mode_v3(options) (((void)(options)),0)
+
+#define have_module_dirauth() (0)
 
 #endif /* HAVE_MODULE_DIRAUTH */
 

@@ -1,5 +1,5 @@
 /* Extended regular expression matching and search library.
-   Copyright (C) 2002-2019 Free Software Foundation, Inc.
+   Copyright (C) 2002-2020 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
    Contributed by Isamu Hasegawa <isamu@yamato.ibm.com>.
 
@@ -212,7 +212,7 @@ build_wcs_buffer (re_string_t *pstr)
 {
 #ifdef _LIBC
   unsigned char buf[MB_LEN_MAX];
-  assert (MB_LEN_MAX >= pstr->mb_cur_max);
+  DEBUG_ASSERT (MB_LEN_MAX >= pstr->mb_cur_max);
 #else
   unsigned char buf[64];
 #endif
@@ -285,7 +285,7 @@ build_wcs_upper_buffer (re_string_t *pstr)
   size_t mbclen;
 #ifdef _LIBC
   char buf[MB_LEN_MAX];
-  assert (MB_LEN_MAX >= pstr->mb_cur_max);
+  DEBUG_ASSERT (pstr->mb_cur_max <= MB_LEN_MAX);
 #else
   char buf[64];
 #endif
@@ -685,9 +685,7 @@ re_string_reconstruct (re_string_t *pstr, Idx idx, int eflags)
 			 pstr->valid_len - offset);
 	      pstr->valid_len -= offset;
 	      pstr->valid_raw_len -= offset;
-#if defined DEBUG && DEBUG
-	      assert (pstr->valid_len > 0);
-#endif
+	      DEBUG_ASSERT (pstr->valid_len > 0);
 	    }
 	}
       else
@@ -941,10 +939,7 @@ re_string_context_at (const re_string_t *input, Idx idx, int eflags)
       Idx wc_idx = idx;
       while(input->wcs[wc_idx] == WEOF)
 	{
-#if defined DEBUG && DEBUG
-	  /* It must not happen.  */
-	  assert (wc_idx >= 0);
-#endif
+	  DEBUG_ASSERT (wc_idx >= 0);
 	  --wc_idx;
 	  if (wc_idx < 0)
 	    return input->tip_context;
@@ -1311,7 +1306,6 @@ re_node_set_insert (re_node_set *set, Idx elem)
      first element separately to skip a check in the inner loop.  */
   if (elem < set->elems[0])
     {
-      idx = 0;
       for (idx = set->nelem; idx > 0; idx--)
 	set->elems[idx] = set->elems[idx - 1];
     }
@@ -1716,15 +1710,19 @@ create_cd_newstate (const re_dfa_t *dfa, const re_node_set *nodes,
 	{
 	  if (newstate->entrance_nodes == &newstate->nodes)
 	    {
-	      newstate->entrance_nodes = re_malloc (re_node_set, 1);
-	      if (__glibc_unlikely (newstate->entrance_nodes == NULL))
+	      re_node_set *entrance_nodes = re_malloc (re_node_set, 1);
+	      if (__glibc_unlikely (entrance_nodes == NULL))
 		{
 		  free_state (newstate);
 		  return NULL;
 		}
+	      newstate->entrance_nodes = entrance_nodes;
 	      if (re_node_set_init_copy (newstate->entrance_nodes, nodes)
 		  != REG_NOERROR)
-		return NULL;
+		{
+		  free_state (newstate);
+		  return NULL;
+		}
 	      nctx_nodes = 0;
 	      newstate->has_constraint = 1;
 	    }

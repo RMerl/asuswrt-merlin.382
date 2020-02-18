@@ -44,9 +44,11 @@ struct per_transfer {
   char *outfile;
   bool infdopen; /* TRUE if infd needs closing */
   int infd;
+  bool noprogress;
   struct ProgressData progressbar;
   struct OutStruct outs;
   struct OutStruct heads;
+  struct OutStruct etag_save;
   struct InStruct input;
   struct HdrCbData hdrcbdata;
   char errorbuffer[CURL_ERROR_SIZE];

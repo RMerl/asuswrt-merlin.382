@@ -19,6 +19,7 @@
 #include "lib/string/printf.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 #ifdef TOR_UNIT_TESTS
 static void (*failed_assertion_cb)(void) = NULL;
@@ -118,6 +119,19 @@ tor_bug_occurred_(const char *fname, unsigned int line,
     failed_assertion_cb();
   }
 #endif
+}
+
+/**
+ * Call the abort() function to kill the current process with a fatal
+ * error.
+ *
+ * (This is a separate function so that we declare it in util_bug.h without
+ * including stdlib in all the users of util_bug.h)
+ **/
+void
+tor_abort_(void)
+{
+  abort();
 }
 
 #ifdef _WIN32

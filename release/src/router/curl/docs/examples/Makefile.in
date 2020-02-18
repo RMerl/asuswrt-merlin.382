@@ -165,7 +165,7 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) anyauthput$(EXEEXT) \
 	sftpuploadresume$(EXEEXT) http2-pushinmemory$(EXEEXT) \
 	parseurl$(EXEEXT) urlapi$(EXEEXT) imap-authzid$(EXEEXT) \
 	pop3-authzid$(EXEEXT) smtp-authzid$(EXEEXT) http3$(EXEEXT) \
-	altsvc$(EXEEXT) http3-present$(EXEEXT)
+	altsvc$(EXEEXT) http3-present$(EXEEXT) multi-poll$(EXEEXT)
 subdir = docs/examples
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ax_compile_check_sizeof.m4 \
@@ -543,6 +543,13 @@ multi_formadd_LDADD = $(LDADD)
 @USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
 @USE_EXPLICIT_LIB_DEPS_TRUE@multi_formadd_DEPENDENCIES =  \
 @USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+multi_poll_SOURCES = multi-poll.c
+multi_poll_OBJECTS = multi-poll.$(OBJEXT)
+multi_poll_LDADD = $(LDADD)
+@USE_EXPLICIT_LIB_DEPS_FALSE@multi_poll_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
+@USE_EXPLICIT_LIB_DEPS_TRUE@multi_poll_DEPENDENCIES =  \
+@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
 multi_post_SOURCES = multi-post.c
 multi_post_OBJECTS = multi-post.$(OBJEXT)
 multi_post_LDADD = $(LDADD)
@@ -869,19 +876,20 @@ am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/imap-store.Po ./$(DEPDIR)/imap-tls.Po \
 	./$(DEPDIR)/multi-app.Po ./$(DEPDIR)/multi-debugcallback.Po \
 	./$(DEPDIR)/multi-double.Po ./$(DEPDIR)/multi-formadd.Po \
-	./$(DEPDIR)/multi-post.Po ./$(DEPDIR)/multi-single.Po \
-	./$(DEPDIR)/parseurl.Po ./$(DEPDIR)/persistent.Po \
-	./$(DEPDIR)/pop3-authzid.Po ./$(DEPDIR)/pop3-dele.Po \
-	./$(DEPDIR)/pop3-list.Po ./$(DEPDIR)/pop3-multi.Po \
-	./$(DEPDIR)/pop3-noop.Po ./$(DEPDIR)/pop3-retr.Po \
-	./$(DEPDIR)/pop3-ssl.Po ./$(DEPDIR)/pop3-stat.Po \
-	./$(DEPDIR)/pop3-tls.Po ./$(DEPDIR)/pop3-top.Po \
-	./$(DEPDIR)/pop3-uidl.Po ./$(DEPDIR)/post-callback.Po \
-	./$(DEPDIR)/postinmemory.Po ./$(DEPDIR)/postit2-formadd.Po \
-	./$(DEPDIR)/postit2.Po ./$(DEPDIR)/progressfunc.Po \
-	./$(DEPDIR)/resolve.Po ./$(DEPDIR)/rtsp.Po \
-	./$(DEPDIR)/sendrecv.Po ./$(DEPDIR)/sepheaders.Po \
-	./$(DEPDIR)/sftpget.Po ./$(DEPDIR)/sftpuploadresume.Po \
+	./$(DEPDIR)/multi-poll.Po ./$(DEPDIR)/multi-post.Po \
+	./$(DEPDIR)/multi-single.Po ./$(DEPDIR)/parseurl.Po \
+	./$(DEPDIR)/persistent.Po ./$(DEPDIR)/pop3-authzid.Po \
+	./$(DEPDIR)/pop3-dele.Po ./$(DEPDIR)/pop3-list.Po \
+	./$(DEPDIR)/pop3-multi.Po ./$(DEPDIR)/pop3-noop.Po \
+	./$(DEPDIR)/pop3-retr.Po ./$(DEPDIR)/pop3-ssl.Po \
+	./$(DEPDIR)/pop3-stat.Po ./$(DEPDIR)/pop3-tls.Po \
+	./$(DEPDIR)/pop3-top.Po ./$(DEPDIR)/pop3-uidl.Po \
+	./$(DEPDIR)/post-callback.Po ./$(DEPDIR)/postinmemory.Po \
+	./$(DEPDIR)/postit2-formadd.Po ./$(DEPDIR)/postit2.Po \
+	./$(DEPDIR)/progressfunc.Po ./$(DEPDIR)/resolve.Po \
+	./$(DEPDIR)/rtsp.Po ./$(DEPDIR)/sendrecv.Po \
+	./$(DEPDIR)/sepheaders.Po ./$(DEPDIR)/sftpget.Po \
+	./$(DEPDIR)/sftpuploadresume.Po \
 	./$(DEPDIR)/shared-connection-cache.Po ./$(DEPDIR)/simple.Po \
 	./$(DEPDIR)/simplepost.Po ./$(DEPDIR)/simplessl.Po \
 	./$(DEPDIR)/smtp-authzid.Po ./$(DEPDIR)/smtp-expn.Po \
@@ -921,16 +929,16 @@ SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c chkspeed.c \
 	imap-list.c imap-lsub.c imap-multi.c imap-noop.c imap-search.c \
 	imap-ssl.c imap-store.c imap-tls.c multi-app.c \
 	multi-debugcallback.c multi-double.c multi-formadd.c \
-	multi-post.c multi-single.c parseurl.c persistent.c \
-	pop3-authzid.c pop3-dele.c pop3-list.c pop3-multi.c \
-	pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c pop3-tls.c \
-	pop3-top.c pop3-uidl.c post-callback.c postinmemory.c \
-	postit2.c postit2-formadd.c progressfunc.c resolve.c rtsp.c \
-	sendrecv.c sepheaders.c sftpget.c sftpuploadresume.c \
-	shared-connection-cache.c simple.c simplepost.c simplessl.c \
-	smtp-authzid.c smtp-expn.c smtp-mail.c smtp-mime.c \
-	smtp-multi.c smtp-ssl.c smtp-tls.c smtp-vrfy.c sslbackend.c \
-	url2file.c urlapi.c
+	multi-poll.c multi-post.c multi-single.c parseurl.c \
+	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
+	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
+	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
+	resolve.c rtsp.c sendrecv.c sepheaders.c sftpget.c \
+	sftpuploadresume.c shared-connection-cache.c simple.c \
+	simplepost.c simplessl.c smtp-authzid.c smtp-expn.c \
+	smtp-mail.c smtp-mime.c smtp-multi.c smtp-ssl.c smtp-tls.c \
+	smtp-vrfy.c sslbackend.c url2file.c urlapi.c
 DIST_SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c \
 	chkspeed.c cookie_interface.c debug.c externalsocket.c \
 	fileupload.c fopen.c ftp-wildcard.c ftpget.c ftpgetinfo.c \
@@ -943,8 +951,8 @@ DIST_SOURCES = 10-at-a-time.c altsvc.c anyauthput.c certinfo.c \
 	imap-examine.c imap-fetch.c imap-list.c imap-lsub.c \
 	imap-multi.c imap-noop.c imap-search.c imap-ssl.c imap-store.c \
 	imap-tls.c multi-app.c multi-debugcallback.c multi-double.c \
-	multi-formadd.c multi-post.c multi-single.c parseurl.c \
-	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	multi-formadd.c multi-poll.c multi-post.c multi-single.c \
+	parseurl.c persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
 	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
 	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
 	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
@@ -1109,6 +1117,7 @@ STRIP = @STRIP@
 SUPPORT_FEATURES = @SUPPORT_FEATURES@
 SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
 USE_ARES = @USE_ARES@
+USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
 USE_GNUTLS_NETTLE = @USE_GNUTLS_NETTLE@
 USE_LIBRTMP = @USE_LIBRTMP@
@@ -1464,6 +1473,10 @@ multi-formadd$(EXEEXT): $(multi_formadd_OBJECTS) $(multi_formadd_DEPENDENCIES) $
 	@rm -f multi-formadd$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(multi_formadd_OBJECTS) $(multi_formadd_LDADD) $(LIBS)
 
+multi-poll$(EXEEXT): $(multi_poll_OBJECTS) $(multi_poll_DEPENDENCIES) $(EXTRA_multi_poll_DEPENDENCIES) 
+	@rm -f multi-poll$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(multi_poll_OBJECTS) $(multi_poll_LDADD) $(LIBS)
+
 multi-post$(EXEEXT): $(multi_post_OBJECTS) $(multi_post_DEPENDENCIES) $(EXTRA_multi_post_DEPENDENCIES) 
 	@rm -f multi-post$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(multi_post_OBJECTS) $(multi_post_LDADD) $(LIBS)
@@ -1684,6 +1697,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-debugcallback.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-double.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-formadd.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-poll.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-post.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-single.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parseurl.Po@am__quote@ # am--include-marker
@@ -1938,6 +1952,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
 	-rm -f ./$(DEPDIR)/multi-double.Po
 	-rm -f ./$(DEPDIR)/multi-formadd.Po
+	-rm -f ./$(DEPDIR)/multi-poll.Po
 	-rm -f ./$(DEPDIR)/multi-post.Po
 	-rm -f ./$(DEPDIR)/multi-single.Po
 	-rm -f ./$(DEPDIR)/parseurl.Po
@@ -2074,6 +2089,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
 	-rm -f ./$(DEPDIR)/multi-double.Po
 	-rm -f ./$(DEPDIR)/multi-formadd.Po
+	-rm -f ./$(DEPDIR)/multi-poll.Po
 	-rm -f ./$(DEPDIR)/multi-post.Po
 	-rm -f ./$(DEPDIR)/multi-single.Po
 	-rm -f ./$(DEPDIR)/parseurl.Po

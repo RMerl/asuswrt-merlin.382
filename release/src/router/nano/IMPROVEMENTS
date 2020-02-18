@@ -2,6 +2,11 @@ Improvements in GNU nano
 ========================
 
 Since 4.0:
+  - Pasting from outside into nano suppresses auto-indentation.
+  - Such an external paste can be undone with a single M-U.
+  - Shift+Meta+letter key combos can be bound with 'bind Sh-M-letter ...'.
+  - A custom nanorc file may be specified with -f / --rcfile.
+  - What the <Tab> key produces can be specified per syntax with 'tabgives'.
   - The ability to perform a search at startup with +/string or +?string.
   - Comment characters are copied when automatic hard-wrapping occurs.
   - The ability to both read from and write to a FIFO.

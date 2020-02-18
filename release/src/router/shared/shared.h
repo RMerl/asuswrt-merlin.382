@@ -1817,6 +1817,8 @@ extern int get_bonding_status();
 #endif
 extern int isValidMacAddress(const char* mac);
 extern int isValidEnableOption(const char* option, int range);
+extern int is_valid_hostname(const char *name);
+extern int is_valid_domainname(const char *name);
 
 /* scripts.c */
 extern void run_custom_script(char *name, int timeout, char *arg1, char *arg2);

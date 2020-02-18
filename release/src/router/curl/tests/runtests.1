@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -20,7 +20,7 @@
 .\" *
 .\" **************************************************************************
 .\"
-.TH runtests.pl 1 "May 05, 2017" "Curl 7.67.0" "runtests"
+.TH runtests.pl 1 "December 13, 2019" "Curl 7.68.0" "runtests"
 
 .SH NAME
 runtests.pl \- run one or more test cases
@@ -83,8 +83,20 @@ Run the tests in a scrambled, or randomized, order instead of sequentially.
 Display run time statistics. (Requires Perl Time::HiRes module)
 .IP "-rf"
 Display full run time statistics. (Requires Perl Time::HiRes module)
+.IP "--repeat=[num]"
+This will repeat the given set of test numbers this many times. If no test
+numbers are given, it will repeat ALL tests this many times. It iteratively
+adds the new sequence at the end of the initially given one.
+
+If \fB-R\fP is also used, the scrambling is done after the repeats have
+extended the test sequence.
 .IP "-s"
 Shorter output. Speaks less than default.
+.IP "--shallow=[num](,seed)"
+Used together with \fB-t\fP. This limits the number of tests to fail in
+torture mode to no more than 'num' per test case. If this reduces the amount,
+the given 'seed' will be used to randomly discard entries to fail until the
+amount is 'num'.
 .IP "-t[num]"
 Selects a \fBtorture\fP test for the given tests. This makes runtests.pl first
 run the tests once and count the number of memory allocations made. It then

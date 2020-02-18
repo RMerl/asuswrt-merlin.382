@@ -955,6 +955,9 @@
 /* Define to enable c-ares support */
 #undef USE_ARES
 
+/* if BearSSL is enabled */
+#undef USE_BEARSSL
+
 /* if ESNI support is available */
 #undef USE_ESNI
 

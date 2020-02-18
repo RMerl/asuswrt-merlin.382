@@ -2,7 +2,6 @@ A list of desired features
 --------------------------
 
 Somewhat urgent:
-- Make undo/redo work also for justifying.
 - Detect when text is being pasted, so that we can handle it faster.
   See https://savannah.gnu.org/bugs/?40060.
 - Allow color syntaxes to apply to more than just color, so that we can
@@ -16,6 +15,9 @@ Vague musings:
   and allow movement between them with a single keystroke?
 - Make matching bracket searches sophisticated enough to skip over
   brackets inside comments?
+
+For version 4.0:
+- Make undo/redo work also for justifying. [DONE]
 
 For version 2.9:
 - Allow piping (marked) text to an external command and replacing it with

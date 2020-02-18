@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2018, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2019, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -130,6 +130,16 @@ Curl_addrinfo *Curl_ipv4_resolve_r(const char *hostname,
   struct hostent *h = NULL;
   struct in_addr in;
   struct hostent *buf = NULL;
+
+#ifdef ENABLE_IPV6
+  {
+    struct in6_addr in6;
+    /* check if this is an IPv6 address string */
+    if(Curl_inet_pton(AF_INET6, hostname, &in6) > 0)
+      /* This is an IPv6 address literal */
+      return Curl_ip2addr(AF_INET6, &in6, hostname, port);
+  }
+#endif /* ENABLE_IPV6 */
 
   if(Curl_inet_pton(AF_INET, hostname, &in) > 0)
     /* This is a dotted IP address 123.123.123.123-style */

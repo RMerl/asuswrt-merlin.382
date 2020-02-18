@@ -1562,6 +1562,19 @@ test_dir_measured_bw_kb(void *arg)
     /* check whether node_id can be at the end and something in the
      * in the middle of bw and node_id */
     "bw=1024 foo=bar node_id=$557365204145532d32353620696e73746561642e\n",
+
+    /* Test that a line with vote=1 will pass. */
+    "node_id=$557365204145532d32353620696e73746561642e bw=1024 vote=1\n",
+    /* Test that a line with unmeasured=1 will pass. */
+    "node_id=$557365204145532d32353620696e73746561642e bw=1024 unmeasured=1\n",
+    /* Test that a line with vote=1 and unmeasured=1 will pass. */
+    "node_id=$557365204145532d32353620696e73746561642e bw=1024 vote=1"
+    "unmeasured=1\n",
+    /* Test that a line with unmeasured=0 will pass. */
+    "node_id=$557365204145532d32353620696e73746561642e bw=1024 unmeasured=0\n",
+    /* Test that a line with vote=1 and unmeasured=0 will pass. */
+    "node_id=$557365204145532d32353620696e73746561642e bw=1024 vote=1"
+    "unmeasured=0\n",
     "end"
   };
   const char *lines_fail[] = {
@@ -1595,6 +1608,12 @@ test_dir_measured_bw_kb(void *arg)
     "node_id=$55736520414552d32353620696e73746561642e bw=1024\n",
     "node_id=557365204145532d32353620696e73746561642e bw=1024\n",
     "node_id= $557365204145532d32353620696e73746561642e bw=0.23\n",
+
+    /* Test that a line with vote=0 will fail too, so that it is ignored. */
+    "node_id=$557365204145532d32353620696e73746561642e bw=1024 vote=0\n",
+    /* Test that a line with vote=0 will fail even if unmeasured=0. */
+    "node_id=$557365204145532d32353620696e73746561642e bw=1024 vote=0 "
+    "unmeasured=0\n",
     "end"
   };
 
@@ -1978,6 +1997,44 @@ test_dir_dirserv_read_measured_bandwidths(void *arg)
   SMARTLIST_FOREACH(bw_file_headers, char *, c, tor_free(c));
   smartlist_free(bw_file_headers);
   tor_free(bw_file_headers_str);
+
+  /* Test v1.x.x bandwidth line with vote=0.
+   * It will be ignored it and logged it at debug level. */
+  const char *relay_lines_ignore =
+    "node_id=$68A483E05A2ABDCA6DA5A3EF8DB5177638A27F80 bw=1024 vote=0\n"
+    "node_id=$68A483E05A2ABDCA6DA5A3EF8DB5177638A27F80 bw=1024 vote=0"
+    "unmeasured=1\n"
+    "node_id=$68A483E05A2ABDCA6DA5A3EF8DB5177638A27F80 bw=1024 vote=0"
+    "unmeasured=0\n";
+
+  /* Create the bandwidth file */
+  tor_asprintf(&content, "%ld\n%s", (long)timestamp, relay_lines_ignore);
+  write_str_to_file(fname, content, 0);
+  tor_free(content);
+
+  /* Read the bandwidth file */
+  setup_full_capture_of_logs(LOG_DEBUG);
+  tt_int_op(0, OP_EQ, dirserv_read_measured_bandwidths(fname, NULL, NULL));
+  expect_log_msg_containing("Ignoring bandwidth file line");
+  teardown_capture_of_logs();
+
+  /* Test v1.x.x bandwidth line with "vote=1" or "unmeasured=1" or
+   * "unmeasured=0".
+   * They will not be ignored. */
+  /* Create the bandwidth file */
+  const char *relay_lines_vote =
+    "node_id=$68A483E05A2ABDCA6DA5A3EF8DB5177638A27F80 bw=1024 vote=1\n"
+    "node_id=$68A483E05A2ABDCA6DA5A3EF8DB5177638A27F80 bw=1024 unmeasured=0\n"
+    "node_id=$68A483E05A2ABDCA6DA5A3EF8DB5177638A27F80 bw=1024 unmeasured=1\n";
+  tor_asprintf(&content, "%ld\n%s", (long)timestamp, relay_lines_vote);
+  write_str_to_file(fname, content, 0);
+  tor_free(content);
+
+  /* Read the bandwidth file */
+  setup_full_capture_of_logs(LOG_DEBUG);
+  tt_int_op(0, OP_EQ, dirserv_read_measured_bandwidths(fname, NULL, NULL));
+  expect_log_msg_not_containing("Ignoring bandwidth file line");
+  teardown_capture_of_logs();
 
  done:
   tor_free(fname);

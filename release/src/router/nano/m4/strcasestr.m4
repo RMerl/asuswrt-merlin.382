@@ -1,5 +1,5 @@
-# strcasestr.m4 serial 24
-dnl Copyright (C) 2005, 2007-2019 Free Software Foundation, Inc.
+# strcasestr.m4 serial 25
+dnl Copyright (C) 2005, 2007-2020 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
 dnl with or without modifications, as long as this notice is preserved.
@@ -64,7 +64,7 @@ AC_DEFUN([gl_FUNC_STRCASESTR_SIMPLE],
 #endif
               ],
               [gl_cv_func_strcasestr_works_always="guessing yes"],
-              [gl_cv_func_strcasestr_works_always="guessing no"])
+              [gl_cv_func_strcasestr_works_always="$gl_cross_guess_normal"])
            ])
         ])
       case "$gl_cv_func_strcasestr_works_always" in
@@ -136,7 +136,7 @@ static void quit (int sig) { _exit (sig + 128); }
 #endif
            ],
            [gl_cv_func_strcasestr_linear="guessing yes"],
-           [gl_cv_func_strcasestr_linear="guessing no"])
+           [gl_cv_func_strcasestr_linear="$gl_cross_guess_normal"])
         ])
       ])
     case "$gl_cv_func_strcasestr_linear" in

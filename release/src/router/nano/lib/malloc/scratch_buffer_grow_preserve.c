@@ -1,5 +1,5 @@
 /* Variable-sized buffer with on-stack default allocation.
-   Copyright (C) 2015-2019 Free Software Foundation, Inc.
+   Copyright (C) 2015-2020 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -30,14 +30,14 @@ __libc_scratch_buffer_grow_preserve (struct scratch_buffer *buffer)
   size_t new_length = 2 * buffer->length;
   void *new_ptr;
 
-  if (buffer->data == buffer->__space)
+  if (buffer->data == buffer->__space.__c)
     {
       /* Move buffer to the heap.  No overflow is possible because
 	 buffer->length describes a small buffer on the stack.  */
       new_ptr = malloc (new_length);
       if (new_ptr == NULL)
 	return false;
-      memcpy (new_ptr, buffer->__space, buffer->length);
+      memcpy (new_ptr, buffer->__space.__c, buffer->length);
     }
   else
     {

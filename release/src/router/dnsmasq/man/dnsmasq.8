@@ -484,7 +484,7 @@ source address specified but the port may be specified directly as
 part of the source address. Forcing queries to an interface is not
 implemented on all platforms supported by dnsmasq.
 .TP
-.B --rev-server=<ip-address>/<prefix-len>,<ipaddr>[#<port>][@<source-ip>|<interface>[#<port>]]
+.B --rev-server=<ip-address>/<prefix-len>[,<ipaddr>][#<port>][@<source-ip>|<interface>[#<port>]]
 This is functionally the same as 
 .B --server, 
 but provides some syntactic sugar to make specifying address-to-name queries easier. For example
@@ -975,7 +975,7 @@ is also included, as described in RFC-3775 section 7.3.
 tells dnsmasq to advertise the prefix without the on-link (aka L) bit set.
 
 .TP
-.B \-G, --dhcp-host=[<hwaddr>][,id:<client_id>|*][,set:<tag>][,<ipaddr>][,<hostname>][,<lease_time>][,ignore]
+.B \-G, --dhcp-host=[<hwaddr>][,id:<client_id>|*][,set:<tag>][tag:<tag>][,<ipaddr>][,<hostname>][,<lease_time>][,ignore]
 Specify per host parameters for the DHCP server. This allows a machine
 with a particular hardware address to be always allocated the same
 hostname, IP address and lease time. A hostname specified like this
@@ -1008,12 +1008,19 @@ allowed to specify the client ID as text, like this:
 
 A single
 .B --dhcp-host
-may contain an IPv4 address or an IPv6 address, or both. IPv6 addresses must be bracketed by square brackets thus:
+may contain an IPv4 address or one or more IPv6 addresses, or both. IPv6 addresses must be bracketed by square brackets thus:
 .B --dhcp-host=laptop,[1234::56]
 IPv6 addresses may contain only the host-identifier part:
 .B --dhcp-host=laptop,[::56]
 in which case they act as wildcards in constructed dhcp ranges, with
-the appropriate network part inserted. 
+the appropriate network part inserted. For IPv6, an address may include a prefix length:
+.B --dhcp-host=laptop,[1234:50/126]
+which (in this case) specifies four addresses, 1234::50 to 1234::53. This (an the ability
+to specify multiple addresses) is useful
+when a host presents either a consistent name or hardware-ID, but varying DUIDs, since it allows
+dnsmasq to honour the static address allocation but assign a different adddress for each DUID. This
+typically occurs when chain netbooting, as each stage of the chain gets in turn allocates an address.
+
 Note that in IPv6 DHCP, the hardware address may not be
 available, though it normally is for direct-connected clients, or
 clients using DHCP relays which support RFC 6939.
@@ -1053,6 +1060,9 @@ ignore requests from unknown machines using
 .B --dhcp-ignore=tag:!known
 If the host matches only a \fB--dhcp-host\fP directive which cannot
 be used because it specifies an address on different subnet, the tag "known-othernet" is set.
+
+The tag:<tag> construct filters which dhcp-host directives are used. Tagged directives are used in preference to untagged ones.
+
 Ethernet addresses (but not client-ids) may have
 wildcard bytes, so for example 
 .B --dhcp-host=00:20:e0:3b:13:*,ignore 
