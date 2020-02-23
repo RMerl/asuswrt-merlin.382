@@ -10,7 +10,7 @@
 
 add=/jffs/addons/amtm
 amtmURL=https://fwupdate.asuswrt-merlin.net/amtm_fw
-amtmRev=1
+amtmRev=2
 
 a_m(){ [ -z "$am" ] && am=$1 || am="$am\\n$1";}
 c_nl(){ [ -n "$(tail -c2 "$1")" ] && echo >> "$1";}
@@ -30,7 +30,7 @@ theme_reduced_cw(){ R='[31m';R_BG='[97;40m';E_BG='[97;41m';GN='[32m';GN_BG='
 theme_reduced_b(){ R='[38;5;209m';R_BG='[100m';E_BG='[100m';GN='[38;5;157m';GN_BG='[100m';B='[37m';GY='[90m';NC='[0m';COR=21;}
 theme_reduced_cb(){ R='[31m';R_BG='[100m';E_BG='[30;41m';GN='[38;5;157m';GN_BG='[30;42m';B='[37m';GY='[90m';NC='[0m';COR=23;}
 theme_basic(){ R='[31m';R_BG=;E_BG=;GN=;GN_BG=;B=;GY='[90m';NC='[0m';COR=15;}
-f_b_url(){ a_m " ! using ${R}fallback server${NC} diversion.ch\\n";amtmURL=https://diversion.ch/amtm_fw;}
+f_b_url(){ a_m " ! using ${R}fallback server${NC} diversion.ch";amtmURL=https://diversion.ch/amtm_fw;dfc=1;g_m "$@";}
 
 c_t(){
 	divconf=/opt/share/diversion/.conf/diversion.conf
@@ -46,38 +46,39 @@ g_m(){
 	[ "$1" = amtm.mod ] && set -- "$1" "$2" "${add}/a_fw"
 	[ "$3" ] || set -- "$1" "$2" "${add}"
 	if [ "$2" = new ]; then
-		[ -z "$dlLoc" ] && a_m "\\n Getting from $(echo $amtmURL | awk -F[/:] '{print $4}')"
-		dlLoc=1
+		[ ! -f /tmp/amtm-dl ] && a_m "\\n Getting from $(echo $amtmURL | awk -F[/:] '{print $4}')"
+		touch /tmp/amtm-dl
 		c_url "$amtmURL/$1" -o "$3/${1}.new"
 		if [ -s "$3/${1}.new" ]; then
 			if grep -wq '^#bof' "$3/${1}.new" && grep -wq '^#eof' "$3/${1}.new"; then
 				mv -f "$3/${1}.new" "$3/$1"
 				a_m " - Module ${GN}$1${NC} ${rdl}downloaded"
-				sfp=1
+				sfp=1;dlok=1;dfc=
 			else
 				rm -f "$3/${1}.new"
 				a_m " ! Module ${R}$1${NC} is not an amtm file"
-				f_b_url
-				g_m "$@"
+				dlok=0
+				[ -z "$dfc" ] && f_b_url "$@"
 			fi
 		elif [ -f "$3/$1" ]; then
 			rm -f "$3/${1}.new"
 			a_m " ! Module ${R}$1${NC} ${rdl}download failed, using existing file"
-			f_b_url
-			g_m "$@"
+			dlok=0
+			[ -z "$dfc" ] && f_b_url "$@"
 		else
 			rm -f "$3/${1}.new"
 			a_m " ! Module ${R}$1${NC} ${rdl}download failed"
-			f_b_url
-			g_m "$@"
+			dlok=0
+			[ -z "$dfc" ] && f_b_url "$@"
 		fi
 	fi
 	if [ "$2" = include ]; then
 		if [ -f "$3/$1" ]; then
 			. "$3/$1"
+			dlok=1
 		else
 			g_m "$1" new "$3"
-			[ -f "$3/$1" ] && . "$3/$1"
+			[ -f "$3/$1" ] && . "$3/$1" || dlok=0
 		fi
 	fi
 }
@@ -161,7 +162,6 @@ init_amtm(){
 	if [ -f "/jffs/configs/profile.add" ]; then
 		sed -i '/alias amtm=/d' /jffs/configs/profile.add >/dev/null
 		r_w_e /jffs/configs/profile.add
-		unalias amtm 2> /dev/null
 	fi
 	if [ -f /jffs/scripts/amtm ] || [ -f /opt/bin/amtm ]; then
 		rm -f /jffs/scripts/amtm /opt/bin/amtm
@@ -177,9 +177,10 @@ init_amtm(){
 	fi
 	g_m amtm.mod new
 	if [ ! -f "${add}"/a_fw/amtm.mod ]; then
+		rm -f /tmp/amtm-dl
 		p_e_l
-		printf "$am\\n\\n Exiting amtm now\\n"
-		p_e_l
+		printf "$am\\n\\n"
+		printf " All download attempts ${R}failed${NC},\\n exiting amtm now.\\n\\n Check that both domains properly resolve\\n on this router:\\n - ${GN}fwupdate.asuswrt-merlin.net${NC}\\n - ${GN}$(echo $amtmURL | awk -F[/:] '{print $4}')$1${NC}\\n\\n"
 		exit 1
 	fi
 	exec "$0" "$am"
