@@ -18,6 +18,7 @@ Quad9 1,9.9.9.9,,dns.quad9.net,
 Quad9 2,149.112.112.112,,dns.quad9.net,
 
 IPv4 (port 443)
+Applied Privacy,37.252.185.232,443,dot1.appliedprivacy.net,
 Neutopia,89.234.186.112,443,dns.neutopia.org,wTeXHM8aczvhRSi0cv2qOXkXInoDU+2C+M8MpRyT3OI=
 Surfnet/Sinodun 1,145.100.185.15,443,dnsovertls.sinodun.com,62lKu9HsDVbyiPenApnc4sfmSYTHOVfFgL3pyB+cBL4=
 Surfnet/Sinodun 2,145.100.185.16,443,dnsovertls1.sinodun.com,cE2ecALeE5B+urJhDrJlVFmf38cJLAvqekONvjvpqUA=
@@ -37,6 +38,7 @@ Quad9 1,2620:fe::fe,,dns.quad9.net,
 Quad9 2,2620:fe::9,,dns.quad9.net,
 
 IPv6 (port 443)
+Applied Privacy,2a00:63c1:a:229::3,443,dot1.appliedprivacy.net,
 Neutopia,2a00:5884:8209::2,443,dns.neutopia.org,wTeXHM8aczvhRSi0cv2qOXkXInoDU+2C+M8MpRyT3OI=
 Surfnet/Sinodun 1,2001:610:1:40ba:145:100:185:15,443,dnsovertls.sinodun.com,62lKu9HsDVbyiPenApnc4sfmSYTHOVfFgL3pyB+cBL4=
 Surfnet/Sinodun 2,2001:610:1:40ba:145:100:185:16,443,dnsovertls1.sinodun.com,cE2ecALeE5B+urJhDrJlVFmf38cJLAvqekONvjvpqUA=
