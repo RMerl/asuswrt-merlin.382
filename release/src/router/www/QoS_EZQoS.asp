@@ -337,11 +337,12 @@ if(wl_info.band5g_2_support != '-1'){
 if(pm_support) {
 	var device_list = [<% pms_device_info(); %>][0];
 	var group_list = [<% pms_devgroup_info(); %>][0];
-	var device_option_array = [
-	["0", ""],["1", "Windows device"], ["2", "Router"], ["3", ""], ["4", "NAS/Server"], ["5", "IP Cam"], ["6", "MacBook"], ["7", "Game Console"], ["8", ""], ["9", "Android Phone"],
-	["10", "iPhone"], ["11", "Apple TV"], ["12", "Set-Top Box"], ["13", ""], ["14", "iMac"], ["15", "ROG"], ["16", ""], ["17", ""], ["18", "Printer"], ["19", "Windows Phone"], ["20", "Android Tablet"],
-	["21", "iPad"], ["22", "Linux Device"], ["23", "Smart TV"], ["24", "Repeater"], ["25", "Kindle"], ["26", "Scanner"], ["27", "Chromecast"], ["28", "ASUS Smartphone"],
-	["29", "ASUS Pad"], ["30", "Windows"], ["31", "Android"], ["32", "Mac OS"]
+	var device_option_array = [ ["0", ""],
+	["1", "Windows device"], ["2", "Router"], ["3", ""], ["4", "NAS/Server"], ["5", "IP Cam"], ["6", "MacBook"], ["7", "Game Console"], ["8", ""], ["9", "Android Phone"],
+	["10", "iPhone"], ["11", "Apple TV"], ["12", "Set-Top Box"], ["13", ""], ["14", "iMac"], ["15", "ROG"], ["16", ""], ["17", ""], ["18", "Printer"], ["19", "Windows Phone"],
+	["20", "Android Tablet"], ["21", "iPad"], ["22", "Linux Device"], ["23", "Smart TV"], ["24", "Repeater"], ["25", "Kindle"], ["26", "Scanner"],
+	["27", "Chromecast"], ["28", "ASUS Smartphone"], ["29", "ASUS Pad"], ["30", "Windows"], ["31", "Android"], ["32", "Mac OS"], ["33", "Smartphone"],
+	["34", "Desktop"], ["35", "Windows Laptop"], ["36", "Linux"], ["37", "ASUS"], ["38", "ASUS Laptop"], ["39", "Smart Watch"], ["40", "Laptop"]
 	];
 
 	var device_type_array = new Array();
