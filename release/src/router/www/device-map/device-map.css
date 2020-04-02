@@ -161,6 +161,12 @@ Android			31
 Mac OS			32
 Smartphone		33
 Desktop			34
+Windows Laptop		35
+Linux			36
+ASUS			37
+ASUS Laptop		38
+Smart Watch		39
+Laptop			40
 */
 .type0{
 	background-image:url('/images/New_ui/networkmap/client.svg');
@@ -172,7 +178,7 @@ Desktop			34
 .type2{
 	background-position:66.5% 50%;
 }
-.type3{
+.type3{ /* duplicate */
 	background-position:66.5% 50%;
 }
 .type4{
@@ -187,7 +193,7 @@ Desktop			34
 .type7{
 	background-position:100.2% 16.5%;
 }
-.type8{
+.type8{ /* duplicate */
 	background-position:100.2% 16.5%;
 }
 .type9{
@@ -202,7 +208,7 @@ Desktop			34
 .type12{
 	background-position:100.2% 67%;
 }
-.type13{
+.type13{ /* duplicate */
 	background-position:100.2% 16.5%;
 }
 .type14{
@@ -211,10 +217,10 @@ Desktop			34
 .type15{
 	background-position:100.2% 83%;
 }
-.type16{
+.type16{ /* duplicate */
 	background-position:100.2% 16.5%;
 }
-.type17{
+.type17{ /* duplicate */
 	background-position:100.2% 16.5%;
 }
 .type18{
@@ -267,6 +273,24 @@ Desktop			34
 }
 .type34{
 	background-position:100% 50%;
+}
+.type35{
+	background-position:16.5% 33%;
+}
+.type36{
+	background-position:-0.2% 0%;
+}
+.type37{
+	background-position:66.5% 0%;
+}
+.type38{
+	background-position:66.5% 33%;
+}
+.type39{
+	background-position:83% 67%;
+}
+.type40{
+	background-position:100% 0%;
 }
 
 .type0:hover{

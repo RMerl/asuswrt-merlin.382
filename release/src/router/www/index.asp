@@ -2450,6 +2450,34 @@ function AiMesh_promoteHint() {
 								<div class="type32" onclick="select_image(this.className);" title="Mac OS"></div><!--untranslated-->
 							</td>
 							<td>
+								<div class="type33" onclick="select_image(this.className);" title="Smartphone"></div><!--untranslated-->
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<div class="type34" onclick="select_image(this.className);" title="Desktop"></div><!--untranslated-->
+							</td>
+							<td>
+								<div class="type35" onclick="select_image(this.className);" title="Windows Laptop"></div><!--untranslated-->
+							</td>
+							<td>
+								<div class="type36" onclick="select_image(this.className);" title="Linux"></div><!--untranslated-->
+							</td>
+							<td>
+								<div class="type37" onclick="select_image(this.className);" title="ASUS"></div><!--untranslated-->
+							</td>
+							<td>
+								<div class="type38" onclick="select_image(this.className);" title="ASUS Laptop"></div><!--untranslated-->
+							</td>
+							<td>
+								<div class="type39" onclick="select_image(this.className);" title="Smartwatch"></div><!--untranslated-->
+							</td>
+							<td>
+								<div class="type40" onclick="select_image(this.className);" title="Laptop"></div><!--untranslated-->
+							</td>
+						</tr>
+						<tr>
+							<td>
 								<div id="divUserIcon" class="client_upload_div" style="display:none;">+
 									<input type="file" name="uploadIcon" id="uploadIcon" class="client_upload_file" onchange="previewImage(this);" title="Upload client icon" /><!--untranslated-->
 								</div>

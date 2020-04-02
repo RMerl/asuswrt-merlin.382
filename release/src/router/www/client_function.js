@@ -41,7 +41,7 @@ if (!Object.keys) {
 }
 
 var isJsonChanged = function(objNew, objOld){
-	for(var i in objOld){	
+	for(var i in objOld){
 		if(typeof objOld[i] == "object" && i != "fromNetworkmapd"){
 			if(objNew[i].join() != objOld[i].join()){
 				return true;
@@ -180,7 +180,7 @@ function genClientList(){
 				clientList[thisClientMacAddr].type = thisClient.type;
 				clientList[thisClientMacAddr].defaultType = thisClient.defaultType;
 			}
-			
+
 			clientList[thisClientMacAddr].ip = thisClient.ip;
 			clientList[thisClientMacAddr].mac = thisClient.mac.toUpperCase();
 
@@ -205,7 +205,7 @@ function genClientList(){
 				totalClientNum.wired += clientList[thisClientMacAddr].macRepeat;
 			}
 
-			clientList[thisClientMacAddr].opMode = parseInt(thisClient.opMode); //0:unknow, 1: router, 2: repeater, 3: AP, 4: Media Bridge
+			clientList[thisClientMacAddr].opMode = parseInt(thisClient.opMode); //0:unknown, 1: router, 2: repeater, 3: AP, 4: Media Bridge
 			if(clientList[thisClientMacAddr].opMode == 2 && !downsize_4m_support) {
 				clientList[thisClientMacAddr].type = "24";
 				clientList[thisClientMacAddr].defaultType = "24";
@@ -248,7 +248,7 @@ function genClientList(){
 						}
 					}
 				}
-				
+
 				if(thisClient.amesh_isReClient != undefined) {
 					if(thisClient.amesh_papMac != undefined) {
 						if(clientList[thisClient.amesh_papMac] != undefined)
@@ -411,7 +411,7 @@ function popClientListEditTable(event) {
 		if(isMacAddr.length != 6)
 			return false;
 	}
-	else 
+	else
 		return false;
 
 	card_firstTimeOpenBlock = false;
@@ -428,7 +428,7 @@ function popClientListEditTable(event) {
 		clientInfo.nickName = name;
 	}
 	if(ip != "" && ip != undefined)
-		clientInfo.ip = ip;	
+		clientInfo.ip = ip;
 
 	if(obj.className.search("card_clicked") != -1) {
 		return true;
@@ -445,7 +445,7 @@ function popClientListEditTable(event) {
 			client_manual_dhcp_list_array[client_manual_dhcp_list_col[0]] = client_manual_dhcp_list_col[1];
 		}
 	}
-	
+
 	if(document.getElementById("edit_client_block") != null) {
 		removeElement(document.getElementById("edit_client_block"));
 	}
@@ -572,15 +572,19 @@ function popClientListEditTable(event) {
 		obj.className = obj.className.replace("venderIcon","venderIcon_clicked");
 		obj.className = obj.className  + " card_clicked";
 	}
-	
+
 	fadeIn(document.getElementById("edit_client_block"));
 	document.body.onclick = function() {hide_edit_client_block();}
 	document.getElementById("edit_client_block").onclick = function() {show_edit_client_block();}
 
 	//build device icon list start
-	var clientListIconArray = [["Windows device", "1"], ["Router", "2"], ["NAS/Server", "4"], ["IP Cam", "5"], ["Macbook", "6"], ["Game Console", "7"], ["Android Phone", "9"], ["iPhone", "10"], 
-	["Apple TV", "11"], ["Set-top Box", "12"], ["iMac", "14"], ["ROG", "15"], ["Printer", "18"], ["Windows Phone", "19"], ["Android Tablet", "20"], ["iPad", "21"], ["Linux Device", "22"], 
-	["Smart TV", "23"], ["Repeater", "24"], ["Kindle", "25"], ["Scanner", "26"], ["Chromecast", "27"], ["ASUS smartphone", "28"], ["ASUS Pad", "29"], ["Windows", "30"], ["Android", "31"], ["Mac OS", "32"]];
+	var clientListIconArray = [
+		["Windows device", "1"], ["Router", "2"], ["NAS/Server", "4"], ["IP Cam", "5"], ["Macbook", "6"], ["Game Console", "7"], ["Android Phone", "9"],
+		["iPhone", "10"], ["Apple TV", "11"], ["Set-top Box", "12"], ["iMac", "14"], ["ROG", "15"], ["Printer", "18"], ["Windows Phone", "19"],
+		["Android Tablet", "20"], ["iPad", "21"], ["Linux Device", "22"], ["Smart TV", "23"], ["Repeater", "24"], ["Kindle", "25"], ["Scanner", "26"],
+		["Chromecast", "27"], ["ASUS smartphone", "28"], ["ASUS Pad", "29"], ["Windows", "30"], ["Android", "31"], ["Mac OS", "32"], ["Smartphone", "33"],
+		["Desktop", "34"], ["Windows Laptop", "35"], ["Linux", "36"], ["ASUS", "37"], ["ASUS Laptop", "38"], ["Smart Watch", "39"], ["Laptop", "40"]
+	];
 
 	var eachColCount = 7;
 	var colCount = parseInt(clientListIconArray.length / eachColCount) + 1;
@@ -608,7 +612,7 @@ function popClientListEditTable(event) {
 	}
 	//build device icon list end
 
-	//settup value
+	//setup value
 	//initial state start
 	document.getElementById("card_client_preview_icon").ondrop = null;
 	//initial state end
@@ -711,9 +715,9 @@ function popClientListEditTable(event) {
 	document.getElementById("client_ipaddr_field").value = clientInfo.ip;
 	document.getElementById("client_macaddr_field").value = clientInfo.mac;
 	select_image("type" + parseInt(clientInfo.type), clientInfo.vendor);
-	if(client_manual_dhcp_list_array[clientInfo.mac] != undefined) { //check mac>ip is combination the the ipLockIcon is manual
+	if(client_manual_dhcp_list_array[clientInfo.mac] != undefined) { //check mac>ip is combination the ipLockIcon is manual
 		var client_manual_ip = client_manual_dhcp_list_array[clientInfo.mac];
-		//handle device offine but dhcp had been setted.
+		//handle device offline but dhcp had been set.
 		if(clientInfo.ip == "offline") {
 			document.getElementById("client_ipaddr_field").value = client_manual_ip;
 		}
@@ -739,7 +743,7 @@ function popClientListEditTable(event) {
 	//setting user upload icon attribute start.
 	//1.check rc_support
 	if(usericon_support) {
-		//2.check browswer support File Reader and Canvas or not.
+		//2.check browser support File Reader and Canvas or not.
 		if(isSupportFileReader() && isSupportCanvas()) {
 			document.getElementById("divCardUserIcon").style.display = "";
 			//Setting drop event
@@ -749,7 +753,7 @@ function popClientListEditTable(event) {
 			holder.ondrop = function (e) {
 				e.preventDefault();
 				var userIconLimitFlag = userIconNumLimit(document.getElementById("client_macaddr_field").value);
-				if(userIconLimitFlag) {	//not over 100	
+				if(userIconLimitFlag) {	//not over 100
 					var file = e.dataTransfer.files[0];
 					//check image
 					if(file.type.search("image") != -1) {
@@ -777,11 +781,11 @@ function popClientListEditTable(event) {
 						return false;
 					}
 				}
-				else {	//over 100 then let usee select delete icon or nothing
+				else {	//over 100 then let user select delete icon or nothing
 					showUploadIconList();
 				}
 			};
-		} 
+		}
 	}
 	//setting user upload icon attribute end.
 
@@ -816,7 +820,7 @@ function previewCardUploadIcon(imageObj) {
 	if(userIconLimitFlag) {	//not over 100
 		var checkImageExtension = function (imageFileObject) {
 		var  picExtension= /\.(jpg|jpeg|gif|png|bmp|ico)$/i;  //analy extension
-			if (picExtension.test(imageFileObject)) 
+			if (picExtension.test(imageFileObject))
 				return true;
 			else
 				return false;
@@ -828,8 +832,8 @@ function previewCardUploadIcon(imageObj) {
 			imageObj.focus();
 		}
 		else {
-			//2.Re-drow image
-			var fileReader = new FileReader(); 
+			//2.Re-draw image
+			var fileReader = new FileReader();
 			fileReader.onload = function (fileReader) {
 				var img = document.createElement("img");
 				img.src = fileReader.target.result;
@@ -849,7 +853,7 @@ function previewCardUploadIcon(imageObj) {
 			userIconHideFlag = true;
 		}
 	}
-	else {	//over 100 then let usee select delete icon or nothing
+	else {	//over 100 then let user select delete icon or nothing
 		showUploadIconList();
 	}
 }
@@ -884,7 +888,7 @@ function card_confirm(callBack) {
 			alert("<#JS_validstr2#> '<', '>'");
 			document.getElementById("card_client_name").focus();
 			document.getElementById("card_client_name").select();
-			document.getElementById("card_client_name").value = "";		
+			document.getElementById("card_client_name").value = "";
 			return false;
 		}
 		else if(!validator.haveFullWidthChar(document.getElementById("card_client_name"))) {
@@ -948,12 +952,12 @@ function card_confirm(callBack) {
 
 		// display waiting effect
 		document.getElementById("card_client_loadingIcon").style.display = "";
-		
+
 		setTimeout(function() {
 			var updateClientListObj = function () {
 				$.ajax({
 					url: '/update_customList.asp',
-					dataType: 'script', 
+					dataType: 'script',
 					error: function(xhr) {
 						setTimeout("updateClientListObj();", 1000);
 					},
@@ -1060,7 +1064,7 @@ function userIconNumLimit(mac) {
 	//check mac exist or not
 	if(!existFlag) {
 		var userIconCount = getUploadIconCount();
-		if(userIconCount >= 100) {	//mac not exist, need check use icnon number whether over 100 or not.
+		if(userIconCount >= 100) {	//mac not exist, need check use icon number whether over 100 or not.
 			flag = false;
 		}
 	}
@@ -1130,7 +1134,7 @@ function showUploadIconsTable() {
 	else {
 		for(var i = 0; i < custom_usericon_length; i += 1) {
 			if(custom_usericon_row[i] != "") {
-				var formatMac = custom_usericon_row[i].slice(0,2) + ":" + custom_usericon_row[i].slice(2,4) + ":" + custom_usericon_row[i].slice(4,6) + ":" + 
+				var formatMac = custom_usericon_row[i].slice(0,2) + ":" + custom_usericon_row[i].slice(2,4) + ":" + custom_usericon_row[i].slice(4,6) + ":" +
 								custom_usericon_row[i].slice(6,8) + ":" + custom_usericon_row[i].slice(8,10)+ ":" + custom_usericon_row[i].slice(10,12);
 				code +='<tr>';
 				var clientObj = clientList[formatMac];
@@ -1257,7 +1261,7 @@ function oui_query_card(mac) {
 }
 
 /*
- * elem 
+ * elem
  * speed, default is 20, optional
  * opacity, default is 100, range is 0~100, optional
  */
@@ -1286,7 +1290,7 @@ function fadeIn(elem, speed, opacity){
 }
 
 /*
- * elem 
+ * elem
  * speed, default is 20, optional
  * opacity, default is 0, range is 0~100, optional
  */
@@ -1331,7 +1335,7 @@ function slideDown(objnmae, speed) {
 		var holderHeight = holder.offsetHeight;
 		if (holderHeight + sepHeight < height) {
 			holder.style.height = (holderHeight + sepHeight) + 'px';
-		} 
+		}
 		else {
 			// clean up
 			holder.removeChild(obj);
@@ -1420,11 +1424,11 @@ var sorter = {
 	"wl2_display" : true,
 	"wl3_index" : 3,
 	"wl3_display" : true,
-	"sortingMethod" : "increase", 
-	"sortingMethod_wired" : "increase", 
-	"sortingMethod_wl1" : "increase", 
-	"sortingMethod_wl2" : "increase", 
-	"sortingMethod_wl3" : "increase", 
+	"sortingMethod" : "increase",
+	"sortingMethod_wired" : "increase",
+	"sortingMethod_wl1" : "increase",
+	"sortingMethod_wl2" : "increase",
+	"sortingMethod_wl3" : "increase",
 
 	"num_increase" : function(a, b) {
 		if(sorter.indexFlag == 3) { //IP
@@ -1488,7 +1492,7 @@ var sorter = {
 		var clickItem = obj.parentNode.id.split("_")[1];
 		var sorterLastIndex = 0;
 		var sorterClickIndex = 0;
-		while( (objIndex = objIndex.previousSibling) != null ) 
+		while( (objIndex = objIndex.previousSibling) != null )
 			sorterClickIndex++;
 
 		switch (clickItem) {
@@ -1516,10 +1520,10 @@ var sorter = {
 				sorterLastIndex = sorter.wl3_index;
 				sorter.wl3_index = sorterClickIndex;
 				sorter.sortingMethod_wl3 = (sorter.sortingMethod_wl3 == "increase") ? "decrease" : "increase";
-				break;	
+				break;
 		}
 		obj.parentNode.childNodes[sorterLastIndex].style.borderTop = '1px solid #222';
-		obj.parentNode.childNodes[sorterLastIndex].style.borderBottom = '1px solid #222';	
+		obj.parentNode.childNodes[sorterLastIndex].style.borderBottom = '1px solid #222';
 	},
 	"drawBorder" : function(_arrayName) {
 		var clickItem = _arrayName.split("_")[0];
@@ -1570,10 +1574,10 @@ var sorter = {
 			document.getElementById("tr_"+clickItem+"_title").childNodes[clickIndex].style.borderBottom = borderBottomCss;
 		}
 	},
-	"doSorter" : function(_flag, _Method, _arrayName) {	
+	"doSorter" : function(_flag, _Method, _arrayName) {
 		// update variables
 		sorter.indexFlag = _flag;
-		
+
 		// doSorter
 		if(clienlistViewMode == "All") {
 			eval(""+_arrayName+".sort(sorter."+_Method+"_"+sorter.sortingMethod+");");
@@ -1729,7 +1733,7 @@ function exportClientListLog() {
 
 		if (navigator.msSaveBlob) { // IE10
 			return navigator.msSaveBlob(new Blob([content], { type: mimeType }), fileName);
-		} 
+		}
 		else if ('download' in a) { //html5 A[download]
 			a.href = 'data:' + mimeType + ',' + encodeURIComponent(content);
 			a.setAttribute('download', fileName);
@@ -1739,7 +1743,7 @@ function exportClientListLog() {
 				document.getElementById("clientlist_viewlist_content").removeChild(a);
 			}, 66);
 			return true;
-		} 
+		}
 		else { //do iframe dataURL download (old ch+FF):
 			var f = document.createElement('iframe');
 			document.getElementById("clientlist_viewlist_content").appendChild(f);
@@ -1808,7 +1812,7 @@ function create_clientlist_listview() {
 			drawSwitchModeHtml += "<div class='block_filter_name' onclick='changeClientListViewMode();'><#wan_interface#></div>";
 			drawSwitchModeHtml += "</div>";
 		}
-		else {							
+		else {
 			drawSwitchModeHtml += "<div class='block_filter clientlist_All' style='cursor:pointer'>";
 			drawSwitchModeHtml += "<div class='block_filter_name' onclick='changeClientListViewMode();'><#All#></div>";
 			drawSwitchModeHtml += "</div>";
@@ -1869,7 +1873,7 @@ function create_clientlist_listview() {
 			code += "</tr>";
 			code += "</table>";
 			code += "<div id='clientlist_wired_list_Block'></div>";
-	
+
 			var wl_map = {"2.4 GHz": "1",  "5 GHz": "2", "5 GHz-1": "2", "5 GHz-2": "3"};
 			obj_width = stainfo_support ? obj_width_map[2] : obj_width_map[1];
 			for(var i = 0; i < wl_nband_title.length; i += 1) {
@@ -1899,7 +1903,7 @@ function create_clientlist_listview() {
 
 	if(!top.isIE8)
 		code += "<div style='text-align:center;margin-top:15px;'><input  type='button' class='button_gen' onclick='exportClientListLog();' value='<#btn_Export#>'></div>";
-	
+
 	code += "</td></tr></tbody>";
 	code += "</table>";
 
@@ -1914,7 +1918,7 @@ function create_clientlist_listview() {
 				cal_panel_block_clientList("clientlist_viewlist_content", 0.045);
 			}
 		}
-	}	
+	}
 
 	document.getElementById("clientlist_viewlist_content").onclick = function() {show_clientlist_view_block();}
 
@@ -1925,14 +1929,14 @@ function create_clientlist_listview() {
 			var deviceTypeName = "Loading manufacturer..";
 			if((clientList[clientList[i]].vendor != "" && clientList[clientList[i]].vendor != undefined)) { //Oui Vendor name
 				deviceTypeName = clientList[clientList[i]].vendor;
-			}		
+			}
 			if((clientList[clientList[i]].dpiDevice != "" && clientList[clientList[i]].dpiDevice != undefined)) { //BWDPI device
 				deviceTypeName = clientList[clientList[i]].dpiDevice;
 			}
 			var clientName = (clientList[clientList[i]].nickName == "") ? clientList[clientList[i]].name : clientList[clientList[i]].nickName;
-			var tempArray = [clientList[clientList[i]].internetState, deviceTypeName, clientName, clientList[clientList[i]].ip, 
-							clientList[clientList[i]].mac, clientList[clientList[i]].rssi, clientList[clientList[i]].curTx, clientList[clientList[i]].curRx, 
-							clientList[clientList[i]].wlConnectTime, clientList[clientList[i]].isWL, clientList[clientList[i]].vendor, clientList[clientList[i]].type, 
+			var tempArray = [clientList[clientList[i]].internetState, deviceTypeName, clientName, clientList[clientList[i]].ip,
+							clientList[clientList[i]].mac, clientList[clientList[i]].rssi, clientList[clientList[i]].curTx, clientList[clientList[i]].curRx,
+							clientList[clientList[i]].wlConnectTime, clientList[clientList[i]].isWL, clientList[clientList[i]].vendor, clientList[clientList[i]].type,
 							clientList[clientList[i]].macRepeat];
 			switch (clienlistViewMode) {
 				case "All" :
@@ -1999,16 +2003,16 @@ function drawClientListBlock(objID) {
 			break;
 		case "wl2_list" :
 			sortArray = wl2_list;
-			break;	
+			break;
 		case "wl3_list" :
 			sortArray = wl3_list;
-			break;	
+			break;
 
 	}
 	var listViewProfile = function(_profile) {
 		if(_profile == null)
 			_profile = ["", "", "", "", "", "", "", "", "", "", "", "", ""];
-		
+
 		this.internetState = _profile[0];
 		this.deviceTypeName = _profile[1];
 		this.name = _profile[2];
@@ -2067,7 +2071,7 @@ function drawClientListBlock(objID) {
 						userIconBase64 = clientListViewMacUploadIcon[clientlist_sort[j].mac];
 					}
 				}
-			
+
 				var internetStateCss = "";
 				var internetStateTip = "";
 				if(clientlist_sort[j].internetState) {
@@ -2117,7 +2121,7 @@ function drawClientListBlock(objID) {
 							icon_type = "type0_viewMode";
 						}
 						clientListCode += "<div style='height:40px;width:40px;cursor:default;' class='clientIcon_no_hover " + icon_type + "' title='"+ clientlist_sort[j].deviceTypeName +"'></div>";
-					}				
+					}
 				}
 				clientListCode += "</td>";
 
@@ -2230,7 +2234,7 @@ function showHideContent(objnmae, thisObj) {
 function updateClientListView(){
 	$.ajax({
 		url: '/update_clients.asp',
-		dataType: 'script', 
+		dataType: 'script',
 		error: function(xhr) {
 			setTimeout("updateClientListView();", 1000);
 		},
@@ -2241,9 +2245,9 @@ function updateClientListView(){
 					sorterClientList();
 					parent.show_client_status(totalClientNum.online);
 				}
-				setTimeout("updateClientListView();", 3000);	
+				setTimeout("updateClientListView();", 3000);
 			}
-		}    
+		}
 	});
 }
 
@@ -2252,8 +2256,8 @@ function cal_panel_block_clientList(obj, multiple) {
 		var tmo_support = ('<% nvram_get("rc_support"); %>'.search("tmo") == -1) ? false : true;
 		if(!tmo_support)
 			return false;
-		
-		if(	navigator.userAgent.match(/iPhone/i)	|| 
+
+		if(	navigator.userAgent.match(/iPhone/i)	||
 			navigator.userAgent.match(/iPod/i)		||
 			navigator.userAgent.match(/iPad/i)		||
 			(navigator.userAgent.match(/Android/i) && (navigator.userAgent.match(/Mobile/i) || navigator.userAgent.match(/Tablet/i))) ||
@@ -2294,10 +2298,10 @@ function cal_panel_block_clientList(obj, multiple) {
 			}
 			else {
 				blockmarginLeft = document.body.scrollLeft;
-			}	
+			}
 		}
 		else {
-			blockmarginLeft = (winWidth) * multiple + document.body.scrollLeft;	
+			blockmarginLeft = (winWidth) * multiple + document.body.scrollLeft;
 		}
 	}
 
@@ -2328,7 +2332,7 @@ function saveClientName(index, type, obj) {
 	var client_name_obj = document.getElementById("client_name_"+index);
 	if(client_name_obj.value.length == 0){
 		alert("<#File_Pop_content_alert_desc1#>");
-		window.setTimeout(function () { 
+		window.setTimeout(function () {
 			client_name_obj.focus();
 			client_name_obj.select();
 		}, 10);
@@ -2336,7 +2340,7 @@ function saveClientName(index, type, obj) {
 	}
 	else if(client_name_obj.value.indexOf(">") != -1 || client_name_obj.value.indexOf("<") != -1){
 		alert("<#JS_validstr2#> '<', '>'");
-		window.setTimeout(function () { 
+		window.setTimeout(function () {
 			client_name_obj.focus();
 			client_name_obj.select();
 			client_name_obj.value = "";
@@ -2345,7 +2349,7 @@ function saveClientName(index, type, obj) {
 	}
 	else if(!validator.haveFullWidthChar(client_name_obj)) {
 		alert('<#JS_validchar#>');
-		window.setTimeout(function () { 
+		window.setTimeout(function () {
 			client_name_obj.focus();
 			client_name_obj.select();
 		}, 10);
@@ -2355,11 +2359,11 @@ function saveClientName(index, type, obj) {
 	document.getElementById("div_clientName_"+index).style.display = "";
 	client_name_obj.style.display = "none";
 	edit_client_name_flag = false;
-	
+
 	var originalCustomListArray = new Array();
 	var onEditClient = new Array();
 	originalCustomListArray = view_custom_name.split('<');
-	
+
 	onEditClient[0] = client_name_obj.value;
 	onEditClient[1] = obj.parentNode.parentNode.childNodes[4].innerHTML;
 	onEditClient[2] = 0;
@@ -2386,7 +2390,7 @@ function saveClientName(index, type, obj) {
 function updateClientListBackground() {
 	$.ajax({
 		url: '/update_networkmapd.asp',
-		dataType: 'script', 
+		dataType: 'script',
 		error: function(xhr) {
 			setTimeout("updateClientListBackground();", 1000);
 		},
@@ -2398,8 +2402,8 @@ function updateClientListBackground() {
 }
 
 function removeClient(_mac, _controlObj, _controlPanel) {
-	if (!e) 
-		var e = window.event; 
+	if (!e)
+		var e = window.event;
 	e.cancelBubble = true;
 	if (e.stopPropagation)
 		e.stopPropagation();
@@ -2517,7 +2521,7 @@ function showDropdownClientList(_callBackFun, _callBackFunParam, _interfaceMode,
 	var genClientItem = function(_state) {
 		var code = "";
 		var clientName = (clientObj.nickName == "") ? clientObj.name : clientObj.nickName;
-		
+
 		code += '<a id=' + clientList[i] + ' title=' + clientList[i] + '>';
 		if(_state == "online")
 			code += '<div onclick="' + _callBackFun + '(\'';
@@ -2588,9 +2592,9 @@ function showDropdownClientList(_callBackFun, _callBackFunParam, _interfaceMode,
 					document.getElementById("" + _containerID + "_clientlist_offline").innerHTML += genClientItem("offline");
 				}
 				break;
-		}		
+		}
 	}
-	
+
 	if(document.getElementById("" + _containerID + "_clientlist_offline").childNodes.length == "0") {
 		if(document.getElementById("" + _containerID + "_clientlist_dropdown_expand") != null) {
 			removeElement(document.getElementById("" + _containerID + "_clientlist_dropdown_expand"));
