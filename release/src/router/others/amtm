@@ -10,7 +10,7 @@
 
 add=/jffs/addons/amtm
 amtmURL=https://fwupdate.asuswrt-merlin.net/amtm_fw
-amtmRev=2
+amtmRev=3
 
 a_m(){ [ -z "$am" ] && am=$1 || am="$am\\n$1";}
 c_nl(){ [ -n "$(tail -c2 "$1")" ] && echo >> "$1";}
@@ -156,6 +156,9 @@ init_amtm(){
 	mkdir -p "${add}/a_fw"
 	if [ ! -d "${add}" ]; then
 		printf "\\n amtm failed to create the directory\\n ${add}\\n Please investigate. Aborting amtm now.\\n\\n";exit 1
+	fi
+	if [ "$(nvram get ntp_ready)" = "0" ]; then
+		printf "\\n NTP not ready, check that the router time\\n is synced.\\n Aborting amtm now.\\n\\n";exit 1
 	fi
 	mv /jffs/amtm-* "${add}" 2> /dev/null;mv /jffs/.amtm_* "${add}" 2> /dev/null
 	c_t
