@@ -31,6 +31,7 @@
 #include <dmalloc.h>
 #endif
 #include <rtconfig.h>
+#include <unlock.h>
 
 /* DEBUG DEFINE */
 #define HTTPD_DEBUG             "/tmp/HTTPD_DEBUG"

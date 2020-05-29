@@ -253,7 +253,7 @@ do_ej(char *path, FILE *stream)
 	// Load dictionary file
 
 	lang = nvram_safe_get("preferred_lang");
-	if(!check_lang_support(lang)){
+	if(!check_lang_support_unlock(lang)){
 		lang = nvram_default_get("preferred_lang");
 		nvram_set("preferred_lang", lang);
 	}
