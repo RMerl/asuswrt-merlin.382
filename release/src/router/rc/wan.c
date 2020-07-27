@@ -2172,7 +2172,7 @@ int update_resolvconf(void)
 
 /* Add DNS from VPN clients - add at the end since config is read backward by dnsmasq */
 #ifdef RTCONFIG_OPENVPN
-	write_ovpn_dns(fp_servers);
+	write_ovpn_resolv_dnsmasq(fp_servers);
 #endif
 
 #ifdef RTCONFIG_YANDEXDNS
