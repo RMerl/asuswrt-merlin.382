@@ -41,5 +41,5 @@ jobs:
         make ${{ matrix.target }}
     - uses: actions/upload-artifact@v2
       with:
-        name: my-artifact
+        name: ${{ matrix.target }}.trx
         path: release/src-rt-7.14.114.x/src/image/*.trx
