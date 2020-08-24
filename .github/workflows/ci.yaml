@@ -10,6 +10,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: ["RT-AC5300", "RT-AC3100"]
 
     steps:
     - uses: actions/checkout@v2
@@ -35,7 +38,7 @@ jobs:
       run: |
         cd release/src-rt-7.14.114.x/src/
         make clean
-        make RT-AC5300
+        make ${{ matrix.target }}
     - uses: actions/upload-artifact@v2
       with:
         name: my-artifact
