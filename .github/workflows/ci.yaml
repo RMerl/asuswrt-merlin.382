@@ -36,3 +36,7 @@ jobs:
         cd release/src-rt-7.14.114.x/src/
         make clean
         make RT-AC5300
+    - uses: actions/upload-artifact@v2
+      with:
+        name: my-artifact
+        path: release/src-rt-7.14.114.x/src/image/*.trx
