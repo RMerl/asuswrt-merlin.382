@@ -20,7 +20,8 @@ jobs:
     - name: apt-get update
       run: sudo apt-get update
     - name: apt-get instal
-      run: sudo apt-get install libncurses5 libncurses5-dev m4 bison gawk flex \
+      run: |
+      sudo apt-get install libncurses5 libncurses5-dev m4 bison gawk flex \
       g++ gengetopt git gitk zlib1g-dev autoconf autopoint \
       libtool shtool autogen mtd-utils intltool sharutils libstdc++5 texinfo \
       dos2unix xsltproc u-boot-tools device-tree-compiler python qemu \
