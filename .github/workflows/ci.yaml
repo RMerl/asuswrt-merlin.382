@@ -19,13 +19,7 @@ jobs:
       run: sudo dpkg --add-architecture i386
     - name: apt-get update
       run: sudo apt-get update
-    - name: apt-get instal
-      run: |
-      sudo apt-get install libncurses5 libncurses5-dev m4 bison gawk flex \
-      g++ gengetopt git gitk zlib1g-dev autoconf autopoint \
-      libtool shtool autogen mtd-utils intltool sharutils libstdc++5 texinfo \
-      dos2unix xsltproc u-boot-tools device-tree-compiler python qemu \
-      gperf liblzo2-dev uuid-dev build-essential lzma-dev liblzma-dev \
-      lzma binutils-dev patch cmake libglib2.0-dev gtk-doc-tools \
-      libc6-i386 lib32stdc++6 lib32z1 libelf1:i386 libncurses5:i386 libc6-dev-i386 \
-      bc libtool-bin gnulib xutils-dev libltdl-dev
+    - name: apt-get install
+      run: sudo apt-get install -y libncurses5 libncurses5-dev m4 bison gawk flex g++ gengetopt git gitk zlib1g-dev autoconf autopoint libtool shtool autogen mtd-utils intltool sharutils libstdc++5 texinfo dos2unix xsltproc u-boot-tools device-tree-compiler python qemu gperf liblzo2-dev uuid-dev build-essential lzma-dev liblzma-dev lzma binutils-dev patch cmake libglib2.0-dev gtk-doc-tools libc6-i386 lib32stdc++6 lib32z1 libelf1:i386 libncurses5:i386 libc6-dev-i386 bc libtool-bin gnulib xutils-dev libltdl-dev
+    - name: test
+      run: echo success
