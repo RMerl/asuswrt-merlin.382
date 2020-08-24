@@ -25,10 +25,10 @@ jobs:
         autopoint libtool shtool autogen mtd-utils intltool sharutils libstdc++5 texinfo dos2unix xsltproc u-boot-tools \
         device-tree-compiler python qemu gperf liblzo2-dev uuid-dev build-essential lzma-dev liblzma-dev lzma binutils-dev \
         patch cmake libglib2.0-dev gtk-doc-tools libc6-i386 lib32stdc++6 lib32z1 libelf1:i386 libncurses5:i386 libc6-dev-i386 \
-        bc libtool-bin gnulib xutils-dev libltdl-dev
+        bc libtool-bin gnulib xutils-dev libltdl-dev automake-1.15
     - name: setup
       run: |
-        sudo ln -s $GITHUB_WORKSPACE/tools/am-toolchains/brcm-arm-sdk/hndtools-arm-linux-2.6.36-uclibc-4.5.3 /opt/brcm-arm
+        sudo ln -sf $GITHUB_WORKSPACE/tools/am-toolchains/brcm-arm-sdk/hndtools-arm-linux-2.6.36-uclibc-4.5.3 /opt/brcm-arm
         ln -s $GITHUB_WORKSPACE/tools/am-toolchains/brcm-arm-sdk $GITHUB_WORKSPACE/release/src-rt-6.x.4708/toolchains
         echo "::set-env name=PATH::$PATH:/opt/brcm-arm/bin"
     - name: make
