@@ -28,8 +28,8 @@ jobs:
         bc libtool-bin gnulib xutils-dev libltdl-dev automake-1.15
     - name: setup
       run: |
-        sudo ln -sf $GITHUB_WORKSPACE/tools/am-toolchains/brcm-arm-sdk/hndtools-arm-linux-2.6.36-uclibc-4.5.3 /opt/brcm-arm
-        ln -s $GITHUB_WORKSPACE/tools/am-toolchains/brcm-arm-sdk $GITHUB_WORKSPACE/release/src-rt-6.x.4708/toolchains
+        sudo ln -s $GITHUB_WORKSPACE/tools/am-toolchains/brcm-arm-sdk/hndtools-arm-linux-2.6.36-uclibc-4.5.3 /opt/brcm-arm
+        ln -sf $GITHUB_WORKSPACE/tools/am-toolchains/brcm-arm-sdk $GITHUB_WORKSPACE/release/src-rt-6.x.4708/toolchains
         echo "::set-env name=PATH::$PATH:/opt/brcm-arm/bin"
     - name: make
       run: |
