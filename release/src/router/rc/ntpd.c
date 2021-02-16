@@ -23,6 +23,7 @@
 #include <rc.h>
 #include <bcmnvram.h>
 #include <shutils.h>
+#include <shared.h>
 
 #define NTPD_PIDFILE "/var/run/ntpd.pid"
 
@@ -89,6 +90,7 @@ int ntpd_synced_main(int argc, char *argv[])
 	if (!nvram_match("ntp_ready", "1") && (argc == 2 && !strcmp(argv[1], "step"))) {
 		nvram_set("ntp_ready", "1");
 		logmessage("ntpd", "Initial clock set");
+		run_custom_script("initial-clock-set", 0, NULL, NULL);
 /* Code from ntpclient */
 #if !defined(RPAC56) && !defined(MAPAC1300) && !defined(MAPAC2200) && !defined(VZWAC1300)
 		if(nvram_contains_word("rc_support", "defpsk"))
@@ -124,7 +126,6 @@ int ntpd_synced_main(int argc, char *argv[])
 #ifdef RTCONFIG_OPENVPN
 		start_ovpn_eas();
 #endif
-
 	}
 
 	return 0;
