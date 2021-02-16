@@ -1351,15 +1351,20 @@ void time_zone_x_mapping(void)
 		nvram_set("time_zone", "UTC-7_3");
 	}
 
-	len = snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("time_zone"));
+	snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("time_zone"));
 	/* replace . with : */
 	while ((ptr=strchr(tmpstr, '.'))!=NULL) *ptr = ':';
-	/* remove *_? */
-	while ((ptr=strchr(tmpstr, '_'))!=NULL) *ptr = 0x0;
+	/* terminate string at first instance of '_', if there is one */
+	ptr = strchr(tmpstr, '_');
+	if(ptr) 
+        	*ptr = '\0';
 
 	/* check time_zone_dst for daylight saving */
-	if (nvram_get_int("time_zone_dst"))
-		len += sprintf(tmpstr + len, ",%s", nvram_safe_get("time_zone_dstoff"));
+	if (nvram_get_int("time_zone_dst")){
+		/* append time zone dst offset */
+		len = strnlen(tmpstr, sizeof(tmpstr));
+		snprintf(tmpstr + len, sizeof(tmpstr) - len, ",%s", nvram_safe_get("time_zone_dstoff"));
+	}
 #ifdef CONVERT_TZ_TO_GMT_DST
 	else	gettzoffset(tmpstr, tmpstr, sizeof(tmpstr));
 #endif
