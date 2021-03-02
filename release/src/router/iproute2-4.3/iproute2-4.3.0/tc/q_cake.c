@@ -678,7 +678,7 @@ static int cake_print_xstats(struct qdisc_util *qu, FILE *f,
 
 	/* class stats */
 	if (st[TCA_CAKE_STATS_DEFICIT])
-		fprintf(f, "  deficit %u",
+		fprintf(f, "  deficit %d",
 			  GET_STAT_S32(DEFICIT));
 	if (st[TCA_CAKE_STATS_COBALT_COUNT])
 		fprintf(f, " count %u",
