@@ -691,7 +691,7 @@ static int cake_print_xstats(struct qdisc_util *qu, FILE *f,
 
 			if (drop_next < 0) {
 				fprintf(f, " drop_next -%s",
-					sprint_time(drop_next, b1));
+					sprint_time(-drop_next, b1));
 			} else {
 //				print_uint(PRINT_JSON, "drop_next", NULL,
 //					drop_next);
