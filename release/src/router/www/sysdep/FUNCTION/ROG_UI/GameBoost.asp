@@ -117,7 +117,7 @@ function redirectSite(url){
 
 function uuRegister(mac){
 	var _mac = mac.toLowerCase();
-	window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt', '_blank');
+	window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt-merlin', '_blank');
 }
 </script>
 </head>
