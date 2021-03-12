@@ -445,6 +445,10 @@ ifeq ($(RTCONFIG_TCPLUGIN),y)
 OBJS += qmacc.o
 endif
 
+ifeq ($(RTCONFIG_UUPLUGIN),y)
+OBJS += uu.o
+endif
+
 ifeq ($(or $(RTCONFIG_PPTPD),$(RTCONFIG_ACCEL_PPTPD)),y)
 OBJS += vpn.o
 endif

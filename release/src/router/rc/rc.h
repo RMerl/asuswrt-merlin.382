@@ -2194,6 +2194,10 @@ extern void stop_wtfast(void);
 extern void start_qmacc(void);
 extern void stop_qmacc(void);
 #endif
+#ifdef RTCONFIG_UUPLUGIN
+extern void start_uuacc(void);
+extern void stop_uuacc(void);
+#endif
 extern void start_hotplug2(void);
 extern void stop_services(void);
 extern void stop_services_mfg(void);

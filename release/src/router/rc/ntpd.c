@@ -124,7 +124,13 @@ int ntpd_synced_main(int argc, char *argv[])
 #ifdef RTCONFIG_OPENVPN
 		start_ovpn_eas();
 #endif
-
+//workaround by paldier, China's internet is very unstable, do not add exec_uu() to rc main process, it will block the main process
+#ifdef RTCONFIG_UUPLUGIN
+        if(is_CN_sku()){
+	        if (pidof("uuplugin")) return 0;
+            notify_rc("start_uuacc");
+        }
+#endif
 	}
 
 	return 0;

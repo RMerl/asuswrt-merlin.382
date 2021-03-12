@@ -9989,6 +9989,9 @@ stop_services(void)
 #ifdef RTCONFIG_TCPLUGIN
 	stop_qmacc();
 #endif
+#ifdef RTCONFIG_UUPLUGIN
+	stop_uuacc();
+#endif
 #ifdef RTCONFIG_BCM_OAM
 	stop_oam();
 #endif
@@ -13551,6 +13554,13 @@ check_ddr_done:
 	{
 		if(action & RC_SERVICE_STOP) stop_qmacc();
 		if(action & RC_SERVICE_START) start_qmacc();
+	}
+#endif
+#ifdef RTCONFIG_UUPLUGIN
+	else if (strcmp(script, "uuacc") == 0)
+	{
+		if(action & RC_SERVICE_STOP) stop_uuacc();
+		if(action & RC_SERVICE_START) start_uuacc();
 	}
 #endif
 #if defined(RTCONFIG_USB) && defined(RTCONFIG_USB_PRINTER)
