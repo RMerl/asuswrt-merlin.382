@@ -918,11 +918,14 @@ function corrected_timezone(){
 	var today = new Date();
 	var StrIndex;
 	var timezone = uptimeStr_update.substring(26,31);
+	var startPos = today.toString().indexOf("(");
+	if ( startPos < 0 )
+		startPos = today.toString().length;
 
-	if(today.toString().lastIndexOf("-") > 0)
-		StrIndex = today.toString().lastIndexOf("-");
-	else if(today.toString().lastIndexOf("+") > 0)
-		StrIndex = today.toString().lastIndexOf("+");
+	if(today.toString().lastIndexOf("-", startPos) > 0)
+		StrIndex = today.toString().lastIndexOf("-", startPos);
+	else if(today.toString().lastIndexOf("+", startPos) > 0)
+		StrIndex = today.toString().lastIndexOf("+", startPos);
 
 	if(StrIndex > 0){
 		//alert('dstoffset='+dstoffset+', 設定時區='+timezone+' , 當地時區='+today.toString().substring(StrIndex, StrIndex+5))
