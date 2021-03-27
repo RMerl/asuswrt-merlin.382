@@ -3620,10 +3620,14 @@ function switchType(obj, showText, chkBox){
 function corrected_timezone(){
 	var today = new Date();
 	var StrIndex;	
-	if(today.toString().lastIndexOf("-") > 0)
-		StrIndex = today.toString().lastIndexOf("-");
-	else if(today.toString().lastIndexOf("+") > 0)
-		StrIndex = today.toString().lastIndexOf("+");
+	var StrIndex;
+	var startPos = today.toString().indexOf("(");
+	if ( startPos < 0 )
+		startPos = today.toString().length;
+	if(today.toString().lastIndexOf("-", startPos) > 0)
+		StrIndex = today.toString().lastIndexOf("-", startPos);
+	else if(today.toString().lastIndexOf("+", startPos) > 0)
+		StrIndex = today.toString().lastIndexOf("+", startPos);
 
 	if(StrIndex > 0){
 		if(timezone != today.toString().substring(StrIndex, StrIndex+5)){
