@@ -14774,6 +14774,12 @@ static void sysinit(void)
 	f_write_string("/proc/sys/net/netfilter/nf_conntrack_acct", "1", 0, 0);
 #endif
 
+#if defined(RTCONFIG_HND_ROUTER)
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_expect_max", "128", 0, 0);
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_generic_timeout", "120", 0, 0);
+	f_write_string("/proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established", "1800", 0, 0);
+#endif	
+	
 #if defined(RTCONFIG_PSISTLOG) || defined(RTCONFIG_JFFS2LOG)
 	f_write_string("/proc/sys/net/unix/max_dgram_qlen", "150", 0, 0);
 #endif
