@@ -13,5 +13,5 @@ ldd() {
 
 [ -f /jffs/etc/profile ] && . /jffs/etc/profile
 [ -f /opt/etc/profile ] && . /opt/etc/profile
-[ -f /jffs/configs/profile.add ] && . /jffs/configs/profile.add
+[ "$(nvram get jffs2_scripts)" = "1" ] && [ -f /jffs/configs/profile.add ] && . /jffs/configs/profile.add
 
