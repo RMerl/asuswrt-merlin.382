@@ -11,4 +11,4 @@ ldd() {
 [ -n "${TMOUT+x}" ] || export TMOUT="$(nvram get shell_timeout 2>/dev/null)"
 
 [ -f /opt/etc/profile ] && . /opt/etc/profile
-[ -f /jffs/configs/profile.add ] && . /jffs/configs/profile.add
+[ "$(nvram get jffs2_scripts)" = "1" ] && [ -f /jffs/configs/profile.add ] && . /jffs/configs/profile.add
